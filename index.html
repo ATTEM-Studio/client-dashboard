@@ -510,6 +510,70 @@
       return hasDay ? Number(task.day)===day : String(task.week||"")===period;
     });
   }
+  function parseRevenueWon(raw){
+    var text=String(raw==null?"":raw).replace(/[\s,]/g,"");
+    if(text==="") return null;
+    if(!/^\d+$/.test(text)) return null;
+    var value=Number(text);
+    return Number.isSafeInteger(value) ? value : null;
+  }
+  function revenueForReport(report){
+    return report && report.revenue && typeof report.revenue==="object" ? report.revenue : {};
+  }
+  function reportMonthKey(period){
+    var parts=/(\d{4})\s*\uB144\s*(\d{1,2})\s*\uC6D4/.exec(String(period||""));
+    if(!parts) return null;
+    var month=Number(parts[2]);
+    if(month<1 || month>12) return null;
+    return parts[1]+"-"+String(month).padStart(2,"0");
+  }
+  function revenueSummary(reports,clientId,month){
+    var weeklyByWeek=[null,null,null,null], weeklyUpdatedAt=[-Infinity,-Infinity,-Infinity,-Infinity];
+    var monthlyOverride=null, previousMonth=null, overrideUpdatedAt=-Infinity, previousUpdatedAt=-Infinity;
+    (reports||[]).forEach(function(report){
+      if(!report || report.clientId!==clientId || reportMonthKey(report.period)!==month) return;
+      var revenue=revenueForReport(report), updatedAt=Number(report.updatedAt)||0;
+      if(report.type==="weekly"){
+        var weekMatch=/([1-4])\s*\uC8FC\uCC28/.exec(String(report.period||""));
+        var weekly=parseRevenueWon(revenue.weekly);
+        if(!weekMatch || weekly===null) return;
+        var weekIndex=Number(weekMatch[1])-1;
+        if(updatedAt>=weeklyUpdatedAt[weekIndex]){
+          weeklyByWeek[weekIndex]=weekly;
+          weeklyUpdatedAt[weekIndex]=updatedAt;
+        }
+        return;
+      }
+      if(report.type!=="monthly") return;
+      var override=parseRevenueWon(revenue.monthlyOverride);
+      if(override!==null && updatedAt>=overrideUpdatedAt){
+        monthlyOverride=override;
+        overrideUpdatedAt=updatedAt;
+      }
+      var previous=parseRevenueWon(revenue.previousMonth);
+      if(previous!==null && updatedAt>=previousUpdatedAt){
+        previousMonth=previous;
+        previousUpdatedAt=updatedAt;
+      }
+    });
+    var enteredWeeks=weeklyByWeek.filter(function(value){ return value!==null; });
+    var weeklyTotal=enteredWeeks.length ? enteredWeeks.reduce(function(total,value){ return total+value; },0) : null;
+    var displayTotal=monthlyOverride!==null ? monthlyOverride : weeklyTotal;
+    return {
+      weeklyByWeek:weeklyByWeek,
+      weeklyTotal:weeklyTotal,
+      monthlyOverride:monthlyOverride,
+      previousMonth:previousMonth,
+      displayTotal:displayTotal,
+      hasRevenue:enteredWeeks.length>0 || monthlyOverride!==null || previousMonth!==null
+    };
+  }
+  function revenueAxis(maxWon){
+    var value=parseRevenueWon(maxWon);
+    if(value===null || value===0) return { max:0, step:1000000, labels:[0] };
+    var step=Math.max(1000000,Math.ceil(value/3/1000000)*1000000), max=step*3;
+    return { max:max, step:step, labels:[0,step,step*2,max] };
+  }
   function computeDelta(v,c){
     var a=toNum(v), b=toNum(c);
     if(isNaN(a)||isNaN(b)||b===0) return null;
@@ -1607,15 +1671,33 @@
     var client=ce.value.trim(), period=pe.value.trim();
     if(!client||!period){ showToast("업체명과 기간을 입력하십시오"); return; }
 
+    var type=document.querySelector(".form-card").getAttribute("data-report-type");
+    var revenue={}, revenueFields=type==="weekly"
+      ? [{ id:"f-revenue-weekly", key:"weekly" }]
+      : [{ id:"f-revenue-previous", key:"previousMonth" }, { id:"f-revenue-override", key:"monthlyOverride" }];
+    for(var revenueIndex=0;revenueIndex<revenueFields.length;revenueIndex++){
+      var revenueField=revenueFields[revenueIndex], revenueInput=document.getElementById(revenueField.id);
+      if(!revenueInput) continue;
+      var revenueRaw=revenueInput.value, revenueValue=parseRevenueWon(revenueRaw);
+      revenueInput.setCustomValidity("");
+      if(revenueRaw.trim()!=="" && revenueValue===null){
+        revenueInput.setCustomValidity("0 \uC774\uC0C1\uC758 \uC6D0 \uB2E8\uC704 \uC22B\uC790\uB85C \uC785\uB825\uD574 \uC8FC\uC138\uC694.");
+        revenueInput.reportValidity();
+        revenueInput.focus();
+        return;
+      }
+      revenue[revenueField.key]=revenueValue;
+    }
+
     var btn=document.getElementById("btn-save");
     btn.disabled=true; btn.textContent="저장 중…";
     try{
-      var type=document.querySelector(".form-card").getAttribute("data-report-type");
       var b=state.editingBase||{};
       var rep={ type:type, client:client, period:period,
         clientId: b.clientId || (state.currentClient?state.currentClient.id:null),
         goal:document.getElementById("f-goal").value.trim(),
         channels:collectChannels(), updatedAt:Date.now() };
+      if(Object.keys(revenue).some(function(key){ return revenue[key]!==null; })) rep.revenue=revenue;
 
       if(type==="weekly"){
         rep.external=document.getElementById("f-external").value.trim();
