@@ -1169,6 +1169,10 @@
         obj.manager=document.getElementById("c-manager").value.trim();
         obj.fee=document.getElementById("c-fee").value.trim();
         obj.contractType=pick.contract;
+        if(obj.contractType==="renewal"){
+          var renewalCount=Number(obj.renewalCount);
+          obj.renewalCount=Number.isInteger(renewalCount)&&renewalCount>0 ? renewalCount : 1;
+        }
         obj.startDate=document.getElementById("c-start").value;
         obj.contractMonths=document.getElementById("c-months").value.trim()||"3";
         obj.status=pick.status;
