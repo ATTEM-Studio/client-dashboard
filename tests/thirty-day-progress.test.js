@@ -3,7 +3,7 @@ const fs = require('fs');
 const vm = require('vm');
 
 const html = fs.readFileSync('index.html', 'utf8');
-const match = html.match(/(function thirtyDayProgress[\s\S]*?\n  }\n)(?=  function computeDelta)/);
+const match = html.match(/(function thirtyDayProgress[\s\S]*?\r?\n  }\r?\n)(?=  function computeDelta)/);
 assert.ok(match, 'thirtyDayProgress must exist in index.html');
 
 const sandbox = {};
