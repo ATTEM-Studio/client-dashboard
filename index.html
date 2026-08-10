@@ -991,6 +991,14 @@
     var reports=state.reports.filter(function(r){ return r.clientId===cl.id; }).sort(function(a,b){ return (b.updatedAt||0)-(a.updatedAt||0); });
     return reports.length ? reports.map(function(r){ return '<div class="report-row"><div class="rr-main" data-open-report="'+esc(r.id)+'"><div class="rr-title">'+esc(r.period||"")+'</div><div class="rr-date">'+fmtDate(r.updatedAt)+' 저장</div></div><button class="btn btn-danger btn-sm" data-del-report="'+esc(r.id)+'">삭제</button></div>'; }).join("") : '<div class="muted">작성된 리포트가 없습니다.</div>';
   }
+  function setChecklistCollectionOpen(open){
+    if(!open) syncChecklistSetEditor();
+    state.setCollectionOpen=Boolean(open);
+  }
+  function setClientWorkspaceTab(tab){
+    syncChecklistSetEditor();
+    state.clientTab=tab;
+  }
   function renderClientWorkspace(cl){
     if(!cl){ state.view="dashboard"; return render(); }
     var activeTab=state.clientTab||"calendar";
@@ -1006,7 +1014,7 @@
     document.getElementById("btn-back").onclick=function(){ state.view="dashboard"; render(); };
     document.getElementById("btn-edit-client").onclick=function(){ state.editingClient=cl; state.view="clientForm"; render(); };
     document.getElementById("btn-renew").onclick=function(){ confirmDialog("재계약으로 처리할까요?", "현재 월의 재계약 건으로 기록합니다.", "처리", function(){ markRenewal(cl.id); }); };
-    app.querySelectorAll("[data-client-tab]").forEach(function(b){ b.onclick=function(){ state.clientTab=b.getAttribute("data-client-tab"); renderClientWorkspace(cl); }; });
+    app.querySelectorAll("[data-client-tab]").forEach(function(b){ b.onclick=function(){ setClientWorkspaceTab(b.getAttribute("data-client-tab")); renderClientWorkspace(cl); }; });
     bindCalendarPanel(cl); bindChecklistPanel(cl); bindReportPanel(cl);
   }
   function calendarPanel(cl){
@@ -1069,7 +1077,7 @@
     app.querySelectorAll("[data-toggle-work]").forEach(function(b){ b.onclick=function(){ var id=b.getAttribute("data-toggle-work"); (cl.checklist||[]).forEach(function(t){ if(t.id===id)t.done=!t.done; }); saveClientAndRefresh(cl); }; });
     app.querySelectorAll("[data-del-work]").forEach(function(b){ b.onclick=function(){ var id=b.getAttribute("data-del-work"); cl.checklist=(cl.checklist||[]).filter(function(t){return t.id!==id;}); saveClientAndRefresh(cl); }; });
     var add=document.querySelector("[data-add-task]"); if(add) add.onclick=function(){ var text=document.getElementById("new-work-text").value.trim(); if(!text){showToast("업무 내용을 입력하세요");return;} cl.checklist=cl.checklist||[]; cl.checklist.push({id:uid("ck"),text:text,week:document.getElementById("new-work-week").value,done:false}); saveClientAndRefresh(cl); };
-    var toggle=document.getElementById("btn-toggle-sets"); if(toggle) toggle.onclick=function(){ state.setCollectionOpen=!state.setCollectionOpen; if(!state.setCollectionOpen)state.checklistSetDraft=null; renderClientWorkspace(cl); };
+    var toggle=document.getElementById("btn-toggle-sets"); if(toggle) toggle.onclick=function(){ setChecklistCollectionOpen(!state.setCollectionOpen); renderClientWorkspace(cl); };
     app.querySelectorAll("[data-apply-set]").forEach(function(b){ b.onclick=function(){ var set=state.checklistSets.filter(function(s){return s.id===b.getAttribute("data-apply-set");})[0]; if(!set)return; cl.checklist=(cl.checklist||[]).concat(cloneChecklistSet(set,function(){return uid("ck");})); saveClientAndRefresh(cl); showToast("체크리스트 세트를 적용했습니다"); }; });
     [document.getElementById("btn-new-set"),document.getElementById("btn-empty-new-set")].forEach(function(create){ if(create) create.onclick=function(){ openChecklistSetEditor(); }; });
     app.querySelectorAll("[data-edit-set]").forEach(function(b){ b.onclick=function(){ openChecklistSetEditor(b.getAttribute("data-edit-set")); }; });
