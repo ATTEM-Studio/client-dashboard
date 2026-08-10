@@ -238,6 +238,14 @@ function saveSandbox(revenueValue, options = {}) {
   assert.deepStrictEqual(json(monthlyWithWeeklySnapshot.stored[0].value.revenue), { weeklyTotal: 3180000 },
     'saving a monthly report must embed its current automatic weekly total for safe share-link rendering');
 
+  const monthlySnapshotWithoutLiveWeeks = saveSandbox('', {
+    type: 'monthly', previousValue: '', overrideValue: '',
+    editingBase: { id:'monthly-snapshot', createdAt:1, clientId:'c1', revenue:{weeklyTotal:3180000} }
+  });
+  await monthlySnapshotWithoutLiveWeeks.context.saveReport();
+  assert.deepStrictEqual(json(monthlySnapshotWithoutLiveWeeks.stored[0].value.revenue), { weeklyTotal:3180000 },
+    'editing without live weekly reports must preserve an existing monthly snapshot for shared links');
+
   const weeklyEditWithoutInput = saveSandbox(undefined, {
     includeRevenueInput: false,
     editingBase: { id: 'weekly-existing', createdAt: 1, clientId: 'c1', revenue: { weekly: 0 } }

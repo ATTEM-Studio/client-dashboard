@@ -1840,6 +1840,10 @@
         var reportMonth=reportMonthKey(period);
         var weeklySnapshot=reportClientId&&reportMonth ? revenueSummary(state.reports,reportClientId,reportMonth).weeklyTotal : null;
         if(weeklySnapshot!==null) revenue.weeklyTotal=weeklySnapshot;
+        else {
+          var savedWeeklySnapshot=parseRevenueWon(b.revenue&&b.revenue.weeklyTotal);
+          if(savedWeeklySnapshot!==null) revenue.weeklyTotal=savedWeeklySnapshot;
+        }
       }
       Object.keys(revenue).forEach(function(key){ if(revenue[key]===null) delete revenue[key]; });
       var rep={ type:type, client:client, period:period,
