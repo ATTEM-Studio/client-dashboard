@@ -112,6 +112,8 @@
   .day-progress-track{ height:12px; border-radius:99px; background:#EEF1F5; overflow:hidden; }
   .day-progress-fill{ height:100%; border-radius:inherit; background:linear-gradient(90deg,var(--brand-dark),var(--brand)); transition:width .5s ease; }
   .day-progress-weeks{ display:grid; grid-template-columns:7fr 7fr 7fr 7fr 2fr; margin-top:6px; font-size:10.5px; color:var(--ink-400); text-align:center; }
+  .day-progress-weeks span{ display:block; }
+  .day-progress-weeks small{ display:block; margin-top:1px; font-size:9px; color:var(--ink-300); }
   @media(max-width:420px){ .day-progress-copy{ align-items:flex-start; flex-direction:column; gap:2px; } }
   .week-cell{ flex:1; border:none; border-radius:9px; padding:8px 4px 7px; background:#F2F4F6; text-align:center; transition:background .15s, transform .1s; }
   .week-cell:active{ transform:scale(.96); }
@@ -383,8 +385,12 @@
   }
   function thirtyDayProgress(startDate, now){
     if(!startDate) return { state:"missing", elapsed:0, week:0, percent:0, remaining:30 };
-    var start=new Date(startDate+"T00:00:00");
-    if(isNaN(start.getTime())) return { state:"missing", elapsed:0, week:0, percent:0, remaining:30 };
+    var parts=/^(\d{4})-(\d{2})-(\d{2})$/.exec(startDate);
+    if(!parts) return { state:"missing", elapsed:0, week:0, percent:0, remaining:30 };
+    var start=new Date(+parts[1],+parts[2]-1,+parts[3]);
+    if(start.getFullYear()!==+parts[1] || start.getMonth()!==+parts[2]-1 || start.getDate()!==+parts[3]){
+      return { state:"missing", elapsed:0, week:0, percent:0, remaining:30 };
+    }
     var today=new Date(now||new Date());
     today.setHours(0,0,0,0);
     var raw=Math.floor((today-start)/86400000)+1;
@@ -676,7 +682,7 @@
                 (day.state==="upcoming"?"시작 전":day.week+"주차 · "+day.elapsed+"일 / 30일")+
               '</strong><span>'+(day.state==="complete"?"30일 완료":day.remaining+"일 남음")+'</span></div>'+
               '<div class="day-progress-track"><div class="day-progress-fill" style="width:'+day.percent+'%"></div></div>'+
-              '<div class="day-progress-weeks"><span>1주차</span><span>2주차</span><span>3주차</span><span>4주차</span><span>5주차</span></div>'+
+              '<div class="day-progress-weeks"><span>1주차<small>1일–7일</small></span><span>2주차<small>8일–14일</small></span><span>3주차<small>15일–21일</small></span><span>4주차<small>22일–28일</small></span><span>5주차<small>29일–30일</small></span></div>'+
             '</div>';
         var tags="";
         if(isNewIn(c,mk)) tags+='<span class="tag tag-new">신규</span>';
