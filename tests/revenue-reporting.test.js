@@ -61,6 +61,80 @@ assert.deepStrictEqual(
   { max:0, step:1000000, labels:[0] }
 );
 
+assert.match(html, /id="f-revenue-weekly"/, 'weekly reports must expose the optional revenue input');
+assert.match(html, /id="f-revenue-previous"/, 'monthly reports must expose the optional previous-month input');
+assert.match(html, /id="f-revenue-override"/, 'monthly reports must expose the optional confirmed override input');
+
+const renderMatch = html.match(/(function formatRevenueWon[\s\S]*?\n  function reportRevenueSection[\s\S]*?\n  })/);
+assert.ok(renderMatch, 'revenue formatting and render helpers must exist in index.html');
+Object.assign(sandbox, {
+  esc(value) {
+    return String(value == null ? '' : value).replace(/[&<>"']/g, (character) => ({
+      '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+    })[character]);
+  },
+  currentWeekOf() { return 2; }
+});
+vm.runInNewContext(renderMatch[1], sandbox);
+
+assert.strictEqual(sandbox.formatRevenueWon(2180000), '218\uB9CC \uC6D0');
+assert.strictEqual(sandbox.formatRevenueWon(0), '0\uC6D0', 'stored zero must remain displayable');
+assert.strictEqual(sandbox.revenueTrendPanel('c1', [], '2026-08'), '',
+  'a client with no usable revenue must not get an empty chart shell');
+assert.strictEqual(sandbox.reportRevenueSection({ type:'weekly' }, []), '',
+  'a legacy weekly report must not get an empty revenue section');
+
+const trendReports = [
+  { id:'w1', clientId:'c1', type:'weekly', period:'2026\uB144 8\uC6D4 1\uC8FC\uCC28', updatedAt:1, revenue:{weekly:1000000} },
+  { id:'w2', clientId:'c1', type:'weekly', period:'2026\uB144 8\uC6D4 2\uC8FC\uCC28', updatedAt:2, revenue:{weekly:2180000} }
+];
+const trend = sandbox.revenueTrendPanel('c1', trendReports, '2026-08');
+const trendAxis = trend.match(/<div class="revenue-y-axis">([\s\S]*?)<\/div>/);
+assert.ok(trendAxis, 'the chart must render a visible y axis');
+assert.match(trendAxis[1], /100\uB9CC/, 'the chart axis must use Korean ten-thousand-unit labels');
+assert.match(trendAxis[1], /200\uB9CC/, 'the chart axis must retain the next Korean scale step');
+assert.match(trend, /218\uB9CC \uC6D0/, 'entered bars must show exact Korean amounts');
+assert.match(trend, /revenue-bar-stack[^>]*><span class="revenue-bar-value">218\uB9CC \uC6D0<\/span>/,
+  'each exact amount label must be positioned by the same stack as its bar');
+assert.doesNotMatch(html, /\.revenue-bar-value\{[^}]*\btop:/,
+  'exact amount labels must not be pinned to the chart ceiling');
+assert.strictEqual((trend.match(/revenue-bar-slot/g) || []).length, 4, 'the trend must always use four weekly slots');
+assert.match(trend, /aria-label=/, 'the bar chart must have an accessible text label');
+assert.doesNotMatch(trend, /onclick|<svg|<path|trend-line/i,
+  'the approved trend is bar-only and must not use click-to-reveal behavior');
+
+const trendWithBlankCurrentWeek = sandbox.revenueTrendPanel('c1', [
+  trendReports[0],
+  { id:'w2-blank', clientId:'c1', type:'weekly', period:'2026\uB144 8\uC6D4 2\uC8FC\uCC28', updatedAt:3 }
+], '2026-08');
+assert.match(trendWithBlankCurrentWeek, /data-edit-revenue="w2-blank"/,
+  'the revenue action must prefer the existing current-week editor even before revenue is entered');
+
+const zeroSection = sandbox.reportRevenueSection({
+  id:'w0', clientId:'c1', type:'weekly', period:'2026\uB144 8\uC6D4 1\uC8FC\uCC28', revenue:{weekly:0}
+}, []);
+assert.match(zeroSection, /0\uC6D0/, 'zero is a real entered value, not an absent value');
+
+const monthlySection = sandbox.reportRevenueSection({
+  id:'m1', clientId:'c1', type:'monthly', period:'2026\uB144 8\uC6D4', updatedAt:3,
+  revenue:{previousMonth:2500000, monthlyOverride:3300000}
+}, trendReports);
+assert.match(monthlySection, /330\uB9CC \uC6D0/, 'the confirmed monthly override must be displayed');
+assert.match(monthlySection, /318\uB9CC \uC6D0/, 'the automatic weekly sum must remain visible beside an override');
+assert.match(monthlySection, /250\uB9CC \uC6D0/, 'the optional previous-month comparison must be displayed');
+
+const historicalMonthlySection = sandbox.reportRevenueSection({
+  id:'m-old', clientId:'c1', type:'monthly', period:'2026\uB144 8\uC6D4', updatedAt:3,
+  revenue:{previousMonth:2500000, monthlyOverride:3300000}
+}, trendReports.concat({
+  id:'m-new', clientId:'c1', type:'monthly', period:'2026\uB144 8\uC6D4', updatedAt:9,
+  revenue:{previousMonth:4800000, monthlyOverride:5000000}
+}));
+assert.match(historicalMonthlySection, /330\uB9CC \uC6D0/,
+  'a historical monthly report view must show its own embedded confirmed amount');
+assert.doesNotMatch(historicalMonthlySection, /500\uB9CC \uC6D0/,
+  'a newer monthly report must not rewrite an older report view');
+
 const saveMatch = html.match(/(async function saveReport\(\)\{[\s\S]*?\r?\n  })\r?\n\r?\n  async function openReport/);
 assert.ok(saveMatch, 'saveReport must exist in index.html');
 

@@ -107,4 +107,22 @@ workspaceRenderSandbox.renderClientWorkspace({
   id: 'client-1', name: 'Client', industry: '', startDate: '2026-03-07',
   contractType: 'new', checklist: []
 });
+
+let trendArgs = null;
+workspaceRenderSawSyncedDraft = false;
+workspaceRenderSandbox.state.clientTab = 'reports';
+workspaceRenderSandbox.state.month = '2026-08';
+workspaceRenderSandbox.revenueTrendPanel = function(clientId, reports, month){
+  trendArgs = { clientId, reports, month };
+  return '<div data-test-revenue-trend>revenue trend</div>';
+};
+workspaceRenderSandbox.renderClientWorkspace({
+  id: 'client-1', name: 'Client', industry: '', startDate: '2026-03-07',
+  contractType: 'new', checklist: []
+});
+assert.deepStrictEqual(trendArgs, {
+  clientId: 'client-1', reports: workspaceRenderSandbox.state.reports, month: '2026-08'
+}, 'the reports tab must derive its trend from the existing report collection and selected month');
+assert.match(workspaceApp.value, /data-test-revenue-trend/,
+  'the reports tab must render the revenue trend below its report rows');
 console.log('inline script syntax: ok');

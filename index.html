@@ -148,6 +148,10 @@
   .fsec-num{ font-size:11.5px; font-weight:800; color:var(--brand); letter-spacing:.06em; margin-bottom:4px; }
   .fsec-title{ font-size:16px; font-weight:800; margin:0 0 4px; }
   .fsec-hint{ font-size:12.5px; color:var(--ink-400); margin:0 0 14px; }
+  .revenue-form-section{ background:linear-gradient(180deg,#F8FBFF,#fff); }
+  .optional-label{ display:inline-flex; align-items:center; margin-left:6px; padding:2px 7px; border-radius:999px; background:var(--brand-light); color:var(--brand-dark); font-size:10.5px; font-weight:800; vertical-align:2px; }
+  .revenue-auto{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; padding:12px 14px; border:1px solid #DCE8FB; border-radius:11px; background:#F5F9FF; color:var(--ink-600); font-size:12.5px; }
+  .revenue-auto strong{ color:var(--brand-dark); font-size:14px; }
   .field{ margin-bottom:12px; }
   .field label{ display:block; font-size:12.5px; font-weight:700; color:var(--ink-600); margin-bottom:6px; }
   .field input[type=text],.field input[type=date],.field textarea,.field select{ width:100%; border:1px solid var(--line); border-radius:10px; padding:11px 13px; font-size:14px; color:var(--ink-900); background:#FAFBFC; resize:vertical; }
@@ -224,6 +228,37 @@
   .rc-type-badge{ font-size:10.5px; font-weight:800; padding:2px 8px; border-radius:6px; }
   .rc-type-badge.weekly{ background:var(--scale-light); color:#0B8F55; }
   .rc-type-badge.monthly{ background:var(--brand-light); color:var(--brand-dark); }
+
+  /* optional revenue */
+  .revenue-report-section .rsec-title{ margin-bottom:14px; }
+  .revenue-summary-grid{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+  .revenue-summary-card{ padding:14px; border:1px solid var(--line); border-radius:12px; background:#FAFBFC; }
+  .revenue-summary-card.primary{ border-color:#DCE8FB; background:#F5F9FF; }
+  .revenue-summary-label{ color:var(--ink-400); font-size:11.5px; font-weight:700; }
+  .revenue-summary-value{ margin-top:4px; color:var(--ink-700); font-size:17px; font-weight:800; }
+  .revenue-summary-card.primary .revenue-summary-value{ color:var(--brand-dark); }
+  .revenue-trend-panel{ margin-top:18px; padding-top:18px; border-top:1px solid var(--line); }
+  .revenue-trend-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:16px; }
+  .revenue-trend-title{ margin:0; font-size:14.5px; font-weight:800; }
+  .revenue-trend-total{ margin-top:3px; color:var(--ink-400); font-size:12px; }
+  .revenue-trend-total strong{ color:var(--ink-700); font-size:14px; }
+  .revenue-chart{ display:grid; grid-template-columns:48px minmax(0,1fr); gap:10px; min-height:220px; }
+  .revenue-y-axis{ display:flex; flex-direction:column; justify-content:space-between; padding:8px 0 28px; color:var(--ink-400); font-size:10.5px; text-align:right; }
+  .revenue-bars{ display:grid; grid-template-columns:repeat(4,minmax(44px,1fr)); gap:10px; min-width:0; border-bottom:1px solid var(--line); background:repeating-linear-gradient(to bottom,var(--line) 0,var(--line) 1px,transparent 1px,transparent calc(33.333%)); }
+  .revenue-bar-slot{ display:flex; min-width:0; flex-direction:column; justify-content:flex-end; align-items:center; position:relative; padding-top:28px; }
+  .revenue-bar-stack{ position:relative; width:min(34px,72%); flex:none; }
+  .revenue-bar-stack.entered{ min-height:3px; }
+  .revenue-bar-value{ position:absolute; bottom:calc(100% + 5px); left:50%; transform:translateX(-50%); color:var(--ink-300); font-size:10.5px; font-weight:700; white-space:nowrap; }
+  .revenue-bar{ width:100%; height:100%; min-height:3px; border-radius:8px 8px 2px 2px; background:var(--brand); }
+  .revenue-bar.current{ background:var(--scale); }
+  .revenue-bar.empty{ min-height:0; background:transparent; }
+  .revenue-bar-week{ height:28px; padding-top:7px; color:var(--ink-400); font-size:11px; font-weight:700; }
+  @media(max-width:560px){
+    .revenue-summary-grid{ grid-template-columns:1fr; }
+    .revenue-chart{ grid-template-columns:40px minmax(0,1fr); }
+    .revenue-bars{ gap:5px; }
+    .revenue-bar-value{ font-size:9.5px; }
+  }
 
   .muted{ color:var(--ink-400); font-size:13.5px; }
 
@@ -574,6 +609,80 @@
     var step=Math.max(1000000,Math.ceil(value/3/1000000)*1000000), max=step*3;
     return { max:max, step:step, labels:[0,step,step*2,max] };
   }
+  function formatRevenueWon(value){
+    var amount=parseRevenueWon(value);
+    if(amount===null) return "";
+    if(amount===0) return "0\uC6D0";
+    if(amount%10000===0) return (amount/10000).toLocaleString("ko-KR")+"\uB9CC \uC6D0";
+    return amount.toLocaleString("ko-KR")+"\uC6D0";
+  }
+  function revenueAxisLabel(value){
+    if(value===0) return "0";
+    return value%10000===0 ? (value/10000).toLocaleString("ko-KR")+"\uB9CC" : formatRevenueWon(value);
+  }
+  function revenueTrendPanel(clientId,reports,month){
+    var summary=revenueSummary(reports,clientId,month);
+    if(!summary.hasRevenue) return "";
+    var values=summary.weeklyByWeek.filter(function(value){ return value!==null; });
+    var scaleValues=values.slice();
+    if(!scaleValues.length && summary.displayTotal!==null) scaleValues.push(summary.displayTotal);
+    if(!scaleValues.length && summary.previousMonth!==null) scaleValues.push(summary.previousMonth);
+    var maxValue=scaleValues.length ? Math.max.apply(Math,scaleValues) : 0;
+    var axis=revenueAxis(maxValue), currentWeek=currentWeekOf(month);
+    var axisHtml=axis.labels.slice().reverse().map(function(value){
+      return '<span>'+revenueAxisLabel(value)+'</span>';
+    }).join("");
+    var described=[];
+    var bars=summary.weeklyByWeek.map(function(value,index){
+      var entered=value!==null, height=entered&&axis.max ? Math.max(2,value/axis.max*100) : 0;
+      if(entered) described.push((index+1)+"\uC8FC\uCC28 "+formatRevenueWon(value));
+      return '<div class="revenue-bar-slot">'+
+        '<div class="revenue-bar-stack '+(entered?"entered":"empty")+'" style="height:'+height.toFixed(2)+'%">'+
+          (entered?'<span class="revenue-bar-value">'+formatRevenueWon(value)+'</span>':"")+
+          '<div class="revenue-bar '+(entered?(currentWeek===index+1?"current":"entered"):"empty")+'"></div></div>'+
+        '<span class="revenue-bar-week">'+(index+1)+'\uC8FC</span></div>';
+    }).join("");
+    var eligible=(reports||[]).filter(function(report){
+      return report && report.id && report.clientId===clientId && reportMonthKey(report.period)===month;
+    }).sort(function(a,b){
+      var aCurrent=a.type==="weekly" && new RegExp(""+currentWeek+"\\s*\\uC8FC\\uCC28").test(String(a.period||""));
+      var bCurrent=b.type==="weekly" && new RegExp(""+currentWeek+"\\s*\\uC8FC\\uCC28").test(String(b.period||""));
+      if(aCurrent!==bCurrent) return aCurrent?-1:1;
+      var aHasRevenue=revenueSummary([a],clientId,month).hasRevenue;
+      var bHasRevenue=revenueSummary([b],clientId,month).hasRevenue;
+      if(aHasRevenue!==bHasRevenue) return aHasRevenue?-1:1;
+      return (Number(b.updatedAt)||0)-(Number(a.updatedAt)||0);
+    });
+    var target=eligible[0];
+    var action=target&&target.id ? '<button class="btn btn-plain btn-sm" data-edit-revenue="'+esc(target.id)+'">\uB9E4\uCD9C \uC785\uB825/\uC218\uC815</button>' : "";
+    var totalLabel=summary.displayTotal!==null ? '\uC774\uBC88 \uB2EC <strong>'+formatRevenueWon(summary.displayTotal)+'</strong>' : '\uC9C0\uB09C\uB2EC <strong>'+formatRevenueWon(summary.previousMonth)+'</strong>';
+    var aria=month+' \uC8FC\uCC28\uBCC4 \uB9E4\uCD9C \uB9C9\uB300 \uADF8\uB798\uD504. '+(described.length?described.join(", "):"\uC785\uB825\uB41C \uC8FC\uAC04 \uB9E4\uCD9C \uC5C6\uC74C");
+    return '<section class="revenue-trend-panel">'+
+      '<div class="revenue-trend-head"><div><h4 class="revenue-trend-title">\uC8FC\uCC28\uBCC4 \uB9E4\uCD9C \uD750\uB984</h4><div class="revenue-trend-total">'+totalLabel+'</div></div>'+action+'</div>'+
+      '<div class="revenue-chart" role="img" aria-label="'+esc(aria)+'"><div class="revenue-y-axis">'+axisHtml+'</div><div class="revenue-bars">'+bars+'</div></div></section>';
+  }
+  function reportRevenueSection(rep,reports){
+    if(!rep) return "";
+    var revenue=revenueForReport(rep);
+    if(rep.type==="weekly"){
+      var weekly=parseRevenueWon(revenue.weekly);
+      if(weekly===null) return "";
+      return '<div class="rsection revenue-report-section fade-in"><div class="rsec-title">\uC774\uBC88 \uC8FC \uB9E4\uCD9C</div><div class="revenue-summary-grid"><div class="revenue-summary-card primary"><div class="revenue-summary-label">\uD655\uC778 \uB9E4\uCD9C</div><div class="revenue-summary-value">'+formatRevenueWon(weekly)+'</div></div></div></div>';
+    }
+    var month=reportMonthKey(rep.period);
+    if(!month) return "";
+    var related=(reports||[]).filter(function(report){
+      return (!rep.id || report.id!==rep.id) && report && report.type==="weekly";
+    });
+    related.push(rep);
+    var summary=revenueSummary(related,rep.clientId,month);
+    if(!summary.hasRevenue) return "";
+    var cards="";
+    if(summary.displayTotal!==null) cards+='<div class="revenue-summary-card primary"><div class="revenue-summary-label">\uC774\uBC88 \uB2EC \uB9E4\uCD9C</div><div class="revenue-summary-value">'+formatRevenueWon(summary.displayTotal)+'</div></div>';
+    if(summary.weeklyTotal!==null) cards+='<div class="revenue-summary-card"><div class="revenue-summary-label">\uC8FC\uAC04 \uC790\uB3D9 \uD569\uACC4</div><div class="revenue-summary-value">'+formatRevenueWon(summary.weeklyTotal)+'</div></div>';
+    if(summary.previousMonth!==null) cards+='<div class="revenue-summary-card"><div class="revenue-summary-label">\uC9C0\uB09C\uB2EC \uB9E4\uCD9C</div><div class="revenue-summary-value">'+formatRevenueWon(summary.previousMonth)+'</div></div>';
+    return '<div class="rsection revenue-report-section fade-in"><div class="rsec-title">\uB9E4\uCD9C \uC694\uC57D</div><div class="revenue-summary-grid">'+cards+'</div></div>';
+  }
   function computeDelta(v,c){
     var a=toNum(v), b=toNum(c);
     if(isNaN(a)||isNaN(b)||b===0) return null;
@@ -623,7 +732,7 @@
     view:"loading",
     month: monthKey(new Date()),
     clients:[],            // index: {id,name,contractType,startDate,status,updatedAt}
-    reports:[],            // index: {id,clientId,clientName,period,type,updatedAt}
+    reports:[],            // index: {id,clientId,clientName,period,type,updatedAt,revenue?}
     checklistSets:[],
     currentClient:null,
     currentReport:null,
@@ -1109,7 +1218,7 @@
     var content="";
     if(activeTab==="calendar") content=calendarPanel(cl);
     if(activeTab==="checklist") content=checklistPanel(cl, tasks, done);
-    if(activeTab==="reports") content='<div class="panel fade-in"><div class="panel-head"><h3 class="panel-title">리포트</h3><span class="count muted">'+state.reports.filter(function(r){return r.clientId===cl.id;}).length+'건</span></div><div class="report-actions" style="margin-bottom:16px"><button class="btn btn-primary btn-sm" id="btn-new-weekly">+ 주간 리포트</button><button class="btn btn-ghost btn-sm" id="btn-new-monthly">+ 월간 리포트</button></div>'+reportRows(cl)+"</div>";
+    if(activeTab==="reports") content='<div class="panel fade-in"><div class="panel-head"><h3 class="panel-title">리포트</h3><span class="count muted">'+state.reports.filter(function(r){return r.clientId===cl.id;}).length+'건</span></div><div class="report-actions" style="margin-bottom:16px"><button class="btn btn-primary btn-sm" id="btn-new-weekly">+ 주간 리포트</button><button class="btn btn-ghost btn-sm" id="btn-new-monthly">+ 월간 리포트</button></div>'+reportRows(cl)+revenueTrendPanel(cl.id,state.reports,state.month)+"</div>";
     app.innerHTML='<div class="report-top"><button class="back-btn" id="btn-back">←</button><div class="report-actions"><button class="btn btn-plain btn-sm" id="btn-renew">재계약 처리</button><button class="btn btn-plain btn-sm" id="btn-edit-client">정보 수정</button></div></div>'+
       '<div class="detail-head fade-in"><div class="dh-tagrow"><span class="status-pill">'+(cl.contractType==="renewal"?"재계약":"신규")+'</span></div><h2 class="dh-name">'+esc(cl.name)+'</h2><div class="dh-meta"><span>'+esc(cl.industry||"")+'</span><span>시작 '+esc(cl.startDate||"미등록")+'</span></div></div>'+
       '<div class="detail-tabs"><button class="detail-tab '+(activeTab==="calendar"?"active":"")+'" data-client-tab="calendar">일정 달력</button><button class="detail-tab '+(activeTab==="checklist"?"active":"")+'" data-client-tab="checklist">업무 체크리스트 <small>'+done+'/'+tasks.length+'</small></button><button class="detail-tab '+(activeTab==="reports"?"active":"")+'" data-client-tab="reports">리포트</button></div>'+content;
@@ -1197,6 +1306,12 @@
     var weekly=document.getElementById("btn-new-weekly"), monthly=document.getElementById("btn-new-monthly");
     if(weekly) weekly.onclick=function(){startReport(cl,"weekly");}; if(monthly) monthly.onclick=function(){startReport(cl,"monthly");};
     app.querySelectorAll("[data-open-report]").forEach(function(b){b.onclick=function(){openReport(b.getAttribute("data-open-report"));};});
+    app.querySelectorAll("[data-edit-revenue]").forEach(function(b){b.onclick=async function(){
+      var id=b.getAttribute("data-edit-revenue"), rep=await getS("report:"+id);
+      if(!rep){ showToast("리포트를 찾을 수 없습니다"); return; }
+      rep.type=rep.type==="weekly"?"weekly":"monthly";
+      state.editingBase=rep; state.view="edit"; render();
+    };});
     app.querySelectorAll("[data-del-report]").forEach(function(b){b.onclick=function(){var id=b.getAttribute("data-del-report"); confirmDialog("리포트를 삭제할까요?", "삭제한 리포트는 되돌릴 수 없습니다.", "삭제", function(){deleteReport(id);});};});
   }
   function openDayModal(cl,key){
@@ -1476,6 +1591,17 @@
       quick.map(function(n){ return '<button type="button" class="qa-chip" data-quickchannel="'+esc(n)+'">+ '+esc(n)+'</button>'; }).join("")+
       '<button type="button" class="qa-chip" data-quickchannel="">+ 직접 입력</button></div>';
     var chHtml='<div id="channels-container">'+channels.map(channelBlockTpl).join("")+'</div>';
+    var storedRevenue=revenueForReport(base);
+    function revenueFieldValue(key){
+      var value=parseRevenueWon(storedRevenue[key]);
+      return value===null?"":String(value);
+    }
+    var reportMonth=reportMonthKey(base.period)||state.month;
+    var clientId=base.clientId||(state.currentClient?state.currentClient.id:null);
+    var weeklyAuto=clientId&&reportMonth ? revenueSummary(state.reports,clientId,reportMonth).weeklyTotal : null;
+    var revenueForm=type==="weekly"
+      ? '<div class="fsection revenue-form-section"><div class="fsec-num">02</div><h3 class="fsec-title">매출 정보 <span class="optional-label">선택</span></h3><p class="fsec-hint">입력한 금액은 이 리포트와 업체 매출 흐름에 함께 표시됩니다.</p><div class="field"><label>이번 주 매출</label><input type="text" id="f-revenue-weekly" inputmode="numeric" autocomplete="off" placeholder="예: 1,250,000" value="'+esc(revenueFieldValue("weekly"))+'" /></div></div>'
+      : '<div class="fsection revenue-form-section"><div class="fsec-num">02</div><h3 class="fsec-title">매출 정보 <span class="optional-label">선택</span></h3><p class="fsec-hint">주간 리포트 금액은 자동 합산되며, 필요할 때 확정 금액으로 조정할 수 있습니다.</p><div class="revenue-auto"><span>주간 리포트 자동 합계</span><strong>'+(weeklyAuto===null?'입력된 금액 없음':formatRevenueWon(weeklyAuto))+'</strong></div><div class="two-col"><div class="field"><label>지난달 매출</label><input type="text" id="f-revenue-previous" inputmode="numeric" autocomplete="off" placeholder="예: 2,500,000" value="'+esc(revenueFieldValue("previousMonth"))+'" /></div><div class="field"><label>이번 달 확정 매출</label><input type="text" id="f-revenue-override" inputmode="numeric" autocomplete="off" placeholder="자동 합계와 다를 때만 입력" value="'+esc(revenueFieldValue("monthlyOverride"))+'" /></div></div></div>';
 
     var basic=
       '<div class="fsection">'+
@@ -1494,21 +1620,21 @@
       var tests=base.tests&&base.tests.length?base.tests:[""];
       var results=base.results&&base.results.length?base.results:[""];
       var nw=base.next_week&&base.next_week.length?base.next_week:[""];
-      body=basic+
-        '<div class="fsection"><div class="fsec-num">02</div><h3 class="fsec-title">이번 주 핵심 숫자</h3>'+
+      body=basic+revenueForm+
+        '<div class="fsection"><div class="fsec-num">03</div><h3 class="fsec-title">이번 주 핵심 숫자</h3>'+
           '<p class="fsec-hint">채널별로 이번 주 지표와 지난주 대비 값을 입력하십시오.</p>'+quickHtml+chHtml+'</div>'+
-        '<div class="fsection"><div class="fsec-num">03</div><h3 class="fsec-title">외부 변수</h3>'+
+        '<div class="fsection"><div class="fsec-num">04</div><h3 class="fsec-title">외부 변수</h3>'+
           '<p class="fsec-hint">프로모션, 공휴일, 경쟁사 이벤트 등 숫자에 영향을 줬을 요인을 기재하십시오.</p>'+
           '<div class="field"><textarea id="f-external" rows="2" placeholder="예: 연휴로 주말 문의가 증가한 것으로 보인다">'+esc(base.external||"")+'</textarea></div></div>'+
-        '<div class="fsection"><div class="fsec-num">04</div><h3 class="fsec-title">이번 주 테스트</h3>'+
+        '<div class="fsection"><div class="fsec-num">05</div><h3 class="fsec-title">이번 주 테스트</h3>'+
           '<p class="fsec-hint">이번 주 새로 시도한 것을 입력하십시오.</p>'+
           '<div id="rows-tests">'+tests.map(function(v){return rowTpl("예: 예약 버튼 문구 변경",v);}).join("")+'</div>'+
           '<button type="button" class="add-row-btn" data-add="rows-tests">+ 테스트 항목 추가</button></div>'+
-        '<div class="fsection"><div class="fsec-num">05</div><h3 class="fsec-title">결과</h3>'+
+        '<div class="fsection"><div class="fsec-num">06</div><h3 class="fsec-title">결과</h3>'+
           '<p class="fsec-hint">확인된 사실 위주로 결과를 입력하십시오.</p>'+
           '<div id="rows-results">'+results.map(function(v){return rowTpl("예: 버튼 클릭률이 소폭 상승했다",v);}).join("")+'</div>'+
           '<button type="button" class="add-row-btn" data-add="rows-results">+ 결과 추가</button></div>'+
-        '<div class="fsection"><div class="fsec-num">06</div><h3 class="fsec-title">다음 주 행동</h3>'+
+        '<div class="fsection"><div class="fsec-num">07</div><h3 class="fsec-title">다음 주 행동</h3>'+
           '<p class="fsec-hint">다음 주에 무엇을 할지 정리하십시오.</p>'+
           '<div id="rows-nextweek">'+nw.map(function(v){return rowTpl("예: 문구 테스트 1주 더 유지",v);}).join("")+'</div>'+
           '<button type="button" class="add-row-btn" data-add="rows-nextweek">+ 행동 항목 추가</button></div>';
@@ -1521,14 +1647,14 @@
       var fx=nx.fix&&nx.fix.length?nx.fix:[""];
       var sp=nx.stop&&nx.stop.length?nx.stop:[""];
       var sc=nx.scale&&nx.scale.length?nx.scale:[""];
-      body=basic+
-        '<div class="fsection"><div class="fsec-num">02</div><h3 class="fsec-title">무엇을 실행했는가</h3>'+
+      body=basic+revenueForm+
+        '<div class="fsection"><div class="fsec-num">03</div><h3 class="fsec-title">무엇을 실행했는가</h3>'+
           '<p class="fsec-hint">이번 달 진행한 작업을 항목별로 입력하십시오.</p>'+
           '<div id="rows-actions">'+ad.map(function(v){return rowTpl("예: 소재 3종 교체",v);}).join("")+'</div>'+
           '<button type="button" class="add-row-btn" data-add="rows-actions">+ 실행 항목 추가</button></div>'+
-        '<div class="fsection"><div class="fsec-num">03</div><h3 class="fsec-title">어떤 숫자가 달라졌는가</h3>'+
+        '<div class="fsection"><div class="fsec-num">04</div><h3 class="fsec-title">어떤 숫자가 달라졌는가</h3>'+
           '<p class="fsec-hint">채널별로 지표와 비교값을 입력하십시오. 비교 대상이 있어야 증감을 판단할 수 있습니다.</p>'+quickHtml+chHtml+'</div>'+
-        '<div class="fsection"><div class="fsec-num">04 · 05</div><h3 class="fsec-title">사실과 해석 구분하기</h3>'+
+        '<div class="fsection"><div class="fsec-num">05 · 06</div><h3 class="fsec-title">사실과 해석 구분하기</h3>'+
           '<p class="fsec-hint">사실은 데이터가 보여준 것이고, 해석은 아직 확정되지 않은 가능성입니다.</p>'+
           '<div class="two-col">'+
             '<div><label style="display:block;font-size:12.5px;font-weight:700;color:var(--ink-600);margin-bottom:6px;">사실</label>'+
@@ -1538,10 +1664,10 @@
               '<div id="rows-interps">'+ip.map(function(v){return rowTpl("예: 소재 변경이 영향을 줬을 수 있다",v);}).join("")+'</div>'+
               '<button type="button" class="add-row-btn" data-add="rows-interps">+ 해석 추가</button></div>'+
           '</div></div>'+
-        '<div class="fsection"><div class="fsec-num">06</div><h3 class="fsec-title">확실하지 않은 부분</h3>'+
+        '<div class="fsection"><div class="fsec-num">07</div><h3 class="fsec-title">확실하지 않은 부분</h3>'+
           '<p class="fsec-hint">단정할 수 없는 부분을 명확히 기재하십시오.</p>'+
           '<div class="field"><textarea id="f-uncertain" rows="3" placeholder="예: 두 변경이 동시에 진행되어 어떤 요인이 더 컸는지는 단정하기 어렵다">'+esc(base.uncertain||"")+'</textarea></div></div>'+
-        '<div class="fsection"><div class="fsec-num">07</div><h3 class="fsec-title">다음 달 무엇을 할 것인가</h3>'+
+        '<div class="fsection"><div class="fsec-num">08</div><h3 class="fsec-title">다음 달 무엇을 할 것인가</h3>'+
           '<p class="fsec-hint">실행 항목을 유지 · 수정 · 중단 · 확대 중 하나로 분류하십시오.</p>'+
           '<div class="subgroup"><div class="subgroup-title"><span class="dot dot-keep"></span>유지 — 현재 방식 그대로 계속한다</div>'+
             '<div id="rows-keep">'+kp.map(function(v){return rowTpl("예: 주말 입찰가 상향 유지",v);}).join("")+'</div>'+
@@ -1556,7 +1682,7 @@
             '<div id="rows-scale">'+sc.map(function(v){return rowTpl("예: 인접 상권으로 범위 확장",v);}).join("")+'</div>'+
             '<button type="button" class="add-row-btn" data-add="rows-scale">+ 확대 항목 추가</button></div>'+
         '</div>'+
-        '<div class="fsection"><div class="fsec-num">08</div><h3 class="fsec-title">메모</h3>'+
+        '<div class="fsection"><div class="fsec-num">09</div><h3 class="fsec-title">메모</h3>'+
           '<p class="fsec-hint">다음 리포트에서 다뤄볼 방향성이나 아이디어를 남겨두십시오.</p>'+
           '<div class="field"><textarea id="f-memo" rows="4" placeholder="예: 다음 달에는 예약 연동 효과를 별도로 확인해볼 것">'+esc(base.memo||"")+'</textarea></div></div>';
     }
@@ -1600,6 +1726,16 @@
       if(document.getElementById("channels-container")) keep.channels=collectChannels();
       var b=state.editingBase||{};
       keep.clientId=b.clientId; keep.id=b.id; keep.createdAt=b.createdAt;
+      if(b.revenue&&typeof b.revenue==="object") keep.revenue=Object.assign({},b.revenue);
+      var weeklyRevenue=document.getElementById("f-revenue-weekly");
+      var previousRevenue=document.getElementById("f-revenue-previous");
+      var overrideRevenue=document.getElementById("f-revenue-override");
+      if(weeklyRevenue||previousRevenue||overrideRevenue){
+        keep.revenue=keep.revenue||{};
+        if(weeklyRevenue) keep.revenue.weekly=weeklyRevenue.value;
+        if(previousRevenue) keep.revenue.previousMonth=previousRevenue.value;
+        if(overrideRevenue) keep.revenue.monthlyOverride=overrideRevenue.value;
+      }
       state.editingBase=keep; renderEdit(keep); return;
     }
     var qb=e.target.closest("[data-quickchannel]");
@@ -1723,7 +1859,9 @@
       if(!ok) throw new Error("save failed");
 
       var idx=state.reports.filter(function(r){ return r.id!==id; });
-      idx.push({ id:id, clientId:rep.clientId, clientName:client, period:period, type:type, updatedAt:rep.updatedAt });
+      var reportMeta={ id:id, clientId:rep.clientId, clientName:client, period:period, type:type, updatedAt:rep.updatedAt };
+      if(rep.revenue) reportMeta.revenue=Object.assign({},rep.revenue);
+      idx.push(reportMeta);
       state.reports=idx;
       await setP("reports-index", idx);
 
@@ -1812,6 +1950,7 @@
         '<div class="rsection fade-in"><div class="rsec-num">07</div><div class="rsec-title">다음 달 액션</div>'+quad+'</div>'+
         memo+shareCard(rep);
     }
+    body=reportRevenueSection(rep,state.reports)+body;
     paintReport(rep, "월간 리포트"+(s?" · 요약":""), body, true);
   }
 
@@ -1820,7 +1959,7 @@
     var th=(rep.tests||[]).length?'<ul class="checklist">'+rep.tests.map(function(a){return '<li><span class="check-ico">✓</span>'+esc(a)+'</li>';}).join("")+'</ul>':'<div class="muted">기록된 테스트가 없습니다</div>';
     var rh=(rep.results||[]).length?'<ul class="fi-list">'+rep.results.map(function(a){return '<li>'+esc(a)+'</li>';}).join("")+'</ul>':'<div class="fi-caption">기록된 결과가 없습니다</div>';
     var nh=(rep.next_week||[]).length?'<ul class="checklist">'+rep.next_week.map(function(a){return '<li><span class="check-ico">→</span>'+esc(a)+'</li>';}).join("")+'</ul>':'<div class="muted">기록된 행동 항목이 없습니다</div>';
-    var body='<div class="rsection fade-in"><div class="rsec-title">이번 주 핵심 숫자</div>'+mh+'</div>'+
+    var body=reportRevenueSection(rep,state.reports)+'<div class="rsection fade-in"><div class="rsec-title">이번 주 핵심 숫자</div>'+mh+'</div>'+
       (rep.external?'<div class="rsection fade-in"><div class="rsec-title">외부 변수</div><div class="extvar-box">'+esc(rep.external)+'</div></div>':"")+
       '<div class="rsection fade-in"><div class="rsec-title">이번 주 테스트</div>'+th+'</div>'+
       '<div class="rsection fade-in"><div class="rsec-title">결과</div>'+rh+'</div>'+
