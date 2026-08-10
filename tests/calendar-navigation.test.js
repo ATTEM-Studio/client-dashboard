@@ -5,7 +5,7 @@ const fs = require('fs');
 const vm = require('vm');
 
 const html = fs.readFileSync('index.html', 'utf8');
-const match = html.match(/(function checklistPeriod[\s\S]*?\n  function calendarTasksForDate[\s\S]*?\n  })/);
+const match = html.match(/(function calendarDateOrdinal[\s\S]*?\n  function calendarTasksForDate[\s\S]*?\n  })/);
 assert.ok(match, 'calendar navigation and day-task helpers must exist');
 
 const sandbox = {};
@@ -43,12 +43,57 @@ assert.deepStrictEqual(
 
 const dstTasks = [
   { id: 'dst-day-2', text: 'day two task', day: 2, done: false },
-  { id: 'dst-day-3', text: 'day three task', day: 3, done: false }
+  { id: 'dst-day-3', text: 'day three task', day: 3, done: false },
+  { id: 'dst-day-8', text: 'day eight task', day: 8, done: false },
+  { id: 'dst-day-15', text: 'day fifteen task', day: 15, done: false },
+  { id: 'dst-day-29', text: 'day twenty-nine task', day: 29, done: false },
+  { id: 'dst-day-30', text: 'day thirty task', day: 30, done: false },
+  { id: 'dst-day-31', text: 'out-of-range task', day: 31, done: false },
+  { id: 'dst-legacy-1', text: 'legacy week one task', week: '1', done: false },
+  { id: 'dst-legacy-2', text: 'legacy week two task', week: '2', done: false },
+  { id: 'dst-legacy-3', text: 'legacy week three task', week: '3', done: false },
+  { id: 'dst-legacy-closing', text: 'legacy closing task', week: 'closing', done: false }
 ];
 assert.deepStrictEqual(
   JSON.parse(JSON.stringify(sandbox.calendarTasksForDate('2026-03-07', '2026-03-09', dstTasks))),
-  [{ id: 'dst-day-3', text: 'day three task', day: 3, done: false }],
+  [
+    { id: 'dst-day-3', text: 'day three task', day: 3, done: false },
+    { id: 'dst-legacy-1', text: 'legacy week one task', week: '1', done: false }
+  ],
   'calendar dates spanning the spring DST boundary must retain their ordinal day'
+);
+assert.deepStrictEqual(
+  JSON.parse(JSON.stringify(sandbox.calendarTasksForDate('2026-03-07', '2026-03-14', dstTasks))),
+  [
+    { id: 'dst-day-8', text: 'day eight task', day: 8, done: false },
+    { id: 'dst-legacy-2', text: 'legacy week two task', week: '2', done: false }
+  ]
+);
+assert.deepStrictEqual(
+  JSON.parse(JSON.stringify(sandbox.calendarTasksForDate('2026-03-07', '2026-03-21', dstTasks))),
+  [
+    { id: 'dst-day-15', text: 'day fifteen task', day: 15, done: false },
+    { id: 'dst-legacy-3', text: 'legacy week three task', week: '3', done: false }
+  ]
+);
+assert.deepStrictEqual(
+  JSON.parse(JSON.stringify(sandbox.calendarTasksForDate('2026-03-07', '2026-04-04', dstTasks))),
+  [
+    { id: 'dst-day-29', text: 'day twenty-nine task', day: 29, done: false },
+    { id: 'dst-legacy-closing', text: 'legacy closing task', week: 'closing', done: false }
+  ]
+);
+assert.deepStrictEqual(
+  JSON.parse(JSON.stringify(sandbox.calendarTasksForDate('2026-03-07', '2026-04-05', dstTasks))),
+  [
+    { id: 'dst-day-30', text: 'day thirty task', day: 30, done: false },
+    { id: 'dst-legacy-closing', text: 'legacy closing task', week: 'closing', done: false }
+  ]
+);
+assert.deepStrictEqual(
+  JSON.parse(JSON.stringify(sandbox.calendarTasksForDate('2026-03-07', '2026-04-06', dstTasks))),
+  [],
+  'day 31 must not leak into the 30-day calendar range'
 );
 
 assert.deepStrictEqual(

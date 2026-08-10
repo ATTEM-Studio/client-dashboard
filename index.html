@@ -291,6 +291,9 @@
   .set-day-empty{ padding:5px 0 9px; font-size:12px; color:var(--ink-400); }
   .set-task-row{ display:flex; align-items:center; gap:6px; margin-bottom:7px; }
   .set-task-row input{ min-width:0; flex:1; border:1px solid var(--line); border-radius:9px; padding:8px 9px; background:#fff; font-size:12.5px; }
+  .set-task-row-actions{ display:flex; gap:3px; flex:none; }
+  .set-task-row .row-move{ width:28px; height:30px; border:0; border-radius:9px; background:#EEF4FD; color:var(--brand-dark); font-size:13px; font-weight:800; }
+  .set-task-row .row-move:disabled{ opacity:.35; cursor:default; }
   .set-task-row .row-remove{ width:30px; height:30px; }
   .set-legacy{ margin-bottom:14px; border:1px solid #DCE8FA; border-radius:12px; padding:12px; background:#F7FBFF; }
   .set-legacy h4{ margin:0 0 3px; font-size:13px; }
@@ -423,17 +426,25 @@
     if(monthKey(now)!==key) return 0;
     return Math.ceil(now.getDate()/7);
   }
+  function calendarDateOrdinal(dateKey){
+    var parts=/^(\d{4})-(\d{2})-(\d{2})$/.exec(dateKey||"");
+    if(!parts) return null;
+    var year=+parts[1], month=+parts[2]-1, day=+parts[3];
+    var ordinal=Date.UTC(year,month,day), date=new Date(ordinal);
+    if(date.getUTCFullYear()!==year || date.getUTCMonth()!==month || date.getUTCDate()!==day) return null;
+    return ordinal;
+  }
+  function calendarDayOrdinal(startDate,dateKey){
+    var start=calendarDateOrdinal(startDate), date=calendarDateOrdinal(dateKey);
+    if(start===null || date===null) return null;
+    return Math.floor((date-start)/86400000)+1;
+  }
   function thirtyDayProgress(startDate, now){
-    if(!startDate) return { state:"missing", elapsed:0, week:0, percent:0, remaining:30 };
-    var parts=/^(\d{4})-(\d{2})-(\d{2})$/.exec(startDate);
-    if(!parts) return { state:"missing", elapsed:0, week:0, percent:0, remaining:30 };
-    var start=new Date(+parts[1],+parts[2]-1,+parts[3]);
-    if(start.getFullYear()!==+parts[1] || start.getMonth()!==+parts[2]-1 || start.getDate()!==+parts[3]){
-      return { state:"missing", elapsed:0, week:0, percent:0, remaining:30 };
-    }
+    if(calendarDateOrdinal(startDate)===null) return { state:"missing", elapsed:0, week:0, percent:0, remaining:30 };
     var today=new Date(now||new Date());
-    today.setHours(0,0,0,0);
-    var raw=Math.floor((today-start)/86400000)+1;
+    if(isNaN(today.getTime())) return { state:"missing", elapsed:0, week:0, percent:0, remaining:30 };
+    var todayKey=today.getFullYear()+"-"+String(today.getMonth()+1).padStart(2,"0")+"-"+String(today.getDate()).padStart(2,"0");
+    var raw=calendarDayOrdinal(startDate,todayKey);
     if(raw<1) return { state:"upcoming", elapsed:0, week:0, percent:0, remaining:30 };
     var elapsed=Math.min(raw,30);
     return {
@@ -445,10 +456,8 @@
     };
   }
   function checklistPeriod(startDate, dateKey){
-    if(!startDate || !dateKey) return null;
-    var start=new Date(startDate+"T12:00:00"), date=new Date(dateKey+"T12:00:00");
-    if(isNaN(start.getTime()) || isNaN(date.getTime())) return null;
-    var day=Math.floor((date-start)/86400000)+1;
+    var day=calendarDayOrdinal(startDate,dateKey);
+    if(day===null) return null;
     if(day<1 || day>30) return null;
     return day>28 ? "closing" : String(Math.ceil(day/7));
   }
@@ -456,6 +465,20 @@
     var value=Number(day);
     if(!isFinite(value) || Math.floor(value)!==value || value<1 || value>30) return null;
     return value>28 ? "closing" : String(Math.ceil(value/7));
+  }
+  function moveChecklistSetTask(items,index,direction){
+    if(!Array.isArray(items) || !items[index] || !dailyPeriod(items[index].day) || (direction!==-1 && direction!==1)) return false;
+    var day=Number(items[index].day), dayIndexes=[];
+    items.forEach(function(item,itemIndex){ if(Number(item.day)===day) dayIndexes.push(itemIndex); });
+    var position=dayIndexes.indexOf(index), target=dayIndexes[position+direction];
+    if(position<0 || target===undefined) return false;
+    var current=items[index]; items[index]=items[target]; items[target]=current;
+    return true;
+  }
+  function checklistSetItemsForSave(items){
+    return (items||[]).filter(function(item){return (item.text||"").trim();}).map(function(item){
+      var copy=Object.assign({},item); copy.text=copy.text.trim(); return copy;
+    });
   }
   function calendarMonthShift(key, amount){
     var p=/^(\d{4})-(\d{2})$/.exec(key||"");
@@ -480,12 +503,8 @@
     });
   }
   function calendarTasksForDate(startDate,dateKey,tasks){
-    var period=checklistPeriod(startDate,dateKey);
+    var day=calendarDayOrdinal(startDate,dateKey), period=dailyPeriod(day);
     if(!period) return [];
-    var startParts=startDate.split("-"), dateParts=dateKey.split("-");
-    var startOrdinal=Date.UTC(+startParts[0],+startParts[1]-1,+startParts[2]);
-    var dateOrdinal=Date.UTC(+dateParts[0],+dateParts[1]-1,+dateParts[2]);
-    var day=Math.floor((dateOrdinal-startOrdinal)/86400000)+1;
     return (tasks||[]).filter(function(task){
       var hasDay=task.day!==undefined && task.day!==null && task.day!=="";
       return hasDay ? Number(task.day)===day : String(task.week||"")===period;
@@ -645,6 +664,7 @@
   }
 
   function render(){
+    syncChecklistSetEditor();
     if(state.view==="loading"){ app.innerHTML='<div style="padding:60px;text-align:center;color:#8B95A1;">불러오는 중…</div>'; return; }
     if(state.view==="dashboard") return renderDashboard();
     if(state.view==="clientForm") return renderClientForm(state.editingClient);
@@ -994,7 +1014,7 @@
   async function openClient(id){
     var cl=await getS("client:"+id);
     if(!cl){ showToast("업체 정보를 찾을 수 없습니다"); return; }
-    state.currentClient=cl; state.clientTab=null; state.calendarMonth=null; state.setCollectionOpen=false; state.checklistSetDraft=null; state.checklistSetPeriod="1"; state.view="clientDetail"; render();
+    state.currentClient=cl; state.clientTab=null; state.calendarMonth=null; state.setCollectionOpen=false; state.view="clientDetail"; render();
   }
 
   /* ============ CLIENT DETAIL ============ */
@@ -1017,6 +1037,7 @@
     state.clientTab=tab;
   }
   function renderClientWorkspace(cl){
+    syncChecklistSetEditor();
     if(!cl){ state.view="dashboard"; return render(); }
     var activeTab=state.clientTab||"calendar";
     var tasks=cl.checklist||[];
@@ -1074,10 +1095,13 @@
     return '<div class="panel fade-in"><div class="panel-head"><div><h3 class="panel-title">'+(draft.id?"체크리스트 세트 수정":"새 체크리스트 세트")+'</h3><p class="panel-hint">각 날짜에는 업무를 원하는 만큼 추가하거나 비워둘 수 있습니다.</p></div></div><div class="set-editor-meta"><label>세트 이름<input id="set-editor-name" type="text" value="'+esc(draft.name||"")+'" placeholder="예: 신규 업체 30일 운영" /></label><label>설명<input id="set-editor-description" type="text" value="'+esc(draft.description||"")+'" placeholder="이 세트의 용도를 적어주세요" /></label></div>'+nav+legacy+'<div class="set-day-grid">'+days+'</div><div class="set-editor-actions"><button class="btn btn-plain btn-sm" id="btn-cancel-set-editor">취소</button><button class="btn btn-primary btn-sm" id="btn-save-set-editor">세트 저장</button></div></div>';
   }
   function checklistSetDayCard(draft,day,dayAttr){
-    var rows="";
+    var rows="", dayItems=[];
     (draft.items||[]).forEach(function(item,index){
-      if(Number(item.day)!==day) return;
-      rows+='<div class="set-task-row"><input type="text" data-set-item-text="'+index+'" value="'+esc(item.text||"")+'" placeholder="'+day+'일차 업무" /><button class="row-remove" data-remove-set-task="'+index+'" aria-label="'+day+'일차 업무 삭제">×</button></div>';
+      if(Number(item.day)===day) dayItems.push({item:item,index:index});
+    });
+    dayItems.forEach(function(entry,position){
+      var index=entry.index, item=entry.item, order=position+1;
+      rows+='<div class="set-task-row"><input type="text" data-set-item-text="'+index+'" value="'+esc(item.text||"")+'" placeholder="'+day+'일차 업무" /><div class="set-task-row-actions"><button type="button" class="row-move" data-move-set-task="'+index+'" data-move-direction="-1" aria-label="'+day+'일차 '+order+'번째 업무 위로 이동"'+(position===0?' disabled':'')+'>↑</button><button type="button" class="row-move" data-move-set-task="'+index+'" data-move-direction="1" aria-label="'+day+'일차 '+order+'번째 업무 아래로 이동"'+(position===dayItems.length-1?' disabled':'')+'>↓</button><button type="button" class="row-remove" data-remove-set-task="'+index+'" aria-label="'+day+'일차 '+order+'번째 업무 삭제">×</button></div></div>';
     });
     return '<section class="set-day-card" '+dayAttr+'><div class="set-day-head"><strong>'+day+'일차</strong><button class="btn btn-ghost btn-sm" data-add-set-task data-set-day-new="'+day+'">+ 업무</button></div>'+(rows||'<div class="set-day-empty">등록된 업무가 없습니다.</div>')+'</section>';
   }
@@ -1100,6 +1124,7 @@
     app.querySelectorAll("[data-edit-set]").forEach(function(b){ b.onclick=function(){ openChecklistSetEditor(b.getAttribute("data-edit-set")); }; });
     app.querySelectorAll("[data-set-period]").forEach(function(b){ b.onclick=function(){ syncChecklistSetEditor(); state.checklistSetPeriod=b.getAttribute("data-set-period"); renderClientWorkspace(cl); }; });
     app.querySelectorAll("[data-add-set-task]").forEach(function(b){ b.onclick=function(){ syncChecklistSetEditor(); state.checklistSetDraft.items.push({day:Number(b.getAttribute("data-set-day-new")),text:""}); renderClientWorkspace(cl); }; });
+    app.querySelectorAll("[data-move-set-task]").forEach(function(b){ b.onclick=function(){ syncChecklistSetEditor(); if(moveChecklistSetTask(state.checklistSetDraft.items,Number(b.getAttribute("data-move-set-task")),Number(b.getAttribute("data-move-direction")))) renderClientWorkspace(cl); }; });
     app.querySelectorAll("[data-remove-set-task]").forEach(function(b){ b.onclick=function(){ syncChecklistSetEditor(); state.checklistSetDraft.items.splice(Number(b.getAttribute("data-remove-set-task")),1); renderClientWorkspace(cl); }; });
     var cancel=document.getElementById("btn-cancel-set-editor"); if(cancel) cancel.onclick=function(){ state.checklistSetDraft=null; renderClientWorkspace(cl); };
     var save=document.getElementById("btn-save-set-editor"); if(save) save.onclick=function(){ saveChecklistSetEditor(cl); };
@@ -1145,9 +1170,7 @@
     syncChecklistSetEditor();
     var draft=state.checklistSetDraft;
     if(!draft || !draft.name.trim()){ showToast("세트 이름을 입력하세요"); return; }
-    var items=(draft.items||[]).filter(function(item){return (item.text||"").trim();}).map(function(item){
-      var copy=Object.assign({},item); copy.text=copy.text.trim(); return copy;
-    });
+    var items=checklistSetItemsForSave(draft.items);
     var saved={id:draft.id||uid("set"),name:draft.name.trim(),description:draft.description.trim(),items:items};
     var existing=state.checklistSets.findIndex(function(set){return set.id===saved.id;});
     if(existing>=0) state.checklistSets[existing]=saved; else state.checklistSets.push(saved);
