@@ -105,6 +105,14 @@
 
   /* week strip */
   .week-strip{ display:flex; gap:6px; margin-top:12px; }
+  .day-progress{ margin-top:14px; }
+  .day-progress-copy{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:8px; }
+  .day-progress-copy strong{ font-size:12.5px; color:var(--brand-dark); }
+  .day-progress-copy span{ font-size:11.5px; color:var(--ink-400); white-space:nowrap; }
+  .day-progress-track{ height:12px; border-radius:99px; background:#EEF1F5; overflow:hidden; }
+  .day-progress-fill{ height:100%; border-radius:inherit; background:linear-gradient(90deg,var(--brand-dark),var(--brand)); transition:width .5s ease; }
+  .day-progress-weeks{ display:grid; grid-template-columns:7fr 7fr 7fr 7fr 2fr; margin-top:6px; font-size:10.5px; color:var(--ink-400); text-align:center; }
+  @media(max-width:420px){ .day-progress-copy{ align-items:flex-start; flex-direction:column; gap:2px; } }
   .week-cell{ flex:1; border:none; border-radius:9px; padding:8px 4px 7px; background:#F2F4F6; text-align:center; transition:background .15s, transform .1s; }
   .week-cell:active{ transform:scale(.96); }
   .wc-label{ font-size:10.5px; font-weight:800; color:var(--ink-400); display:block; }
@@ -656,19 +664,20 @@
           '</div>'+
         '</div>';
     } else {
-      var wk=weeksInMonth(mk), cur=currentWeekOf(mk);
       listHtml=clients.slice().sort(function(a,b){
         if(a.status!==b.status) return a.status==="active"?-1:1;
         return (a.name||"").localeCompare(b.name||"");
       }).map(function(c){
-        var pm=(c.progress||{})[mk]||{};
-        var cells="";
-        for(var i=1;i<=wk;i++){
-          var st=pm[i]||"none";
-          var label= st==="done"?"완료": st==="doing"?"진행":"—";
-          cells+='<button class="week-cell '+(st!=="none"?st:"")+(i===cur?" current":"")+'" data-week="'+i+'" data-client="'+esc(c.id)+'">'+
-                 '<span class="wc-label">'+i+'주차</span><span class="wc-state">'+label+'</span></button>';
-        }
+        var day=thirtyDayProgress(c.startDate);
+        var gauge=day.state==="missing"
+          ? '<p class="panel-hint" style="margin:12px 0 0;">시작일을 등록해 주세요.</p>'
+          : '<div class="day-progress">'+
+              '<div class="day-progress-copy"><strong>'+
+                (day.state==="upcoming"?"시작 전":day.week+"주차 · "+day.elapsed+"일 / 30일")+
+              '</strong><span>'+(day.state==="complete"?"30일 완료":day.remaining+"일 남음")+'</span></div>'+
+              '<div class="day-progress-track"><div class="day-progress-fill" style="width:'+day.percent+'%"></div></div>'+
+              '<div class="day-progress-weeks"><span>1주차</span><span>2주차</span><span>3주차</span><span>4주차</span><span>5주차</span></div>'+
+            '</div>';
         var tags="";
         if(isNewIn(c,mk)) tags+='<span class="tag tag-new">신규</span>';
         if(renewalsIn(c,mk)) tags+='<span class="tag tag-renew">재계약</span>';
@@ -689,11 +698,11 @@
             '<div class="cc-meta">'+meta.join(" · ")+'</div></div>'+
             '<span class="cc-arrow">›</span>'+
           '</div>'+
-          '<div class="week-strip">'+cells+'</div>'+
+          gauge+
         '</div>';
       }).join("");
       listHtml='<div class="sec-head"><h2>업체별 진행 현황</h2><span class="count">'+clients.length+'곳</span></div>'+listHtml+
-        '<p class="panel-hint" style="margin-top:10px;">주차 칸을 누르면 미시작 → 진행 → 완료 순으로 상태가 바뀝니다.</p>';
+        '<p class="panel-hint" style="margin-top:10px;">진행 게이지는 업체 시작일을 기준으로 30일까지 자동으로 채워집니다.</p>';
     }
 
     body.innerHTML=statsHtml+listHtml;
@@ -705,9 +714,6 @@
 
     body.querySelectorAll("[data-open-client]").forEach(function(el){
       el.addEventListener("click", function(){ openClient(el.getAttribute("data-open-client")); });
-    });
-    body.querySelectorAll(".week-cell").forEach(function(el){
-      el.addEventListener("click", function(){ cycleWeek(el.getAttribute("data-client"), parseInt(el.getAttribute("data-week"),10)); });
     });
   }
 

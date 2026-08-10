@@ -27,3 +27,11 @@ assert.deepStrictEqual(progress('2026-07-22', '2026-08-20'), {
 assert.deepStrictEqual(progress('', '2026-08-10'), {
   state: 'missing', elapsed: 0, week: 0, percent: 0, remaining: 30
 });
+
+const active = progress('2026-07-22', '2026-08-02');
+assert.strictEqual(active.week, 2);
+assert.strictEqual(active.elapsed, 12);
+assert.strictEqual(active.percent, 40);
+assert.strictEqual(active.remaining, 18);
+assert.match(html, /class="day-progress"/);
+assert.match(html, /class="day-progress-weeks"/);
