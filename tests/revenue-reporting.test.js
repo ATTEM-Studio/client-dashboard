@@ -64,7 +64,8 @@ assert.deepStrictEqual(
 const saveMatch = html.match(/(async function saveReport\(\)\{[\s\S]*?\r?\n  })\r?\n\r?\n  async function openReport/);
 assert.ok(saveMatch, 'saveReport must exist in index.html');
 
-function saveSandbox(revenueValue) {
+function saveSandbox(revenueValue, options = {}) {
+  const type = options.type || 'weekly';
   const stored = [];
   const revenueInput = {
     value: revenueValue,
@@ -77,23 +78,31 @@ function saveSandbox(revenueValue) {
   };
   const elements = {
     'f-client': { value: 'Client One' },
-    'f-period': { value: '2026\uB144 8\uC6D4 1\uC8FC\uCC28' },
-    'f-revenue-weekly': revenueInput,
+    'f-period': { value: type === 'weekly' ? '2026\uB144 8\uC6D4 1\uC8FC\uCC28' : '2026\uB144 8\uC6D4' },
     'btn-save': { disabled: false, textContent: '' },
     'f-goal': { value: '' },
-    'f-external': { value: '' }
+    'f-external': { value: '' },
+    'f-uncertain': { value: '' },
+    'f-memo': { value: '' }
   };
+  if(options.includeRevenueInput !== false){
+    if(type === 'weekly') elements['f-revenue-weekly'] = revenueInput;
+    else {
+      elements['f-revenue-previous'] = Object.assign({}, revenueInput, { value: options.previousValue ?? revenueValue });
+      elements['f-revenue-override'] = Object.assign({}, revenueInput, { value: options.overrideValue ?? revenueValue });
+    }
+  }
   const context = {
     parseRevenueWon: sandbox.parseRevenueWon,
     document: {
       getElementById(id) { return elements[id] || null; },
       querySelector(selector) {
         assert.strictEqual(selector, '.form-card');
-        return { getAttribute() { return 'weekly'; } };
+        return { getAttribute() { return type; } };
       }
     },
     state: {
-      editingBase: {}, currentClient: { id: 'c1' }, reports: [],
+      editingBase: options.editingBase || {}, currentClient: { id: 'c1' }, reports: [],
       currentReport: null, summaryMode: false, view: 'edit'
     },
     collectChannels() { return []; },
@@ -127,6 +136,40 @@ function saveSandbox(revenueValue) {
   const populated = saveSandbox(' 1,250,000 ');
   await populated.context.saveReport();
   assert.deepStrictEqual(json(populated.stored[0].value.revenue), { weekly: 1250000 });
+
+  const weeklyEditWithoutInput = saveSandbox(undefined, {
+    includeRevenueInput: false,
+    editingBase: { id: 'weekly-existing', createdAt: 1, clientId: 'c1', revenue: { weekly: 0 } }
+  });
+  await weeklyEditWithoutInput.context.saveReport();
+  assert.ok(weeklyEditWithoutInput.stored[0].value.revenue,
+    'editing without a rendered revenue field must keep embedded revenue');
+  assert.deepStrictEqual(json(weeklyEditWithoutInput.stored[0].value.revenue), { weekly: 0 },
+    'editing without a rendered revenue field must preserve a stored weekly zero');
+
+  const monthlyEditWithoutInputs = saveSandbox(undefined, {
+    type: 'monthly',
+    includeRevenueInput: false,
+    editingBase: {
+      id: 'monthly-existing', createdAt: 1, clientId: 'c1',
+      revenue: { previousMonth: 0, monthlyOverride: 3100000 }
+    }
+  });
+  await monthlyEditWithoutInputs.context.saveReport();
+  assert.ok(monthlyEditWithoutInputs.stored[0].value.revenue,
+    'editing without rendered monthly revenue fields must keep embedded revenue');
+  assert.deepStrictEqual(
+    json(monthlyEditWithoutInputs.stored[0].value.revenue),
+    { previousMonth: 0, monthlyOverride: 3100000 },
+    'editing without rendered monthly revenue fields must preserve every stored value'
+  );
+
+  const visibleBlankEdit = saveSandbox('   ', {
+    editingBase: { id: 'weekly-cleared', createdAt: 1, clientId: 'c1', revenue: { weekly: 900000 } }
+  });
+  await visibleBlankEdit.context.saveReport();
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(visibleBlankEdit.stored[0].value, 'revenue'), false,
+    'clearing a visible revenue field must intentionally remove stored revenue');
 
   console.log('revenue reporting helpers and persistence: ok');
 })().catch((error) => {
