@@ -1,0 +1,1515 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>업체 관리 대시보드</title>
+<style>
+  :root{
+    --bg-page:#F2F4F6;
+    --bg-card:#FFFFFF;
+    --ink-900:#191F28;
+    --ink-700:#333D4B;
+    --ink-600:#4E5968;
+    --ink-500:#6B7684;
+    --ink-400:#8B95A1;
+    --ink-300:#B0B8C1;
+    --line:#E5E8EB;
+    --brand:#3182F6;
+    --brand-light:#EBF2FE;
+    --brand-dark:#1B64DA;
+    --keep:#3182F6;   --keep-light:#EBF2FE;
+    --fix:#F5A623;    --fix-light:#FFF6E5;
+    --stop:#F04452;   --stop-light:#FEECEE;
+    --scale:#00C471;  --scale-light:#E6F9F0;
+    --radius-lg:20px;
+    --radius-md:14px;
+    --shadow-card: 0 1px 2px rgba(15,23,42,.05), 0 10px 24px -14px rgba(15,23,42,.16);
+    --shadow-pop: 0 8px 28px -8px rgba(15,23,42,.22);
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background:var(--bg-page); color:var(--ink-900);
+    font-family:-apple-system,BlinkMacSystemFont,"Pretendard Variable",Pretendard,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+    -webkit-font-smoothing:antialiased; line-height:1.5;
+  }
+  button,input,textarea,select{ font-family:inherit; }
+  button{ cursor:pointer; }
+  input:focus-visible,textarea:focus-visible,button:focus-visible,select:focus-visible{ outline:2px solid var(--brand); outline-offset:2px; }
+  #app{ max-width:920px; margin:0 auto; padding:24px 20px 100px; }
+
+  .topbar{ display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; gap:12px; }
+  .brand{ display:flex; align-items:center; gap:9px; font-weight:800; font-size:17px; }
+  .brand-mark{ width:24px; height:24px; border-radius:8px; background:linear-gradient(135deg,var(--brand),var(--brand-dark)); position:relative; flex:none; }
+  .brand-mark::after{ content:""; position:absolute; left:6px; top:11px; width:12px; height:3px; border-radius:2px; background:#fff; box-shadow:0 -5px 0 #fff; }
+
+  .btn{ border:none; border-radius:12px; padding:11px 16px; font-size:14px; font-weight:700; transition:transform .12s, background .15s; white-space:nowrap; }
+  .btn:active{ transform:scale(.97); }
+  .btn-primary{ background:var(--brand); color:#fff; box-shadow:0 6px 16px -6px rgba(49,130,246,.55); }
+  .btn-primary:hover{ background:var(--brand-dark); }
+  .btn-ghost{ background:var(--brand-light); color:var(--brand-dark); }
+  .btn-plain{ background:#F2F4F6; color:var(--ink-700); }
+  .btn-plain:hover{ background:#E9ECEF; }
+  .btn-text{ background:none; color:var(--ink-600); padding:8px 6px; }
+  .btn-danger{ background:var(--stop-light); color:var(--stop); }
+  .btn-danger:hover{ background:#FDDDE1; }
+  .btn-sm{ padding:8px 12px; font-size:13px; border-radius:10px; }
+  .btn-block{ width:100%; }
+
+  .hero{ margin-bottom:18px; }
+  .eyebrow{ font-size:12.5px; font-weight:800; color:var(--brand); margin:0 0 8px; }
+  .hero h1{ font-size:25px; font-weight:800; margin:0 0 8px; letter-spacing:-.02em; }
+  .hero .sub{ font-size:14px; color:var(--ink-600); margin:0; max-width:580px; }
+
+  /* month bar */
+  .monthbar{ display:flex; align-items:center; gap:8px; margin-bottom:16px; }
+  .monthbar .mb-label{ font-size:15px; font-weight:800; min-width:110px; text-align:center; }
+  .mb-arrow{ border:none; background:var(--bg-card); box-shadow:var(--shadow-card); width:32px; height:32px; border-radius:10px; color:var(--ink-700); font-size:14px; }
+  .mb-today{ margin-left:auto; }
+
+  /* stats */
+  .stats-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:22px; }
+  @media(max-width:700px){ .stats-grid{ grid-template-columns:repeat(2,1fr); } }
+  .stat-card{ background:var(--bg-card); border-radius:var(--radius-md); padding:15px 16px; box-shadow:var(--shadow-card); }
+  .stat-label{ font-size:12px; font-weight:700; color:var(--ink-400); margin-bottom:7px; }
+  .stat-value{ font-size:23px; font-weight:800; letter-spacing:-.01em; }
+  .stat-unit{ font-size:13px; font-weight:600; color:var(--ink-400); margin-left:2px; }
+  .stat-sub{ font-size:11.5px; color:var(--ink-400); margin-top:5px; }
+  .stat-card.accent{ background:linear-gradient(150deg,#1B64DA,#3182F6); color:#fff; }
+  .stat-card.accent .stat-label,.stat-card.accent .stat-sub{ color:rgba(255,255,255,.8); }
+  .stat-card.accent .stat-unit{ color:rgba(255,255,255,.75); }
+
+  .progress-track{ height:5px; border-radius:99px; background:rgba(255,255,255,.28); margin-top:9px; overflow:hidden; }
+  .progress-fill{ height:100%; border-radius:99px; background:#fff; transition:width .5s ease; }
+
+  /* section head */
+  .sec-head{ display:flex; align-items:baseline; justify-content:space-between; margin-bottom:12px; }
+  .sec-head h2{ font-size:16px; margin:0; }
+  .sec-head .count{ font-size:13px; color:var(--ink-400); font-weight:600; }
+
+  /* client card */
+  .client-card{ background:var(--bg-card); border-radius:var(--radius-md); padding:16px 18px; box-shadow:var(--shadow-card); margin-bottom:10px; transition:box-shadow .15s, transform .12s; }
+  .client-card:hover{ box-shadow:var(--shadow-pop); transform:translateY(-1px); }
+  .cc-top{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .cc-name{ font-weight:800; font-size:15.5px; display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
+  .cc-meta{ font-size:12.5px; color:var(--ink-400); margin-top:4px; }
+  .cc-arrow{ color:var(--ink-300); font-size:18px; flex:none; }
+
+  .tag{ font-size:10.5px; font-weight:800; padding:2px 8px; border-radius:6px; }
+  .tag-new{ background:var(--scale-light); color:#0B8F55; }
+  .tag-renew{ background:var(--brand-light); color:var(--brand-dark); }
+  .tag-paused{ background:#F2F4F6; color:var(--ink-500); }
+  .tag-ended{ background:var(--stop-light); color:var(--stop); }
+  .tag-soon{ background:var(--fix-light); color:#B6790C; }
+
+  /* week strip */
+  .week-strip{ display:flex; gap:6px; margin-top:12px; }
+  .week-cell{ flex:1; border:none; border-radius:9px; padding:8px 4px 7px; background:#F2F4F6; text-align:center; transition:background .15s, transform .1s; }
+  .week-cell:active{ transform:scale(.96); }
+  .wc-label{ font-size:10.5px; font-weight:800; color:var(--ink-400); display:block; }
+  .wc-state{ font-size:11px; font-weight:700; color:var(--ink-300); display:block; margin-top:2px; }
+  .week-cell.doing{ background:var(--fix-light); }
+  .week-cell.doing .wc-label,.week-cell.doing .wc-state{ color:#B6790C; }
+  .week-cell.done{ background:var(--scale-light); }
+  .week-cell.done .wc-label,.week-cell.done .wc-state{ color:#0B8F55; }
+  .week-cell.current{ box-shadow:inset 0 0 0 2px var(--brand); }
+
+  .empty-state{ background:var(--bg-card); border:1.5px dashed var(--line); border-radius:var(--radius-lg); padding:38px 24px; text-align:center; }
+  .es-title{ font-weight:800; font-size:15.5px; margin-bottom:6px; }
+  .es-sub{ font-size:13.5px; color:var(--ink-500); margin-bottom:18px; }
+  .es-actions{ display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
+
+  #toast{ position:fixed; left:50%; bottom:26px; transform:translateX(-50%) translateY(20px); background:var(--ink-900); color:#fff; font-size:13.5px; font-weight:600; padding:12px 18px; border-radius:12px; box-shadow:var(--shadow-pop); opacity:0; pointer-events:none; transition:opacity .2s, transform .2s; z-index:90; }
+  #toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  /* modal */
+  #modal-layer{ position:fixed; inset:0; background:rgba(15,23,42,.42); display:none; align-items:center; justify-content:center; padding:20px; z-index:100; }
+  #modal-layer.show{ display:flex; }
+  .modal{ background:#fff; border-radius:18px; padding:24px 22px 18px; max-width:360px; width:100%; box-shadow:var(--shadow-pop); }
+  .modal h3{ margin:0 0 8px; font-size:16.5px; }
+  .modal p{ margin:0 0 20px; font-size:13.5px; color:var(--ink-600); line-height:1.6; }
+  .modal-actions{ display:flex; gap:8px; justify-content:flex-end; }
+
+  /* forms */
+  .form-card{ background:var(--bg-card); border-radius:var(--radius-lg); box-shadow:var(--shadow-card); overflow:hidden; }
+  .fsection{ padding:24px; border-bottom:1px solid var(--line); }
+  .fsection:last-of-type{ border-bottom:none; }
+  .fsec-num{ font-size:11.5px; font-weight:800; color:var(--brand); letter-spacing:.06em; margin-bottom:4px; }
+  .fsec-title{ font-size:16px; font-weight:800; margin:0 0 4px; }
+  .fsec-hint{ font-size:12.5px; color:var(--ink-400); margin:0 0 14px; }
+  .field{ margin-bottom:12px; }
+  .field label{ display:block; font-size:12.5px; font-weight:700; color:var(--ink-600); margin-bottom:6px; }
+  .field input[type=text],.field input[type=date],.field textarea,.field select{ width:100%; border:1px solid var(--line); border-radius:10px; padding:11px 13px; font-size:14px; color:var(--ink-900); background:#FAFBFC; resize:vertical; }
+  .field input::placeholder,.field textarea::placeholder{ color:var(--ink-300); }
+  .two-col{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  @media(max-width:640px){ .two-col{ grid-template-columns:1fr; } }
+  .form-actions{ display:flex; justify-content:flex-end; gap:10px; padding:20px 24px 24px; }
+
+  .seg{ display:inline-flex; background:#F2F4F6; border-radius:11px; padding:3px; }
+  .seg button{ border:none; background:transparent; padding:9px 16px; font-size:13px; font-weight:700; border-radius:9px; color:var(--ink-500); }
+  .seg button.active{ background:#fff; color:var(--ink-900); box-shadow:0 1px 4px rgba(15,23,42,.1); }
+
+  .type-toggle{ display:inline-flex; background:var(--bg-card); border-radius:12px; box-shadow:var(--shadow-card); padding:4px; margin-bottom:18px; }
+  .type-toggle button{ border:none; background:transparent; padding:9px 18px; font-size:13px; font-weight:800; border-radius:9px; color:var(--ink-400); }
+  .type-toggle button.active{ background:var(--brand); color:#fff; }
+
+  .row{ display:flex; gap:8px; margin-bottom:8px; align-items:center; }
+  .row-input{ flex:1; border:1px solid var(--line); border-radius:10px; padding:10px 12px; font-size:13.5px; background:#FAFBFC; }
+  .row-remove{ flex:none; width:32px; height:32px; border:none; background:#F2F4F6; color:var(--ink-400); border-radius:9px; font-size:14px; }
+  .row-remove:hover{ background:var(--stop-light); color:var(--stop); }
+  .add-row-btn{ margin-top:2px; border:1px dashed var(--line); background:transparent; color:var(--ink-600); border-radius:10px; padding:9px 12px; font-size:13px; font-weight:700; width:100%; text-align:left; }
+  .add-row-btn:hover{ border-color:var(--brand); color:var(--brand-dark); background:var(--brand-light); }
+
+  .metric-row{ display:grid; grid-template-columns:1.3fr 1fr .7fr 1fr 1fr 32px; gap:8px; margin-bottom:8px; align-items:center; }
+  .metric-row input{ border:1px solid var(--line); border-radius:10px; padding:10px 11px; font-size:13px; background:#FAFBFC; width:100%; }
+  @media(max-width:720px){ .metric-row{ grid-template-columns:1fr 1fr; } .metric-row .row-remove{ grid-column:span 2; width:100%; } }
+
+  .channel-quickadd{ display:flex; flex-wrap:wrap; gap:7px; margin-bottom:14px; }
+  .qa-chip{ border:1px dashed var(--line); background:#fff; color:var(--ink-600); font-size:12.5px; font-weight:700; padding:7px 12px; border-radius:999px; }
+  .qa-chip:hover{ border-color:var(--brand); color:var(--brand-dark); background:var(--brand-light); }
+  .channel-block{ border:1px solid var(--line); border-radius:14px; padding:14px; margin-bottom:10px; background:#FAFBFC; }
+  .channel-block-head{ display:flex; gap:8px; margin-bottom:10px; align-items:center; }
+  .channel-name{ flex:1; border:1px solid var(--line); border-radius:10px; padding:9px 12px; font-size:13.5px; font-weight:800; background:#fff; }
+
+  .subgroup{ background:#FAFBFC; border:1px solid var(--line); border-radius:12px; padding:14px; margin-bottom:10px; }
+  .subgroup-title{ display:flex; align-items:center; gap:8px; font-size:13px; font-weight:800; margin-bottom:10px; }
+  .dot{ width:9px; height:9px; border-radius:3px; display:inline-block; }
+  .dot-keep{ background:var(--keep); } .dot-fix{ background:var(--fix); } .dot-stop{ background:var(--stop); } .dot-scale{ background:var(--scale); }
+
+  /* client detail */
+  .detail-head{ background:linear-gradient(160deg,#1B64DA,#3182F6 55%,#5B9CFB); border-radius:var(--radius-lg); padding:24px 24px 20px; color:#fff; margin-bottom:16px; position:relative; overflow:hidden; }
+  .detail-head::after{ content:""; position:absolute; right:-40px; top:-40px; width:180px; height:180px; border-radius:50%; background:rgba(255,255,255,.08); }
+  .dh-name{ font-size:21px; font-weight:800; margin:0 0 6px; position:relative; }
+  .dh-meta{ font-size:13px; opacity:.88; position:relative; display:flex; flex-wrap:wrap; gap:12px; }
+  .dh-tagrow{ margin-bottom:10px; display:flex; gap:6px; position:relative; }
+  .status-pill{ display:inline-block; font-size:11px; font-weight:800; padding:3px 9px; border-radius:999px; background:rgba(255,255,255,.2); color:#fff; }
+
+  .panel{ background:var(--bg-card); border-radius:var(--radius-lg); box-shadow:var(--shadow-card); padding:20px 22px; margin-bottom:14px; }
+  .panel-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; gap:10px; }
+  .panel-title{ font-size:15px; font-weight:800; margin:0; }
+  .panel-hint{ font-size:12px; color:var(--ink-400); margin:4px 0 12px; }
+
+  /* checklist */
+  .check-row{ display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--line); }
+  .check-row:last-child{ border-bottom:none; }
+  .check-box{ flex:none; width:20px; height:20px; border-radius:7px; border:1.5px solid var(--ink-300); background:#fff; color:transparent; font-size:11px; font-weight:800; display:flex; align-items:center; justify-content:center; padding:0; }
+  .check-box.on{ background:var(--brand); border-color:var(--brand); color:#fff; }
+  .check-text{ flex:1; font-size:14px; color:var(--ink-700); }
+  .check-row.done .check-text{ color:var(--ink-300); text-decoration:line-through; }
+  .check-week{ font-size:10.5px; font-weight:800; color:var(--ink-400); background:#F2F4F6; padding:2px 7px; border-radius:6px; flex:none; }
+  .check-del{ flex:none; width:26px; height:26px; border:none; background:transparent; color:var(--ink-300); border-radius:7px; font-size:13px; }
+  .check-del:hover{ background:var(--stop-light); color:var(--stop); }
+  .check-add{ display:flex; gap:8px; margin-top:12px; }
+  .check-add input{ flex:1; border:1px solid var(--line); border-radius:10px; padding:10px 12px; font-size:13.5px; background:#FAFBFC; }
+  .check-add select{ flex:none; width:88px; border:1px solid var(--line); border-radius:10px; padding:10px 8px; font-size:13px; background:#FAFBFC; }
+
+  /* report rows in detail */
+  .report-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 0; border-bottom:1px solid var(--line); }
+  .report-row:last-child{ border-bottom:none; }
+  .rr-main{ flex:1; cursor:pointer; }
+  .rr-title{ font-size:14px; font-weight:700; display:flex; align-items:center; gap:7px; }
+  .rr-date{ font-size:12px; color:var(--ink-400); margin-top:3px; }
+  .rr-actions{ display:flex; gap:6px; flex:none; }
+  .rc-type-badge{ font-size:10.5px; font-weight:800; padding:2px 8px; border-radius:6px; }
+  .rc-type-badge.weekly{ background:var(--scale-light); color:#0B8F55; }
+  .rc-type-badge.monthly{ background:var(--brand-light); color:var(--brand-dark); }
+
+  .muted{ color:var(--ink-400); font-size:13.5px; }
+
+  /* report view */
+  .report-top{ display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; gap:10px; flex-wrap:wrap; }
+  .back-btn{ border:none; background:#fff; box-shadow:var(--shadow-card); width:36px; height:36px; border-radius:11px; color:var(--ink-700); font-size:16px; }
+  .report-actions{ display:flex; gap:8px; }
+  .report-header{ background:linear-gradient(160deg,#1B64DA,#3182F6 55%,#5B9CFB); border-radius:var(--radius-lg); padding:26px 26px 22px; color:#fff; margin-bottom:18px; position:relative; overflow:hidden; }
+  .report-header::after{ content:""; position:absolute; right:-40px; top:-40px; width:180px; height:180px; border-radius:50%; background:rgba(255,255,255,.08); }
+  .rh-client{ font-size:20px; font-weight:800; margin:10px 0 4px; position:relative; }
+  .rh-period{ font-size:13.5px; opacity:.85; margin:0 0 14px; position:relative; }
+  .rh-goal-label{ font-size:11.5px; font-weight:800; opacity:.75; margin-bottom:4px; }
+  .rh-goal{ font-size:15px; font-weight:600; position:relative; max-width:640px; }
+  .mode-toggle{ display:inline-flex; background:#fff; border-radius:11px; box-shadow:var(--shadow-card); padding:3px; }
+  .mode-toggle button{ border:none; background:transparent; padding:8px 13px; font-size:12.5px; font-weight:700; border-radius:8px; color:var(--ink-400); }
+  .mode-toggle button.active{ background:var(--brand); color:#fff; }
+
+  .rsection{ background:var(--bg-card); border-radius:var(--radius-lg); box-shadow:var(--shadow-card); padding:22px 24px; margin-bottom:14px; }
+  .rsec-num{ font-size:11px; font-weight:800; color:var(--brand); letter-spacing:.06em; margin-bottom:6px; }
+  .rsec-title{ font-size:15.5px; font-weight:800; margin:0 0 14px; }
+  .metrics-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px; }
+  .channel-report-block{ margin-bottom:18px; }
+  .channel-report-block:last-child{ margin-bottom:0; }
+  .channel-report-name{ font-size:12px; font-weight:800; color:var(--brand-dark); background:var(--brand-light); display:inline-block; padding:4px 10px; border-radius:8px; margin-bottom:10px; }
+  .metric-card{ background:#FAFBFC; border:1px solid var(--line); border-radius:14px; padding:16px; }
+  .mc-label{ font-size:12px; font-weight:700; color:var(--ink-400); margin-bottom:8px; }
+  .mc-value{ font-size:25px; font-weight:800; letter-spacing:-.01em; }
+  .mc-unit{ font-size:13px; font-weight:600; color:var(--ink-400); margin-left:2px; }
+  .mc-delta{ margin-top:9px; display:inline-flex; align-items:center; gap:4px; font-size:12px; font-weight:700; padding:4px 8px; border-radius:8px; }
+  .mc-delta.up{ background:var(--brand-light); color:var(--brand-dark); }
+  .mc-delta.down{ background:var(--stop-light); color:var(--stop); }
+  .mc-delta.flat{ background:#F2F4F6; color:var(--ink-400); }
+  .mc-compare-only{ margin-top:8px; font-size:12px; color:var(--ink-400); }
+
+  .checklist{ list-style:none; margin:0; padding:0; }
+  .checklist li{ display:flex; gap:10px; padding:8px 0; font-size:14px; color:var(--ink-700); border-bottom:1px solid var(--line); }
+  .checklist li:last-child{ border-bottom:none; }
+  .check-ico{ flex:none; width:18px; height:18px; border-radius:6px; background:var(--brand-light); color:var(--brand-dark); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:800; margin-top:1px; }
+
+  .fact-interp{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  @media(max-width:640px){ .fact-interp{ grid-template-columns:1fr; } }
+  .fi-col-title{ font-size:12.5px; font-weight:800; margin-bottom:10px; }
+  .fi-badge{ font-size:10.5px; padding:2px 7px; border-radius:6px; font-weight:800; }
+  .fi-badge.fact{ background:#EAF7EE; color:#1B8A4C; }
+  .fi-badge.interp{ background:var(--fix-light); color:#B6790C; }
+  .fi-list{ list-style:none; margin:0; padding:0; }
+  .fi-list li{ font-size:13.5px; color:var(--ink-700); padding:7px 10px; background:#FAFBFC; border-radius:9px; margin-bottom:6px; }
+  .fi-caption{ font-size:11.5px; color:var(--ink-400); margin-top:8px; }
+
+  .uncertain-box{ background:var(--fix-light); border:1px solid #F3DFA8; border-radius:14px; padding:15px 16px; font-size:13.5px; color:#7A5300; line-height:1.6; white-space:pre-wrap; }
+  .extvar-box{ background:#F2F6FF; border:1px solid #CFE0FB; border-radius:14px; padding:15px 16px; font-size:13.5px; color:#1B4C9C; line-height:1.6; white-space:pre-wrap; }
+  .memo-box{ background:#FFFBEA; border:1.5px dashed #E7D48A; border-radius:14px; padding:16px 18px; font-size:13.5px; color:#6B5A17; line-height:1.7; white-space:pre-wrap; }
+
+  .quad-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  @media(max-width:560px){ .quad-grid{ grid-template-columns:1fr; } }
+  .quad{ border-radius:16px; padding:16px; }
+  .quad-keep{ background:var(--keep-light); } .quad-fix{ background:var(--fix-light); }
+  .quad-stop{ background:var(--stop-light); } .quad-scale{ background:var(--scale-light); }
+  .quad-head{ display:flex; align-items:center; gap:7px; font-weight:800; font-size:13.5px; margin-bottom:9px; }
+  .quad-head.keep{ color:var(--brand-dark); } .quad-head.fix{ color:#B6790C; }
+  .quad-head.stop{ color:#C22636; } .quad-head.scale{ color:#0B8F55; }
+  .quad ul{ list-style:none; margin:0; padding:0; }
+  .quad li{ font-size:13px; color:var(--ink-700); padding:5px 0; }
+  .quad-empty{ font-size:12.5px; color:var(--ink-400); }
+  .summary-line{ font-size:13.5px; color:var(--ink-600); margin-top:14px; padding-top:14px; border-top:1px dashed var(--line); }
+  .summary-line b{ color:var(--ink-900); }
+
+  .share-card{ background:var(--ink-900); border-radius:var(--radius-lg); padding:20px 22px; color:#fff; }
+  .share-title{ font-size:14.5px; font-weight:800; margin-bottom:4px; }
+  .share-sub{ font-size:12.5px; color:#9AA6B2; margin-bottom:14px; }
+  .share-box{ display:flex; gap:8px; background:#252C36; border-radius:11px; padding:10px 12px; align-items:center; }
+  .share-box code{ flex:1; font-size:12.5px; color:#D7DEE6; overflow-x:auto; white-space:nowrap; }
+  .share-box button{ flex:none; border:none; background:#3A4250; color:#fff; padding:7px 11px; border-radius:8px; font-size:12px; font-weight:700; }
+  .share-box button:hover{ background:var(--brand); }
+
+  @media (prefers-reduced-motion: reduce){ *{ transition:none!important; animation:none!important; } }
+  .fade-in{ animation:fadeIn .3s ease both; }
+  @keyframes fadeIn{ from{opacity:0;transform:translateY(6px);} to{opacity:1;transform:translateY(0);} }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="toast"></div>
+<div id="modal-layer"><div class="modal">
+  <h3 id="modal-title">확인</h3>
+  <p id="modal-body"></p>
+  <div class="modal-actions">
+    <button class="btn btn-plain" id="modal-cancel">취소</button>
+    <button class="btn btn-danger" id="modal-confirm">삭제</button>
+  </div>
+</div></div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ============ 저장소 (Upstash Redis via /api/data) ============ */
+  var AUTH_KEY = "rs:team-token";
+  var authToken = null;
+  try { authToken = localStorage.getItem(AUTH_KEY); } catch(e) {}
+
+  function authHeaders(){
+    return authToken ? { "x-team-token": authToken } : {};
+  }
+
+  var storageBackend = {
+    async get(key){
+      var res = await fetch("/api/data?key=" + encodeURIComponent(key), { headers: authHeaders() });
+      if (res.status === 401) { forceLogout(); throw new Error("unauthorized"); }
+      if (res.status === 404) throw new Error("Key not found: " + key);
+      if (!res.ok) throw new Error("get failed " + res.status);
+      var data = await res.json();
+      return { key: key, value: data.value };
+    },
+    async set(key, value){
+      var res = await fetch("/api/data", {
+        method: "POST",
+        headers: Object.assign({ "Content-Type": "application/json" }, authHeaders()),
+        body: JSON.stringify({ key: key, value: value })
+      });
+      if (res.status === 401) { forceLogout(); throw new Error("unauthorized"); }
+      if (!res.ok) {
+        var e = await res.json().catch(function(){ return {}; });
+        throw new Error(e.error || ("set failed " + res.status));
+      }
+      return { key: key, value: value };
+    },
+    async delete(key){
+      var res = await fetch("/api/data?key=" + encodeURIComponent(key), {
+        method: "DELETE", headers: authHeaders()
+      });
+      if (res.status === 401) { forceLogout(); throw new Error("unauthorized"); }
+      if (!res.ok) throw new Error("delete failed " + res.status);
+      return { key: key, deleted: true };
+    }
+  };
+
+  function forceLogout(){
+    authToken = null;
+    try { localStorage.removeItem(AUTH_KEY); } catch(e) {}
+  }
+
+  /* ============ utils ============ */
+  function uid(p){ return (p||"id")+"_"+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+  function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
+  function toNum(v){ if(v==null) return NaN; return parseFloat(String(v).replace(/,/g,"").trim()); }
+  function fmtDate(ts){ if(!ts) return ""; var d=new Date(ts); return d.getFullYear()+"."+String(d.getMonth()+1).padStart(2,"0")+"."+String(d.getDate()).padStart(2,"0"); }
+  function monthKey(d){ return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"); }
+  function monthLabel(key){ var p=key.split("-"); return p[0]+"년 "+parseInt(p[1],10)+"월"; }
+  function weeksInMonth(key){
+    var p=key.split("-"), y=+p[0], m=+p[1];
+    var days=new Date(y,m,0).getDate();
+    return Math.ceil(days/7);
+  }
+  function currentWeekOf(key){
+    var now=new Date();
+    if(monthKey(now)!==key) return 0;
+    return Math.ceil(now.getDate()/7);
+  }
+  function computeDelta(v,c){
+    var a=toNum(v), b=toNum(c);
+    if(isNaN(a)||isNaN(b)||b===0) return null;
+    var pct=((a-b)/Math.abs(b))*100;
+    return { pct:pct, dir: pct>0.05?"up":(pct<-0.05?"down":"flat") };
+  }
+  function showToast(msg){
+    var t=document.getElementById("toast");
+    t.textContent=msg; t.classList.add("show");
+    clearTimeout(showToast._tm);
+    showToast._tm=setTimeout(function(){ t.classList.remove("show"); },2200);
+  }
+  function copyText(text){
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(function(){showToast("복사되었습니다");}).catch(fb);
+    } else fb();
+    function fb(){
+      var ta=document.createElement("textarea"); ta.value=text; document.body.appendChild(ta); ta.select();
+      try{ document.execCommand("copy"); showToast("복사되었습니다"); }catch(e){ showToast("복사에 실패했습니다"); }
+      document.body.removeChild(ta);
+    }
+  }
+  var _confirmCb=null;
+  function confirmDialog(title, body, confirmLabel, cb){
+    document.getElementById("modal-title").textContent=title;
+    document.getElementById("modal-body").textContent=body;
+    document.getElementById("modal-confirm").textContent=confirmLabel||"삭제";
+    document.getElementById("modal-layer").classList.add("show");
+    _confirmCb=cb;
+  }
+  function closeModal(){ document.getElementById("modal-layer").classList.remove("show"); _confirmCb=null; }
+  document.getElementById("modal-cancel").addEventListener("click", closeModal);
+  document.getElementById("modal-layer").addEventListener("click", function(e){ if(e.target.id==="modal-layer") closeModal(); });
+  document.getElementById("modal-confirm").addEventListener("click", function(){
+    var cb=_confirmCb; closeModal(); if(cb) cb();
+  });
+
+  /* ============ storage ============ */
+  async function getP(k){ try{ var r=await storageBackend.get(k,false); return r&&r.value?JSON.parse(r.value):null; }catch(e){ return null; } }
+  async function setP(k,v){ try{ return await storageBackend.set(k,JSON.stringify(v),false); }catch(e){ console.error(e); return null; } }
+  async function getS(k){ try{ var r=await storageBackend.get(k,true); return r&&r.value?JSON.parse(r.value):null; }catch(e){ return null; } }
+  async function setS(k,v){ try{ return await storageBackend.set(k,JSON.stringify(v),true); }catch(e){ console.error(e); return null; } }
+  async function delS(k){ try{ return await storageBackend.delete(k,true); }catch(e){ return null; } }
+
+  /* ============ state ============ */
+  var state={
+    view:"loading",
+    month: monthKey(new Date()),
+    clients:[],            // index: {id,name,contractType,startDate,status,updatedAt}
+    reports:[],            // index: {id,clientId,clientName,period,type,updatedAt}
+    currentClient:null,
+    currentReport:null,
+    editingClient:null,
+    editingBase:null,
+    summaryMode:false,
+    readOnly:false
+  };
+  var app=document.getElementById("app");
+
+  /* ============ init ============ */
+  async function init(){
+    // 공유 링크(?report=ID)로 접속한 경우 — 로그인 없이 열람만
+    var params = new URLSearchParams(location.search);
+    var sharedId = params.get("report");
+    if (sharedId) {
+      state.readOnly = true;
+      app.innerHTML = '<div style="padding:60px;text-align:center;color:#8B95A1;">리포트를 불러오는 중…</div>';
+      var rep = await getS("report:" + sharedId);
+      if (!rep) {
+        app.innerHTML = '<div class="empty-state" style="margin-top:60px;">'+
+          '<div class="es-title">리포트를 찾을 수 없습니다</div>'+
+          '<div class="es-sub">링크가 만료되었거나 삭제된 리포트일 수 있습니다.</div></div>';
+        return;
+      }
+      rep.type = rep.type === "weekly" ? "weekly" : "monthly";
+      state.currentReport = rep; state.view = "report"; render();
+      return;
+    }
+
+    if (!authToken) { renderLogin(); return; }
+    await loadWorkspace();
+  }
+
+  async function loadWorkspace(){
+    app.innerHTML = '<div style="padding:60px;text-align:center;color:#8B95A1;">불러오는 중…</div>';
+    var c = await getP("clients-index"); state.clients = Array.isArray(c) ? c : [];
+    var r = await getP("reports-index"); state.reports = Array.isArray(r) ? r : [];
+    state.view = "dashboard"; render();
+  }
+
+  function renderLogin(){
+    app.innerHTML =
+      '<div style="max-width:380px;margin:12vh auto 0;">'+
+        '<div class="brand" style="justify-content:center;margin-bottom:22px;">'+
+          '<span class="brand-mark"></span>업체 관리 대시보드</div>'+
+        '<div class="panel">'+
+          '<h3 class="panel-title" style="margin-bottom:6px;">팀 비밀번호를 입력하십시오</h3>'+
+          '<p class="panel-hint">등록된 업체와 리포트는 팀원 모두가 함께 조회합니다.</p>'+
+          '<div class="field"><input type="password" id="login-pw" placeholder="비밀번호" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:12px 13px;font-size:14px;background:#FAFBFC;" /></div>'+
+          '<div id="login-error" class="muted" style="color:var(--stop);display:none;margin-bottom:10px;font-size:13px;"></div>'+
+          '<button class="btn btn-primary btn-block" id="btn-login">들어가기</button>'+
+        '</div>'+
+      '</div>';
+
+    var pw = document.getElementById("login-pw");
+    pw.focus();
+    pw.addEventListener("keydown", function(e){ if (e.key === "Enter") doLogin(); });
+    document.getElementById("btn-login").addEventListener("click", doLogin);
+
+    async function doLogin(){
+      var btn = document.getElementById("btn-login");
+      var errBox = document.getElementById("login-error");
+      var val = pw.value;
+      if (!val) { showToast("비밀번호를 입력하십시오"); return; }
+      btn.disabled = true; btn.textContent = "확인 중…";
+      errBox.style.display = "none";
+      try {
+        var res = await fetch("/api/auth", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ password: val })
+        });
+        var data = await res.json().catch(function(){ return {}; });
+        if (!res.ok) {
+          errBox.textContent = data.error || "비밀번호가 올바르지 않습니다";
+          errBox.style.display = "block";
+          btn.disabled = false; btn.textContent = "들어가기";
+          return;
+        }
+        if (!data.redisConfigured) {
+          errBox.textContent = "Redis가 연결되지 않았습니다. Vercel에서 Upstash Redis를 연결해 주세요.";
+          errBox.style.display = "block";
+          btn.disabled = false; btn.textContent = "들어가기";
+          return;
+        }
+        authToken = data.token;
+        try { localStorage.setItem(AUTH_KEY, authToken); } catch(e) {}
+        await loadWorkspace();
+      } catch(e) {
+        errBox.textContent = "접속에 실패했습니다. 잠시 후 다시 시도해 주세요.";
+        errBox.style.display = "block";
+        btn.disabled = false; btn.textContent = "들어가기";
+      }
+    }
+  }
+
+  function render(){
+    if(state.view==="loading"){ app.innerHTML='<div style="padding:60px;text-align:center;color:#8B95A1;">불러오는 중…</div>'; return; }
+    if(state.view==="dashboard") return renderDashboard();
+    if(state.view==="clientForm") return renderClientForm(state.editingClient);
+    if(state.view==="clientDetail") return renderClientDetail(state.currentClient);
+    if(state.view==="edit") return renderEdit(state.editingBase);
+    if(state.view==="report") return renderReportView(state.currentReport);
+  }
+
+  /* ============ client helpers ============ */
+  function blankClient(){
+    return { name:"", industry:"", manager:"", contractType:"new", startDate:"", contractMonths:"3",
+             fee:"", status:"active", memo:"", checklist:[], progress:{}, renewals:[] };
+  }
+  function contractEndKey(cl){
+    if(!cl.startDate) return null;
+    var d=new Date(cl.startDate);
+    if(isNaN(d.getTime())) return null;
+    var months=parseInt(cl.contractMonths,10); if(isNaN(months)||months<=0) months=3;
+    d.setMonth(d.getMonth()+months);
+    return d;
+  }
+  function isNewIn(cl, mk){
+    if(!cl.startDate) return false;
+    var d=new Date(cl.startDate);
+    if(isNaN(d.getTime())) return false;
+    return monthKey(d)===mk;
+  }
+  function renewalsIn(cl, mk){
+    return (cl.renewals||[]).filter(function(r){ return r===mk; }).length;
+  }
+  function progressOf(cl, mk){
+    var wk=weeksInMonth(mk), pm=(cl.progress||{})[mk]||{};
+    var done=0;
+    for(var i=1;i<=wk;i++){ if(pm[i]==="done") done++; }
+    return { done:done, total:wk };
+  }
+
+  /* ============ DASHBOARD ============ */
+  async function loadAllClients(){
+    var out=[];
+    for(var i=0;i<state.clients.length;i++){
+      var full=await getS("client:"+state.clients[i].id);
+      if(full) out.push(full);
+    }
+    return out;
+  }
+
+  function renderDashboard(){
+    app.innerHTML=
+      '<div class="topbar">'+
+        '<div class="brand"><span class="brand-mark"></span>업체 관리 대시보드</div>'+
+        '<button class="btn btn-primary" id="btn-new-client">+ 업체 등록</button>'+
+      '</div>'+
+      '<div class="hero">'+
+        '<p class="eyebrow">'+esc(monthLabel(state.month))+' 기준</p>'+
+        '<h1>이번 달 어디까지 진행됐는지 한눈에</h1>'+
+        '<p class="sub">업체별 주차 진행 상황과 신규·재계약 현황을 확인하고, 업체를 선택해 리포트와 체크리스트를 관리하십시오.</p>'+
+      '</div>'+
+      '<div class="monthbar">'+
+        '<button class="mb-arrow" data-month-shift="-1">‹</button>'+
+        '<span class="mb-label">'+esc(monthLabel(state.month))+'</span>'+
+        '<button class="mb-arrow" data-month-shift="1">›</button>'+
+        '<button class="btn btn-plain btn-sm mb-today" id="btn-this-month">이번 달</button>'+
+      '</div>'+
+      '<div id="dash-body"><div class="muted" style="padding:30px 0;text-align:center;">불러오는 중…</div></div>';
+
+    document.getElementById("btn-new-client").addEventListener("click", function(){
+      state.editingClient=null; state.view="clientForm"; render();
+    });
+    document.getElementById("btn-this-month").addEventListener("click", function(){
+      state.month=monthKey(new Date()); render();
+    });
+    document.querySelectorAll("[data-month-shift]").forEach(function(b){
+      b.addEventListener("click", function(){
+        var shift=parseInt(b.getAttribute("data-month-shift"),10);
+        var p=state.month.split("-"); var d=new Date(+p[0], +p[1]-1+shift, 1);
+        state.month=monthKey(d); render();
+      });
+    });
+
+    fillDashboard();
+  }
+
+  async function fillDashboard(){
+    var body=document.getElementById("dash-body");
+    if(!body) return;
+    var mk=state.month;
+    var clients=await loadAllClients();
+    if(!document.getElementById("dash-body")) return;
+
+    var active=clients.filter(function(c){ return c.status==="active"; });
+    var newCount=clients.filter(function(c){ return isNewIn(c,mk); }).length;
+    var renewCount=clients.reduce(function(a,c){ return a+renewalsIn(c,mk); },0);
+    var totalCells=0, doneCells=0;
+    active.forEach(function(c){ var p=progressOf(c,mk); totalCells+=p.total; doneCells+=p.done; });
+    var pct= totalCells? Math.round(doneCells/totalCells*100) : 0;
+
+    var statsHtml=
+      '<div class="stats-grid">'+
+        '<div class="stat-card"><div class="stat-label">관리 업체</div><div class="stat-value">'+active.length+'<span class="stat-unit">곳</span></div><div class="stat-sub">전체 등록 '+clients.length+'곳</div></div>'+
+        '<div class="stat-card"><div class="stat-label">신규 계약</div><div class="stat-value">'+newCount+'<span class="stat-unit">건</span></div><div class="stat-sub">'+esc(monthLabel(mk))+' 시작</div></div>'+
+        '<div class="stat-card"><div class="stat-label">재계약</div><div class="stat-value">'+renewCount+'<span class="stat-unit">건</span></div><div class="stat-sub">'+esc(monthLabel(mk))+' 갱신</div></div>'+
+        '<div class="stat-card accent"><div class="stat-label">이번 달 진행률</div><div class="stat-value">'+pct+'<span class="stat-unit">%</span></div>'+
+          '<div class="progress-track"><div class="progress-fill" style="width:'+pct+'%"></div></div>'+
+          '<div class="stat-sub">'+doneCells+' / '+totalCells+' 주차 완료</div></div>'+
+      '</div>';
+
+    var listHtml;
+    if(clients.length===0){
+      listHtml=
+        '<div class="empty-state">'+
+          '<div class="es-title">등록된 업체가 없습니다</div>'+
+          '<div class="es-sub">대행을 맡게 된 업체를 등록하면 주차별 진행 상황과 리포트를 관리할 수 있습니다.</div>'+
+          '<div class="es-actions">'+
+            '<button class="btn btn-primary" id="btn-empty-client">업체 등록</button>'+
+            '<button class="btn btn-plain" id="btn-sample-client">예시 업체 불러오기</button>'+
+          '</div>'+
+        '</div>';
+    } else {
+      var wk=weeksInMonth(mk), cur=currentWeekOf(mk);
+      listHtml=clients.slice().sort(function(a,b){
+        if(a.status!==b.status) return a.status==="active"?-1:1;
+        return (a.name||"").localeCompare(b.name||"");
+      }).map(function(c){
+        var pm=(c.progress||{})[mk]||{};
+        var cells="";
+        for(var i=1;i<=wk;i++){
+          var st=pm[i]||"none";
+          var label= st==="done"?"완료": st==="doing"?"진행":"—";
+          cells+='<button class="week-cell '+(st!=="none"?st:"")+(i===cur?" current":"")+'" data-week="'+i+'" data-client="'+esc(c.id)+'">'+
+                 '<span class="wc-label">'+i+'주차</span><span class="wc-state">'+label+'</span></button>';
+        }
+        var tags="";
+        if(isNewIn(c,mk)) tags+='<span class="tag tag-new">신규</span>';
+        if(renewalsIn(c,mk)) tags+='<span class="tag tag-renew">재계약</span>';
+        if(c.status==="paused") tags+='<span class="tag tag-paused">일시중지</span>';
+        if(c.status==="ended") tags+='<span class="tag tag-ended">종료</span>';
+        var end=contractEndKey(c);
+        if(c.status==="active" && end){
+          var diff=Math.round((end-new Date())/86400000);
+          if(diff>=0 && diff<=30) tags+='<span class="tag tag-soon">만료 '+diff+'일</span>';
+        }
+        var meta=[];
+        if(c.industry) meta.push(esc(c.industry));
+        if(c.startDate) meta.push("시작 "+esc(c.startDate));
+        if(end) meta.push("만료 "+end.getFullYear()+"."+String(end.getMonth()+1).padStart(2,"0"));
+        return '<div class="client-card">'+
+          '<div class="cc-top" data-open-client="'+esc(c.id)+'" style="cursor:pointer;">'+
+            '<div><div class="cc-name">'+esc(c.name)+tags+'</div>'+
+            '<div class="cc-meta">'+meta.join(" · ")+'</div></div>'+
+            '<span class="cc-arrow">›</span>'+
+          '</div>'+
+          '<div class="week-strip">'+cells+'</div>'+
+        '</div>';
+      }).join("");
+      listHtml='<div class="sec-head"><h2>업체별 진행 현황</h2><span class="count">'+clients.length+'곳</span></div>'+listHtml+
+        '<p class="panel-hint" style="margin-top:10px;">주차 칸을 누르면 미시작 → 진행 → 완료 순으로 상태가 바뀝니다.</p>';
+    }
+
+    body.innerHTML=statsHtml+listHtml;
+
+    var b1=document.getElementById("btn-empty-client");
+    if(b1) b1.addEventListener("click", function(){ state.editingClient=null; state.view="clientForm"; render(); });
+    var b2=document.getElementById("btn-sample-client");
+    if(b2) b2.addEventListener("click", createSampleClient);
+
+    body.querySelectorAll("[data-open-client]").forEach(function(el){
+      el.addEventListener("click", function(){ openClient(el.getAttribute("data-open-client")); });
+    });
+    body.querySelectorAll(".week-cell").forEach(function(el){
+      el.addEventListener("click", function(){ cycleWeek(el.getAttribute("data-client"), parseInt(el.getAttribute("data-week"),10)); });
+    });
+  }
+
+  async function cycleWeek(clientId, week){
+    var cl=await getS("client:"+clientId);
+    if(!cl){ showToast("업체 정보를 불러오지 못했습니다"); return; }
+    cl.progress=cl.progress||{};
+    cl.progress[state.month]=cl.progress[state.month]||{};
+    var cur=cl.progress[state.month][week]||"none";
+    var nextSt= cur==="none"?"doing": cur==="doing"?"done":"none";
+    if(nextSt==="none") delete cl.progress[state.month][week];
+    else cl.progress[state.month][week]=nextSt;
+    await setS("client:"+clientId, cl);
+    if(state.view==="dashboard") fillDashboard();
+    else if(state.view==="clientDetail"){ state.currentClient=cl; render(); }
+  }
+
+  async function createSampleClient(){
+    var cl=blankClient();
+    var now=new Date();
+    cl.id=uid("cl");
+    cl.name="OO뷰티 강남점";
+    cl.industry="뷰티/미용";
+    cl.manager="김담당";
+    cl.contractType="new";
+    cl.startDate=now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0")+"-01";
+    cl.contractMonths="6";
+    cl.fee="800000";
+    cl.checklist=[
+      { id:uid("ck"), text:"플레이스 소재 3종 교체", done:true, week:"1" },
+      { id:uid("ck"), text:"키워드 순위 점검", done:false, week:"2" },
+      { id:uid("ck"), text:"월간 리포트 발송", done:false, week:"4" }
+    ];
+    cl.progress={}; cl.progress[monthKey(now)]={ 1:"done", 2:"doing" };
+    cl.createdAt=Date.now(); cl.updatedAt=Date.now();
+    await setS("client:"+cl.id, cl);
+    state.clients.push({ id:cl.id, name:cl.name, contractType:cl.contractType, startDate:cl.startDate, status:cl.status, updatedAt:cl.updatedAt });
+    await setP("clients-index", state.clients);
+    showToast("예시 업체가 등록되었습니다");
+    render();
+  }
+
+  /* ============ CLIENT FORM ============ */
+  function renderClientForm(base){
+    var isEdit=!!(base&&base.id);
+    var c=base||blankClient();
+    app.innerHTML=
+      '<div class="topbar">'+
+        '<div class="brand"><span class="brand-mark"></span>업체 관리 대시보드</div>'+
+        '<button class="btn btn-text" id="btn-back">← 돌아가기</button>'+
+      '</div>'+
+      '<div class="form-card fade-in">'+
+        '<div class="fsection">'+
+          '<div class="fsec-num">01</div>'+
+          '<h3 class="fsec-title">'+(isEdit?"업체 정보 수정":"업체 등록")+'</h3>'+
+          '<p class="fsec-hint">대행을 맡게 된 업체의 기본 정보를 입력하십시오.</p>'+
+          '<div class="two-col">'+
+            '<div class="field"><label>업체명 *</label><input type="text" id="c-name" placeholder="예: OO뷰티 강남점" value="'+esc(c.name)+'" /></div>'+
+            '<div class="field"><label>업종</label><input type="text" id="c-industry" placeholder="예: 뷰티/미용" value="'+esc(c.industry)+'" /></div>'+
+          '</div>'+
+          '<div class="two-col">'+
+            '<div class="field"><label>담당자</label><input type="text" id="c-manager" placeholder="예: 김담당" value="'+esc(c.manager)+'" /></div>'+
+            '<div class="field"><label>월 광고비 / 대행료 (원)</label><input type="text" id="c-fee" placeholder="예: 800000" value="'+esc(c.fee)+'" /></div>'+
+          '</div>'+
+        '</div>'+
+        '<div class="fsection">'+
+          '<div class="fsec-num">02</div>'+
+          '<h3 class="fsec-title">계약 정보</h3>'+
+          '<p class="fsec-hint">계약 구분과 시작일을 입력하면 신규·재계약 현황에 반영됩니다.</p>'+
+          '<div class="field"><label>계약 구분</label>'+
+            '<div class="seg" id="seg-contract">'+
+              '<button type="button" data-contract="new" class="'+(c.contractType==="new"?"active":"")+'">신규</button>'+
+              '<button type="button" data-contract="renewal" class="'+(c.contractType==="renewal"?"active":"")+'">재계약</button>'+
+            '</div>'+
+          '</div>'+
+          '<div class="two-col">'+
+            '<div class="field"><label>계약 시작일</label><input type="date" id="c-start" value="'+esc(c.startDate)+'" /></div>'+
+            '<div class="field"><label>계약 기간 (개월)</label><input type="text" id="c-months" placeholder="예: 6" value="'+esc(c.contractMonths)+'" /></div>'+
+          '</div>'+
+          '<div class="field"><label>상태</label>'+
+            '<div class="seg" id="seg-status">'+
+              '<button type="button" data-status="active" class="'+(c.status==="active"?"active":"")+'">진행중</button>'+
+              '<button type="button" data-status="paused" class="'+(c.status==="paused"?"active":"")+'">일시중지</button>'+
+              '<button type="button" data-status="ended" class="'+(c.status==="ended"?"active":"")+'">종료</button>'+
+            '</div>'+
+          '</div>'+
+          '<div class="field"><label>메모</label><textarea id="c-memo" rows="3" placeholder="예: 주력 채널은 플레이스, 인스타그램은 보조">'+esc(c.memo)+'</textarea></div>'+
+        '</div>'+
+        '<div class="form-actions">'+
+          (isEdit?'<button class="btn btn-danger" id="btn-del-client">업체 삭제</button>':'')+
+          '<button class="btn btn-plain" id="btn-cancel">취소</button>'+
+          '<button class="btn btn-primary" id="btn-save-client">'+(isEdit?"저장":"등록")+'</button>'+
+        '</div>'+
+      '</div>';
+
+    var pick={ contract:c.contractType, status:c.status };
+    document.querySelectorAll("#seg-contract button").forEach(function(b){
+      b.addEventListener("click", function(){
+        pick.contract=b.getAttribute("data-contract");
+        document.querySelectorAll("#seg-contract button").forEach(function(x){ x.classList.remove("active"); });
+        b.classList.add("active");
+      });
+    });
+    document.querySelectorAll("#seg-status button").forEach(function(b){
+      b.addEventListener("click", function(){
+        pick.status=b.getAttribute("data-status");
+        document.querySelectorAll("#seg-status button").forEach(function(x){ x.classList.remove("active"); });
+        b.classList.add("active");
+      });
+    });
+
+    function goBack(){
+      if(isEdit){ state.view="clientDetail"; } else { state.view="dashboard"; }
+      render();
+    }
+    document.getElementById("btn-back").addEventListener("click", goBack);
+    document.getElementById("btn-cancel").addEventListener("click", goBack);
+
+    var delBtn=document.getElementById("btn-del-client");
+    if(delBtn) delBtn.addEventListener("click", function(){
+      confirmDialog("업체를 삭제할까요?", c.name+" 업체와 연결된 체크리스트·진행 기록이 함께 삭제됩니다. 이 작업은 되돌릴 수 없습니다.", "삭제", function(){ deleteClient(c.id); });
+    });
+
+    document.getElementById("btn-save-client").addEventListener("click", async function(){
+      var name=document.getElementById("c-name").value.trim();
+      if(!name){ showToast("업체명을 입력하십시오"); return; }
+      var btn=this; btn.disabled=true; btn.textContent="저장 중…";
+      try{
+        var obj = isEdit ? Object.assign({}, base) : blankClient();
+        obj.id = isEdit ? base.id : uid("cl");
+        obj.name=name;
+        obj.industry=document.getElementById("c-industry").value.trim();
+        obj.manager=document.getElementById("c-manager").value.trim();
+        obj.fee=document.getElementById("c-fee").value.trim();
+        obj.contractType=pick.contract;
+        obj.startDate=document.getElementById("c-start").value;
+        obj.contractMonths=document.getElementById("c-months").value.trim()||"3";
+        obj.status=pick.status;
+        obj.memo=document.getElementById("c-memo").value.trim();
+        obj.checklist=obj.checklist||[];
+        obj.progress=obj.progress||{};
+        obj.renewals=obj.renewals||[];
+        obj.createdAt=obj.createdAt||Date.now();
+        obj.updatedAt=Date.now();
+
+        var ok=await setS("client:"+obj.id, obj);
+        if(!ok) throw new Error("save failed");
+        var idx=state.clients.filter(function(x){ return x.id!==obj.id; });
+        idx.push({ id:obj.id, name:obj.name, contractType:obj.contractType, startDate:obj.startDate, status:obj.status, updatedAt:obj.updatedAt });
+        state.clients=idx;
+        await setP("clients-index", idx);
+
+        state.currentClient=obj;
+        state.view="clientDetail";
+        showToast(isEdit?"저장되었습니다":"업체가 등록되었습니다");
+        render();
+      }catch(e){
+        console.error(e); showToast("저장에 실패했습니다");
+        btn.disabled=false; btn.textContent=isEdit?"저장":"등록";
+      }
+    });
+  }
+
+  async function deleteClient(id){
+    var related=state.reports.filter(function(r){ return r.clientId===id; });
+    for(var i=0;i<related.length;i++){ await delS("report:"+related[i].id); }
+    state.reports=state.reports.filter(function(r){ return r.clientId!==id; });
+    await setP("reports-index", state.reports);
+    await delS("client:"+id);
+    state.clients=state.clients.filter(function(c){ return c.id!==id; });
+    await setP("clients-index", state.clients);
+    state.currentClient=null;
+    state.view="dashboard";
+    showToast("업체가 삭제되었습니다");
+    render();
+  }
+
+  async function openClient(id){
+    var cl=await getS("client:"+id);
+    if(!cl){ showToast("업체 정보를 찾을 수 없습니다"); return; }
+    state.currentClient=cl; state.view="clientDetail"; render();
+  }
+
+  /* ============ CLIENT DETAIL ============ */
+  function renderClientDetail(cl){
+    if(!cl){ state.view="dashboard"; render(); return; }
+    var mk=state.month, wk=weeksInMonth(mk), cur=currentWeekOf(mk);
+    var pm=(cl.progress||{})[mk]||{};
+    var prog=progressOf(cl,mk);
+    var end=contractEndKey(cl);
+
+    var cells="";
+    for(var i=1;i<=wk;i++){
+      var st=pm[i]||"none";
+      var label= st==="done"?"완료": st==="doing"?"진행":"—";
+      cells+='<button class="week-cell '+(st!=="none"?st:"")+(i===cur?" current":"")+'" data-week="'+i+'">'+
+             '<span class="wc-label">'+i+'주차</span><span class="wc-state">'+label+'</span></button>';
+    }
+
+    var checklist=cl.checklist||[];
+    var checkHtml = checklist.length
+      ? checklist.map(function(t){
+          return '<div class="check-row '+(t.done?"done":"")+'">'+
+            '<button class="check-box '+(t.done?"on":"")+'" data-toggle-task="'+esc(t.id)+'">✓</button>'+
+            (t.week?'<span class="check-week">'+esc(t.week)+'주차</span>':'')+
+            '<span class="check-text">'+esc(t.text)+'</span>'+
+            '<button class="check-del" data-del-task="'+esc(t.id)+'">✕</button>'+
+          '</div>';
+        }).join("")
+      : '<div class="muted">등록된 업무가 없습니다. 아래에서 추가하십시오.</div>';
+    var doneTasks=checklist.filter(function(t){ return t.done; }).length;
+
+    var weekOpts='<option value="">주차</option>';
+    for(var w=1;w<=wk;w++) weekOpts+='<option value="'+w+'">'+w+'주차</option>';
+
+    var myReports=state.reports.filter(function(r){ return r.clientId===cl.id; })
+      .sort(function(a,b){ return (b.updatedAt||0)-(a.updatedAt||0); });
+    var reportsHtml = myReports.length
+      ? myReports.map(function(r){
+          return '<div class="report-row">'+
+            '<div class="rr-main" data-open-report="'+esc(r.id)+'">'+
+              '<div class="rr-title"><span class="rc-type-badge '+(r.type==="weekly"?"weekly":"monthly")+'">'+(r.type==="weekly"?"주간":"월간")+'</span>'+esc(r.period||"")+'</div>'+
+              '<div class="rr-date">'+fmtDate(r.updatedAt)+' 저장</div>'+
+            '</div>'+
+            '<div class="rr-actions"><button class="btn btn-danger btn-sm" data-del-report="'+esc(r.id)+'">삭제</button></div>'+
+          '</div>';
+        }).join("")
+      : '<div class="muted">작성된 리포트가 없습니다.</div>';
+
+    var tags="";
+    if(cl.contractType==="renewal") tags+='<span class="status-pill">재계약</span>';
+    else tags+='<span class="status-pill">신규</span>';
+    if(cl.status==="paused") tags+='<span class="status-pill">일시중지</span>';
+    if(cl.status==="ended") tags+='<span class="status-pill">종료</span>';
+
+    var metaItems=[];
+    if(cl.industry) metaItems.push(esc(cl.industry));
+    if(cl.manager) metaItems.push("담당 "+esc(cl.manager));
+    if(cl.fee) metaItems.push("월 "+Number(toNum(cl.fee)||0).toLocaleString("ko-KR")+"원");
+    if(cl.startDate) metaItems.push("시작 "+esc(cl.startDate));
+    if(end) metaItems.push("만료 "+end.getFullYear()+"."+String(end.getMonth()+1).padStart(2,"0"));
+
+    app.innerHTML=
+      '<div class="report-top">'+
+        '<button class="back-btn" id="btn-back">←</button>'+
+        '<div class="report-actions">'+
+          '<button class="btn btn-plain btn-sm" id="btn-renew">재계약 처리</button>'+
+          '<button class="btn btn-plain btn-sm" id="btn-edit-client">정보 수정</button>'+
+        '</div>'+
+      '</div>'+
+      '<div class="detail-head fade-in">'+
+        '<div class="dh-tagrow">'+tags+'</div>'+
+        '<h2 class="dh-name">'+esc(cl.name)+'</h2>'+
+        '<div class="dh-meta">'+metaItems.map(function(m){return '<span>'+m+'</span>';}).join("")+'</div>'+
+      '</div>'+
+
+      '<div class="panel fade-in">'+
+        '<div class="panel-head">'+
+          '<h3 class="panel-title">'+esc(monthLabel(mk))+' 주차별 진행</h3>'+
+          '<span class="count muted">'+prog.done+' / '+prog.total+' 완료</span>'+
+        '</div>'+
+        '<div class="week-strip">'+cells+'</div>'+
+        '<p class="panel-hint" style="margin-top:12px;margin-bottom:0;">주차 칸을 누르면 미시작 → 진행 → 완료 순으로 바뀝니다.</p>'+
+      '</div>'+
+
+      '<div class="panel fade-in">'+
+        '<div class="panel-head">'+
+          '<h3 class="panel-title">업무 체크리스트</h3>'+
+          '<span class="count muted">'+doneTasks+' / '+checklist.length+' 완료</span>'+
+        '</div>'+
+        '<div id="checklist-body">'+checkHtml+'</div>'+
+        '<div class="check-add">'+
+          '<input type="text" id="new-task" placeholder="예: 키워드 순위 점검" />'+
+          '<select id="new-task-week">'+weekOpts+'</select>'+
+          '<button class="btn btn-ghost btn-sm" id="btn-add-task">추가</button>'+
+        '</div>'+
+      '</div>'+
+
+      '<div class="panel fade-in">'+
+        '<div class="panel-head">'+
+          '<h3 class="panel-title">리포트</h3>'+
+          '<span class="count muted">'+myReports.length+'건</span>'+
+        '</div>'+
+        '<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">'+
+          '<button class="btn btn-primary btn-sm" id="btn-new-weekly">+ 주간 리포트</button>'+
+          '<button class="btn btn-ghost btn-sm" id="btn-new-monthly">+ 월간 리포트</button>'+
+        '</div>'+
+        reportsHtml+
+      '</div>'+
+
+      (cl.memo?('<div class="panel fade-in"><h3 class="panel-title" style="margin-bottom:10px;">메모</h3><div class="memo-box">'+esc(cl.memo)+'</div></div>'):"");
+
+    document.getElementById("btn-back").addEventListener("click", function(){ state.view="dashboard"; render(); });
+    document.getElementById("btn-edit-client").addEventListener("click", function(){
+      state.editingClient=cl; state.view="clientForm"; render();
+    });
+    document.getElementById("btn-renew").addEventListener("click", function(){
+      confirmDialog("재계약으로 처리할까요?", esc(monthLabel(mk))+" 재계약 건으로 기록되며, 대시보드 재계약 현황에 반영됩니다.", "처리", function(){ markRenewal(cl.id); });
+    });
+
+    app.querySelectorAll(".week-cell").forEach(function(el){
+      el.addEventListener("click", function(){ cycleWeek(cl.id, parseInt(el.getAttribute("data-week"),10)); });
+    });
+
+    document.getElementById("btn-add-task").addEventListener("click", addTask);
+    document.getElementById("new-task").addEventListener("keydown", function(e){ if(e.key==="Enter") addTask(); });
+    function addTask(){
+      var input=document.getElementById("new-task");
+      var text=input.value.trim();
+      if(!text){ showToast("업무 내용을 입력하십시오"); return; }
+      var week=document.getElementById("new-task-week").value;
+      cl.checklist=cl.checklist||[];
+      cl.checklist.push({ id:uid("ck"), text:text, done:false, week:week });
+      saveClientAndRefresh(cl);
+    }
+    app.querySelectorAll("[data-toggle-task]").forEach(function(b){
+      b.addEventListener("click", function(){
+        var tid=b.getAttribute("data-toggle-task");
+        (cl.checklist||[]).forEach(function(t){ if(t.id===tid) t.done=!t.done; });
+        saveClientAndRefresh(cl);
+      });
+    });
+    app.querySelectorAll("[data-del-task]").forEach(function(b){
+      b.addEventListener("click", function(){
+        var tid=b.getAttribute("data-del-task");
+        cl.checklist=(cl.checklist||[]).filter(function(t){ return t.id!==tid; });
+        saveClientAndRefresh(cl);
+      });
+    });
+
+    document.getElementById("btn-new-weekly").addEventListener("click", function(){ startReport(cl,"weekly"); });
+    document.getElementById("btn-new-monthly").addEventListener("click", function(){ startReport(cl,"monthly"); });
+
+    app.querySelectorAll("[data-open-report]").forEach(function(el){
+      el.addEventListener("click", function(){ openReport(el.getAttribute("data-open-report")); });
+    });
+    app.querySelectorAll("[data-del-report]").forEach(function(b){
+      b.addEventListener("click", function(){
+        var rid=b.getAttribute("data-del-report");
+        var meta=state.reports.filter(function(r){ return r.id===rid; })[0]||{};
+        confirmDialog("리포트를 삭제할까요?", (meta.period||"")+" 리포트가 삭제됩니다. 이 작업은 되돌릴 수 없습니다.", "삭제", function(){ deleteReport(rid); });
+      });
+    });
+  }
+
+  async function saveClientAndRefresh(cl){
+    cl.updatedAt=Date.now();
+    await setS("client:"+cl.id, cl);
+    var idx=state.clients.filter(function(x){ return x.id!==cl.id; });
+    idx.push({ id:cl.id, name:cl.name, contractType:cl.contractType, startDate:cl.startDate, status:cl.status, updatedAt:cl.updatedAt });
+    state.clients=idx;
+    await setP("clients-index", idx);
+    state.currentClient=cl;
+    if(state.view==="clientDetail") render();
+  }
+
+  async function markRenewal(id){
+    var cl=await getS("client:"+id);
+    if(!cl) return;
+    cl.renewals=cl.renewals||[];
+    if(cl.renewals.indexOf(state.month)===-1) cl.renewals.push(state.month);
+    cl.contractType="renewal";
+    cl.status="active";
+    await saveClientAndRefresh(cl);
+    showToast("재계약으로 기록되었습니다");
+  }
+
+  /* ============ REPORT FORM ============ */
+  function startReport(cl, type){
+    var now=new Date();
+    var base={ type:type, clientId:cl.id, client:cl.name,
+      period: type==="weekly"
+        ? monthLabel(state.month)+" "+(currentWeekOf(state.month)||1)+"주차"
+        : monthLabel(state.month),
+      channels:[{ name:"플레이스", metrics:[{},{}] }] };
+    state.editingBase=base; state.view="edit"; render();
+  }
+
+  function rowTpl(ph,val){
+    return '<div class="row"><input type="text" class="row-input" placeholder="'+esc(ph)+'" value="'+esc(val||"")+'" />'+
+      '<button type="button" class="row-remove" data-action="remove-row">✕</button></div>';
+  }
+  function metricRowTpl(m){
+    m=m||{};
+    return '<div class="metric-row">'+
+      '<input type="text" class="m-label" placeholder="지표명 (예: 노출)" value="'+esc(m.label||"")+'" />'+
+      '<input type="text" class="m-value" placeholder="이번 값" value="'+esc(m.value||"")+'" />'+
+      '<input type="text" class="m-unit" placeholder="단위" value="'+esc(m.unit||"")+'" />'+
+      '<input type="text" class="m-compare" placeholder="비교 값" value="'+esc(m.compareValue||"")+'" />'+
+      '<input type="text" class="m-comparelabel" placeholder="비교 기준" value="'+esc(m.compareLabel||"")+'" />'+
+      '<button type="button" class="row-remove" data-action="remove-row">✕</button></div>';
+  }
+  function channelBlockTpl(ch){
+    ch=ch||{};
+    var ms=ch.metrics&&ch.metrics.length?ch.metrics:[{}];
+    return '<div class="channel-block">'+
+      '<div class="channel-block-head">'+
+        '<input type="text" class="channel-name" placeholder="채널명 (예: 인스타그램)" value="'+esc(ch.name||"")+'" />'+
+        '<button type="button" class="row-remove" data-action="remove-channel">✕</button>'+
+      '</div>'+
+      '<div class="channel-metrics">'+ms.map(metricRowTpl).join("")+'</div>'+
+      '<button type="button" class="add-row-btn" data-action="add-metric">+ 지표 추가</button>'+
+    '</div>';
+  }
+
+  function renderEdit(base){
+    base=base||{};
+    base.type = base.type==="weekly"?"weekly":"monthly";
+    var type=base.type;
+    var channels=base.channels&&base.channels.length?base.channels:[{name:"플레이스",metrics:[{},{}]}];
+    var names=channels.map(function(c){return c.name;});
+    var quick=["플레이스","인스타그램","당근마켓","카카오맵","구글"].filter(function(n){ return names.indexOf(n)===-1; });
+    var quickHtml='<div class="channel-quickadd">'+
+      quick.map(function(n){ return '<button type="button" class="qa-chip" data-quickchannel="'+esc(n)+'">+ '+esc(n)+'</button>'; }).join("")+
+      '<button type="button" class="qa-chip" data-quickchannel="">+ 직접 입력</button></div>';
+    var chHtml='<div id="channels-container">'+channels.map(channelBlockTpl).join("")+'</div>';
+
+    var basic=
+      '<div class="fsection">'+
+        '<div class="fsec-num">01</div>'+
+        '<h3 class="fsec-title">기본 정보</h3>'+
+        '<p class="fsec-hint">'+(type==="weekly"?"이번 주":"이번 달")+' 목표를 입력하십시오.</p>'+
+        '<div class="two-col">'+
+          '<div class="field"><label>업체명</label><input type="text" id="f-client" value="'+esc(base.client||"")+'" /></div>'+
+          '<div class="field"><label>기간</label><input type="text" id="f-period" placeholder="'+(type==="weekly"?"예: 2026년 8월 2주차":"예: 2026년 8월")+'" value="'+esc(base.period||"")+'" /></div>'+
+        '</div>'+
+        '<div class="field"><label>'+(type==="weekly"?"이번 주 목표":"이번 달 목표")+'</label><textarea id="f-goal" rows="2" placeholder="'+(type==="weekly"?"예: 주말 방문 예약 전환 확인":"예: 플레이스 유입 증대")+'">'+esc(base.goal||"")+'</textarea></div>'+
+      '</div>';
+
+    var body;
+    if(type==="weekly"){
+      var tests=base.tests&&base.tests.length?base.tests:[""];
+      var results=base.results&&base.results.length?base.results:[""];
+      var nw=base.next_week&&base.next_week.length?base.next_week:[""];
+      body=basic+
+        '<div class="fsection"><div class="fsec-num">02</div><h3 class="fsec-title">이번 주 핵심 숫자</h3>'+
+          '<p class="fsec-hint">채널별로 이번 주 지표와 지난주 대비 값을 입력하십시오.</p>'+quickHtml+chHtml+'</div>'+
+        '<div class="fsection"><div class="fsec-num">03</div><h3 class="fsec-title">외부 변수</h3>'+
+          '<p class="fsec-hint">프로모션, 공휴일, 경쟁사 이벤트 등 숫자에 영향을 줬을 요인을 기재하십시오.</p>'+
+          '<div class="field"><textarea id="f-external" rows="2" placeholder="예: 연휴로 주말 문의가 증가한 것으로 보인다">'+esc(base.external||"")+'</textarea></div></div>'+
+        '<div class="fsection"><div class="fsec-num">04</div><h3 class="fsec-title">이번 주 테스트</h3>'+
+          '<p class="fsec-hint">이번 주 새로 시도한 것을 입력하십시오.</p>'+
+          '<div id="rows-tests">'+tests.map(function(v){return rowTpl("예: 예약 버튼 문구 변경",v);}).join("")+'</div>'+
+          '<button type="button" class="add-row-btn" data-add="rows-tests">+ 테스트 항목 추가</button></div>'+
+        '<div class="fsection"><div class="fsec-num">05</div><h3 class="fsec-title">결과</h3>'+
+          '<p class="fsec-hint">확인된 사실 위주로 결과를 입력하십시오.</p>'+
+          '<div id="rows-results">'+results.map(function(v){return rowTpl("예: 버튼 클릭률이 소폭 상승했다",v);}).join("")+'</div>'+
+          '<button type="button" class="add-row-btn" data-add="rows-results">+ 결과 추가</button></div>'+
+        '<div class="fsection"><div class="fsec-num">06</div><h3 class="fsec-title">다음 주 행동</h3>'+
+          '<p class="fsec-hint">다음 주에 무엇을 할지 정리하십시오.</p>'+
+          '<div id="rows-nextweek">'+nw.map(function(v){return rowTpl("예: 문구 테스트 1주 더 유지",v);}).join("")+'</div>'+
+          '<button type="button" class="add-row-btn" data-add="rows-nextweek">+ 행동 항목 추가</button></div>';
+    } else {
+      var ad=base.actions_done&&base.actions_done.length?base.actions_done:[""];
+      var fa=base.facts&&base.facts.length?base.facts:[""];
+      var ip=base.interpretations&&base.interpretations.length?base.interpretations:[""];
+      var nx=base.next||{};
+      var kp=nx.keep&&nx.keep.length?nx.keep:[""];
+      var fx=nx.fix&&nx.fix.length?nx.fix:[""];
+      var sp=nx.stop&&nx.stop.length?nx.stop:[""];
+      var sc=nx.scale&&nx.scale.length?nx.scale:[""];
+      body=basic+
+        '<div class="fsection"><div class="fsec-num">02</div><h3 class="fsec-title">무엇을 실행했는가</h3>'+
+          '<p class="fsec-hint">이번 달 진행한 작업을 항목별로 입력하십시오.</p>'+
+          '<div id="rows-actions">'+ad.map(function(v){return rowTpl("예: 소재 3종 교체",v);}).join("")+'</div>'+
+          '<button type="button" class="add-row-btn" data-add="rows-actions">+ 실행 항목 추가</button></div>'+
+        '<div class="fsection"><div class="fsec-num">03</div><h3 class="fsec-title">어떤 숫자가 달라졌는가</h3>'+
+          '<p class="fsec-hint">채널별로 지표와 비교값을 입력하십시오. 비교 대상이 있어야 증감을 판단할 수 있습니다.</p>'+quickHtml+chHtml+'</div>'+
+        '<div class="fsection"><div class="fsec-num">04 · 05</div><h3 class="fsec-title">사실과 해석 구분하기</h3>'+
+          '<p class="fsec-hint">사실은 데이터가 보여준 것이고, 해석은 아직 확정되지 않은 가능성입니다.</p>'+
+          '<div class="two-col">'+
+            '<div><label style="display:block;font-size:12.5px;font-weight:700;color:var(--ink-600);margin-bottom:6px;">사실</label>'+
+              '<div id="rows-facts">'+fa.map(function(v){return rowTpl("예: 유입이 18% 증가했다",v);}).join("")+'</div>'+
+              '<button type="button" class="add-row-btn" data-add="rows-facts">+ 사실 추가</button></div>'+
+            '<div><label style="display:block;font-size:12.5px;font-weight:700;color:var(--ink-600);margin-bottom:6px;">해석</label>'+
+              '<div id="rows-interps">'+ip.map(function(v){return rowTpl("예: 소재 변경이 영향을 줬을 수 있다",v);}).join("")+'</div>'+
+              '<button type="button" class="add-row-btn" data-add="rows-interps">+ 해석 추가</button></div>'+
+          '</div></div>'+
+        '<div class="fsection"><div class="fsec-num">06</div><h3 class="fsec-title">확실하지 않은 부분</h3>'+
+          '<p class="fsec-hint">단정할 수 없는 부분을 명확히 기재하십시오.</p>'+
+          '<div class="field"><textarea id="f-uncertain" rows="3" placeholder="예: 두 변경이 동시에 진행되어 어떤 요인이 더 컸는지는 단정하기 어렵다">'+esc(base.uncertain||"")+'</textarea></div></div>'+
+        '<div class="fsection"><div class="fsec-num">07</div><h3 class="fsec-title">다음 달 무엇을 할 것인가</h3>'+
+          '<p class="fsec-hint">실행 항목을 유지 · 수정 · 중단 · 확대 중 하나로 분류하십시오.</p>'+
+          '<div class="subgroup"><div class="subgroup-title"><span class="dot dot-keep"></span>유지 — 현재 방식 그대로 계속한다</div>'+
+            '<div id="rows-keep">'+kp.map(function(v){return rowTpl("예: 주말 입찰가 상향 유지",v);}).join("")+'</div>'+
+            '<button type="button" class="add-row-btn" data-add="rows-keep">+ 유지 항목 추가</button></div>'+
+          '<div class="subgroup"><div class="subgroup-title"><span class="dot dot-fix"></span>수정 — 일부를 바꿔 재테스트한다</div>'+
+            '<div id="rows-fix">'+fx.map(function(v){return rowTpl("예: 반응 낮은 소재 교체",v);}).join("")+'</div>'+
+            '<button type="button" class="add-row-btn" data-add="rows-fix">+ 수정 항목 추가</button></div>'+
+          '<div class="subgroup"><div class="subgroup-title"><span class="dot dot-stop"></span>중단 — 계속할 이유가 부족하다</div>'+
+            '<div id="rows-stop">'+sp.map(function(v){return rowTpl("예: 심야 시간대 노출 중단",v);}).join("")+'</div>'+
+            '<button type="button" class="add-row-btn" data-add="rows-stop">+ 중단 항목 추가</button></div>'+
+          '<div class="subgroup"><div class="subgroup-title"><span class="dot dot-scale"></span>확대 — 예산이나 범위를 늘려본다</div>'+
+            '<div id="rows-scale">'+sc.map(function(v){return rowTpl("예: 인접 상권으로 범위 확장",v);}).join("")+'</div>'+
+            '<button type="button" class="add-row-btn" data-add="rows-scale">+ 확대 항목 추가</button></div>'+
+        '</div>'+
+        '<div class="fsection"><div class="fsec-num">08</div><h3 class="fsec-title">메모</h3>'+
+          '<p class="fsec-hint">다음 리포트에서 다뤄볼 방향성이나 아이디어를 남겨두십시오.</p>'+
+          '<div class="field"><textarea id="f-memo" rows="4" placeholder="예: 다음 달에는 예약 연동 효과를 별도로 확인해볼 것">'+esc(base.memo||"")+'</textarea></div></div>';
+    }
+
+    app.innerHTML=
+      '<div class="topbar">'+
+        '<div class="brand"><span class="brand-mark"></span>업체 관리 대시보드</div>'+
+        '<button class="btn btn-text" id="btn-back">← 돌아가기</button>'+
+      '</div>'+
+      '<div class="type-toggle">'+
+        '<button type="button" data-type="monthly" class="'+(type==="monthly"?"active":"")+'">월간 리포트</button>'+
+        '<button type="button" data-type="weekly" class="'+(type==="weekly"?"active":"")+'">주간 리포트</button>'+
+      '</div>'+
+      '<div class="form-card fade-in" data-report-type="'+type+'">'+body+
+        '<div class="form-actions">'+
+          '<button class="btn btn-plain" id="btn-cancel">취소</button>'+
+          '<button class="btn btn-primary" id="btn-save">리포트 저장</button>'+
+        '</div>'+
+      '</div>';
+
+    function back(){
+      if(state.currentClient){ state.view="clientDetail"; } else { state.view="dashboard"; }
+      render();
+    }
+    document.getElementById("btn-back").addEventListener("click", back);
+    document.getElementById("btn-cancel").addEventListener("click", back);
+    document.getElementById("btn-save").addEventListener("click", saveReport);
+  }
+
+  app.addEventListener("click", function(e){ editDelegated(e); });
+
+  function editDelegated(e){
+    var typeBtn=e.target.closest(".type-toggle [data-type]");
+    if(typeBtn){
+      if(typeBtn.classList.contains("active")) return;
+      var nt=typeBtn.getAttribute("data-type");
+      var keep={ type:nt };
+      var ce=document.getElementById("f-client"); if(ce) keep.client=ce.value;
+      var pe=document.getElementById("f-period"); if(pe) keep.period=pe.value;
+      var ge=document.getElementById("f-goal"); if(ge) keep.goal=ge.value;
+      if(document.getElementById("channels-container")) keep.channels=collectChannels();
+      var b=state.editingBase||{};
+      keep.clientId=b.clientId; keep.id=b.id; keep.createdAt=b.createdAt;
+      state.editingBase=keep; renderEdit(keep); return;
+    }
+    var qb=e.target.closest("[data-quickchannel]");
+    if(qb){
+      var cont=document.getElementById("channels-container");
+      var nm=qb.getAttribute("data-quickchannel");
+      if(nm){
+        var dup=null;
+        cont.querySelectorAll(".channel-name").forEach(function(i){ if(!dup&&i.value.trim()===nm) dup=i; });
+        if(dup){ dup.focus(); showToast("이미 추가된 채널입니다"); return; }
+      }
+      cont.insertAdjacentHTML("beforeend", channelBlockTpl({name:nm}));
+      var last=cont.lastElementChild.querySelector(".channel-name");
+      if(!nm) last.focus(); else qb.remove();
+      return;
+    }
+    var rc=e.target.closest('[data-action="remove-channel"]');
+    if(rc){
+      var c2=document.getElementById("channels-container");
+      if(c2.children.length>1) rc.closest(".channel-block").remove();
+      else showToast("최소 1개 채널은 유지해야 합니다");
+      return;
+    }
+    var am=e.target.closest('[data-action="add-metric"]');
+    if(am){ am.closest(".channel-block").querySelector(".channel-metrics").insertAdjacentHTML("beforeend", metricRowTpl({})); return; }
+    var rr=e.target.closest('[data-action="remove-row"]');
+    if(rr){
+      var row=rr.closest(".row, .metric-row"), par=row.parentElement;
+      if(par.children.length>1) row.remove();
+      else showToast("최소 1개 항목은 유지해야 합니다");
+      return;
+    }
+    var ab=e.target.closest("[data-add]");
+    if(ab){
+      var t=document.getElementById(ab.getAttribute("data-add"));
+      t.insertAdjacentHTML("beforeend", rowTpl("내용을 입력하세요",""));
+      return;
+    }
+  }
+
+  function collectRows(id){
+    var c=document.getElementById(id), out=[];
+    if(!c) return out;
+    c.querySelectorAll(".row-input").forEach(function(i){ var v=i.value.trim(); if(v) out.push(v); });
+    return out;
+  }
+  function collectChannels(){
+    var out=[];
+    document.querySelectorAll("#channels-container .channel-block").forEach(function(b){
+      var name=b.querySelector(".channel-name").value.trim(), ms=[];
+      b.querySelectorAll(".metric-row").forEach(function(r){
+        var label=r.querySelector(".m-label").value.trim();
+        var value=r.querySelector(".m-value").value.trim();
+        if(!label&&!value) return;
+        ms.push({ label:label, value:value,
+          unit:r.querySelector(".m-unit").value.trim(),
+          compareValue:r.querySelector(".m-compare").value.trim(),
+          compareLabel:r.querySelector(".m-comparelabel").value.trim() });
+      });
+      if(!name&&ms.length===0) return;
+      out.push({ name:name||"미지정 채널", metrics:ms });
+    });
+    return out;
+  }
+
+  async function saveReport(){
+    var ce=document.getElementById("f-client"), pe=document.getElementById("f-period");
+    if(!ce||!pe){ showToast("폼을 다시 불러온 뒤 시도하십시오"); return; }
+    var client=ce.value.trim(), period=pe.value.trim();
+    if(!client||!period){ showToast("업체명과 기간을 입력하십시오"); return; }
+
+    var btn=document.getElementById("btn-save");
+    btn.disabled=true; btn.textContent="저장 중…";
+    try{
+      var type=document.querySelector(".form-card").getAttribute("data-report-type");
+      var b=state.editingBase||{};
+      var rep={ type:type, client:client, period:period,
+        clientId: b.clientId || (state.currentClient?state.currentClient.id:null),
+        goal:document.getElementById("f-goal").value.trim(),
+        channels:collectChannels(), updatedAt:Date.now() };
+
+      if(type==="weekly"){
+        rep.external=document.getElementById("f-external").value.trim();
+        rep.tests=collectRows("rows-tests");
+        rep.results=collectRows("rows-results");
+        rep.next_week=collectRows("rows-nextweek");
+      } else {
+        rep.actions_done=collectRows("rows-actions");
+        rep.facts=collectRows("rows-facts");
+        rep.interpretations=collectRows("rows-interps");
+        rep.uncertain=document.getElementById("f-uncertain").value.trim();
+        rep.next={ keep:collectRows("rows-keep"), fix:collectRows("rows-fix"),
+                   stop:collectRows("rows-stop"), scale:collectRows("rows-scale") };
+        rep.memo=document.getElementById("f-memo").value.trim();
+      }
+
+      var id=b.id||uid("rpt");
+      rep.id=id; rep.createdAt=b.createdAt||Date.now();
+
+      var ok=await setS("report:"+id, rep);
+      if(!ok) throw new Error("save failed");
+
+      var idx=state.reports.filter(function(r){ return r.id!==id; });
+      idx.push({ id:id, clientId:rep.clientId, clientName:client, period:period, type:type, updatedAt:rep.updatedAt });
+      state.reports=idx;
+      await setP("reports-index", idx);
+
+      state.currentReport=rep; state.summaryMode=false; state.view="report";
+      showToast("리포트가 저장되었습니다"); render();
+    }catch(err){
+      console.error(err); showToast("저장에 실패했습니다. 다시 시도하십시오");
+      btn.disabled=false; btn.textContent="리포트 저장";
+    }
+  }
+
+  async function openReport(id){
+    var r=await getS("report:"+id);
+    if(!r){ showToast("리포트를 찾을 수 없습니다"); return; }
+    r.type = r.type==="weekly"?"weekly":"monthly";
+    state.currentReport=r; state.summaryMode=false; state.view="report"; render();
+  }
+
+  async function deleteReport(id){
+    await delS("report:"+id);
+    state.reports=state.reports.filter(function(r){ return r.id!==id; });
+    await setP("reports-index", state.reports);
+    showToast("리포트가 삭제되었습니다");
+    if(state.currentReport&&state.currentReport.id===id) state.currentReport=null;
+    state.view = state.currentClient ? "clientDetail" : "dashboard";
+    render();
+  }
+
+  /* ============ REPORT VIEW ============ */
+  function deltaChip(m){
+    var d=computeDelta(m.value,m.compareValue);
+    if(!d) return m.compareLabel?'<div class="mc-compare-only">'+esc(m.compareLabel)+'</div>':"";
+    var arrow=d.dir==="up"?"▲":d.dir==="down"?"▼":"–";
+    return '<div class="mc-delta '+d.dir+'">'+arrow+' '+Math.abs(d.pct).toFixed(1)+'% <span style="font-weight:600;opacity:.85;">'+esc(m.compareLabel||"비교")+'</span></div>';
+  }
+  function metricCard(m){
+    var n=toNum(m.value);
+    return '<div class="metric-card"><div class="mc-label">'+esc(m.label||"지표")+'</div>'+
+      '<div><span class="mc-value" data-count-to="'+(isNaN(n)?"":n)+'">'+(isNaN(n)?esc(m.value||"-"):"0")+'</span>'+
+      '<span class="mc-unit">'+esc(m.unit||"")+'</span></div>'+deltaChip(m)+'</div>';
+  }
+  function channelsHtml(chs){
+    var list=(chs||[]).filter(function(c){ return c.metrics&&c.metrics.length; });
+    if(!list.length) return '<div class="muted">등록된 지표가 없습니다</div>';
+    return list.map(function(c){
+      return '<div class="channel-report-block"><div class="channel-report-name">'+esc(c.name||"채널")+'</div>'+
+        '<div class="metrics-grid">'+c.metrics.map(metricCard).join("")+'</div></div>';
+    }).join("");
+  }
+  function quadHtml(k,cls,dot,title,items){
+    var body=items&&items.length?'<ul>'+items.map(function(v){return '<li>· '+esc(v)+'</li>';}).join("")+'</ul>':'<div class="quad-empty">해당 없음</div>';
+    return '<div class="quad '+cls+'"><div class="quad-head '+k+'"><span class="dot '+dot+'"></span>'+title+'</div>'+body+'</div>';
+  }
+
+  function renderReportView(rep){
+    if(!rep){ state.view="dashboard"; render(); return; }
+    if(rep.type==="weekly") return renderWeekly(rep);
+
+    var s=state.summaryMode, nx=rep.next||{};
+    var cnt={ keep:(nx.keep||[]).length, fix:(nx.fix||[]).length, stop:(nx.stop||[]).length, scale:(nx.scale||[]).length };
+    var mh=channelsHtml(rep.channels);
+    var ah=(rep.actions_done||[]).length?'<ul class="checklist">'+rep.actions_done.map(function(a){return '<li><span class="check-ico">✓</span>'+esc(a)+'</li>';}).join("")+'</ul>':'<div class="muted">기록된 실행 항목이 없습니다</div>';
+    var fh=(rep.facts||[]).length?'<ul class="fi-list">'+rep.facts.map(function(f){return '<li>'+esc(f)+'</li>';}).join("")+'</ul>':'<div class="fi-caption">사실이 기록되지 않았습니다</div>';
+    var ih=(rep.interpretations||[]).length?'<ul class="fi-list">'+rep.interpretations.map(function(f){return '<li>'+esc(f)+'</li>';}).join("")+'</ul>':'<div class="fi-caption">해석이 기록되지 않았습니다</div>';
+    var quad='<div class="quad-grid">'+
+      quadHtml("keep","quad-keep","dot-keep","유지",nx.keep)+
+      quadHtml("fix","quad-fix","dot-fix","수정",nx.fix)+
+      quadHtml("stop","quad-stop","dot-stop","중단",nx.stop)+
+      quadHtml("scale","quad-scale","dot-scale","확대",nx.scale)+'</div>';
+    var memo=rep.memo?'<div class="rsection fade-in"><div class="rsec-num">09</div><div class="rsec-title">메모 · 다음 방향성</div><div class="memo-box">'+esc(rep.memo)+'</div></div>':"";
+
+    var body;
+    if(s){
+      body='<div class="rsection fade-in"><div class="rsec-title">핵심 지표</div>'+mh+'</div>'+
+        '<div class="rsection fade-in"><div class="rsec-title">다음 달 액션</div>'+quad+
+        '<div class="summary-line">유지 <b>'+cnt.keep+'</b> · 수정 <b>'+cnt.fix+'</b> · 중단 <b>'+cnt.stop+'</b> · 확대 <b>'+cnt.scale+'</b> — 이 리포트를 읽은 뒤에는 다음 달에 무엇을 해야 하는지가 남아야 합니다.</div></div>'+memo;
+    } else {
+      body='<div class="rsection fade-in"><div class="rsec-num">02</div><div class="rsec-title">무엇을 실행했는가</div>'+ah+'</div>'+
+        '<div class="rsection fade-in"><div class="rsec-num">03</div><div class="rsec-title">어떤 숫자가 달라졌는가</div>'+mh+'</div>'+
+        '<div class="rsection fade-in"><div class="rsec-num">04 · 05</div><div class="rsec-title">사실과 해석</div>'+
+          '<div class="fact-interp">'+
+            '<div><div class="fi-col-title"><span class="fi-badge fact">사실</span></div>'+fh+'</div>'+
+            '<div><div class="fi-col-title"><span class="fi-badge interp">해석</span></div>'+ih+'<div class="fi-caption">해석은 확정된 사실이 아니며, 추가 확인이 필요할 수 있습니다.</div></div>'+
+          '</div></div>'+
+        (rep.uncertain?'<div class="rsection fade-in"><div class="rsec-num">06</div><div class="rsec-title">확실하지 않은 부분</div><div class="uncertain-box">'+esc(rep.uncertain)+'</div></div>':"")+
+        '<div class="rsection fade-in"><div class="rsec-num">07</div><div class="rsec-title">다음 달 액션</div>'+quad+'</div>'+
+        memo+shareCard(rep);
+    }
+    paintReport(rep, "월간 리포트"+(s?" · 요약":""), body, true);
+  }
+
+  function renderWeekly(rep){
+    var mh=channelsHtml(rep.channels);
+    var th=(rep.tests||[]).length?'<ul class="checklist">'+rep.tests.map(function(a){return '<li><span class="check-ico">✓</span>'+esc(a)+'</li>';}).join("")+'</ul>':'<div class="muted">기록된 테스트가 없습니다</div>';
+    var rh=(rep.results||[]).length?'<ul class="fi-list">'+rep.results.map(function(a){return '<li>'+esc(a)+'</li>';}).join("")+'</ul>':'<div class="fi-caption">기록된 결과가 없습니다</div>';
+    var nh=(rep.next_week||[]).length?'<ul class="checklist">'+rep.next_week.map(function(a){return '<li><span class="check-ico">→</span>'+esc(a)+'</li>';}).join("")+'</ul>':'<div class="muted">기록된 행동 항목이 없습니다</div>';
+    var body='<div class="rsection fade-in"><div class="rsec-title">이번 주 핵심 숫자</div>'+mh+'</div>'+
+      (rep.external?'<div class="rsection fade-in"><div class="rsec-title">외부 변수</div><div class="extvar-box">'+esc(rep.external)+'</div></div>':"")+
+      '<div class="rsection fade-in"><div class="rsec-title">이번 주 테스트</div>'+th+'</div>'+
+      '<div class="rsection fade-in"><div class="rsec-title">결과</div>'+rh+'</div>'+
+      '<div class="rsection fade-in"><div class="rsec-title">다음 주 행동</div>'+nh+'</div>'+
+      shareCard(rep);
+    paintReport(rep, "주간 리포트", body, false);
+  }
+
+  function shareCard(rep){
+    if (state.readOnly) return "";
+    var link = location.origin + "/?report=" + encodeURIComponent(rep.id);
+    return '<div class="rsection fade-in" style="padding:0;background:none;box-shadow:none;">'+
+      '<div class="share-card"><div class="share-title">이 리포트 공유하기</div>'+
+      '<div class="share-sub">이 링크를 전달하면 비밀번호 없이 리포트만 열람할 수 있습니다.</div>'+
+      '<div class="share-box"><code>'+esc(link)+'</code><button data-copy="'+esc(link)+'">링크 복사</button></div></div></div>';
+  }
+
+  function paintReport(rep, pill, body, withToggle){
+    var s=state.summaryMode;
+    var ro = state.readOnly;
+    app.innerHTML=
+      '<div class="report-top">'+
+        (ro?'<div class="brand"><span class="brand-mark"></span>리포트</div>':'<button class="back-btn" id="btn-back">←</button>')+
+        '<div class="report-actions">'+
+          (withToggle?('<div class="mode-toggle">'+
+            '<button data-mode="full" class="'+(s?"":"active")+'">전체보기</button>'+
+            '<button data-mode="summary" class="'+(s?"active":"")+'">요약보기</button></div>'):"")+
+          (ro?"":'<button class="btn btn-plain btn-sm" id="btn-edit-report">수정</button>'+
+               '<button class="btn btn-danger btn-sm" id="btn-del-report">삭제</button>')+
+        '</div>'+
+      '</div>'+
+      '<div class="report-header fade-in">'+
+        '<span class="status-pill">'+pill+'</span>'+
+        '<h2 class="rh-client">'+esc(rep.client||"")+'</h2>'+
+        '<p class="rh-period">'+esc(rep.period||"")+'</p>'+
+        (rep.goal?('<div class="rh-goal-label">'+(rep.type==="weekly"?"이번 주 목표":"이번 달 목표")+'</div><div class="rh-goal">'+esc(rep.goal)+'</div>'):"")+
+      '</div>'+body;
+
+    var backEl = document.getElementById("btn-back");
+    if (backEl) backEl.addEventListener("click", function(){
+      state.view = state.currentClient ? "clientDetail" : "dashboard"; render();
+    });
+    var editEl = document.getElementById("btn-edit-report");
+    if (editEl) editEl.addEventListener("click", function(){
+      state.editingBase=rep; state.view="edit"; render();
+    });
+    var delEl = document.getElementById("btn-del-report");
+    if (delEl) delEl.addEventListener("click", function(){
+      confirmDialog("리포트를 삭제할까요?", (rep.period||"")+" 리포트가 삭제됩니다. 이 작업은 되돌릴 수 없습니다.", "삭제", function(){ deleteReport(rep.id); });
+    });
+    app.querySelectorAll(".mode-toggle button").forEach(function(b){
+      b.addEventListener("click", function(){ state.summaryMode=b.getAttribute("data-mode")==="summary"; render(); });
+    });
+    app.querySelectorAll("[data-copy]").forEach(function(b){
+      b.addEventListener("click", function(){ copyText(b.getAttribute("data-copy")); });
+    });
+    animateNumbers();
+  }
+
+  function animateNumbers(){
+    var reduce=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    document.querySelectorAll(".mc-value[data-count-to]").forEach(function(el){
+      var target=parseFloat(el.getAttribute("data-count-to"));
+      if(isNaN(target)) return;
+      if(reduce){ el.textContent=target.toLocaleString("ko-KR",{maximumFractionDigits:2}); return; }
+      var t0=null, dur=520;
+      function step(ts){
+        if(!t0) t0=ts;
+        var p=Math.min(1,(ts-t0)/dur), e=1-Math.pow(1-p,3);
+        el.textContent=(target*e).toLocaleString("ko-KR",{maximumFractionDigits: target%1!==0?2:0});
+        if(p<1) requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+    });
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
