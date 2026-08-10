@@ -373,6 +373,23 @@
     if(monthKey(now)!==key) return 0;
     return Math.ceil(now.getDate()/7);
   }
+  function thirtyDayProgress(startDate, now){
+    if(!startDate) return { state:"missing", elapsed:0, week:0, percent:0, remaining:30 };
+    var start=new Date(startDate+"T00:00:00");
+    if(isNaN(start.getTime())) return { state:"missing", elapsed:0, week:0, percent:0, remaining:30 };
+    var today=new Date(now||new Date());
+    today.setHours(0,0,0,0);
+    var raw=Math.floor((today-start)/86400000)+1;
+    if(raw<1) return { state:"upcoming", elapsed:0, week:0, percent:0, remaining:30 };
+    var elapsed=Math.min(raw,30);
+    return {
+      state:raw>=30?"complete":"active",
+      elapsed:elapsed,
+      week:Math.ceil(elapsed/7),
+      percent:Math.round(elapsed/30*100),
+      remaining:30-elapsed
+    };
+  }
   function computeDelta(v,c){
     var a=toNum(v), b=toNum(c);
     if(isNaN(a)||isNaN(b)||b===0) return null;
