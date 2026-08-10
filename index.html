@@ -563,18 +563,18 @@
     return parts[1]+"-"+String(month).padStart(2,"0");
   }
   function revenueSummary(reports,clientId,month){
-    var weeklyByWeek=[null,null,null,null], weeklyUpdatedAt=[-Infinity,-Infinity,-Infinity,-Infinity];
+    var weeklyByPeriod=[null,null,null,null,null], weeklyUpdatedAt=[-Infinity,-Infinity,-Infinity,-Infinity,-Infinity];
     var monthlyOverride=null, previousMonth=null, overrideUpdatedAt=-Infinity, previousUpdatedAt=-Infinity;
     (reports||[]).forEach(function(report){
       if(!report || report.clientId!==clientId || reportMonthKey(report.period)!==month) return;
       var revenue=revenueForReport(report), updatedAt=Number(report.updatedAt)||0;
       if(report.type==="weekly"){
-        var weekMatch=/([1-4])\s*\uC8FC\uCC28/.exec(String(report.period||""));
+        var weekMatch=/([1-5])\s*\uC8FC\uCC28/.exec(String(report.period||""));
         var weekly=parseRevenueWon(revenue.weekly);
         if(!weekMatch || weekly===null) return;
         var weekIndex=Number(weekMatch[1])-1;
         if(updatedAt>=weeklyUpdatedAt[weekIndex]){
-          weeklyByWeek[weekIndex]=weekly;
+          weeklyByPeriod[weekIndex]=weekly;
           weeklyUpdatedAt[weekIndex]=updatedAt;
         }
         return;
@@ -587,10 +587,13 @@
       }
       var previous=parseRevenueWon(revenue.previousMonth);
       if(previous!==null && updatedAt>=previousUpdatedAt){
-        previousMonth=previous;
-        previousUpdatedAt=updatedAt;
+      previousMonth=previous;
+      previousUpdatedAt=updatedAt;
       }
     });
+    var finishingWeeks=[weeklyByPeriod[3],weeklyByPeriod[4]].filter(function(value){ return value!==null; });
+    var weeklyByWeek=[weeklyByPeriod[0],weeklyByPeriod[1],weeklyByPeriod[2],
+      finishingWeeks.length ? finishingWeeks.reduce(function(total,value){ return total+value; },0) : null];
     var enteredWeeks=weeklyByWeek.filter(function(value){ return value!==null; });
     var weeklyTotal=enteredWeeks.length ? enteredWeeks.reduce(function(total,value){ return total+value; },0) : null;
     var displayTotal=monthlyOverride!==null ? monthlyOverride : weeklyTotal;
@@ -628,7 +631,7 @@
     if(!scaleValues.length && summary.displayTotal!==null) scaleValues.push(summary.displayTotal);
     if(!scaleValues.length && summary.previousMonth!==null) scaleValues.push(summary.previousMonth);
     var maxValue=scaleValues.length ? Math.max.apply(Math,scaleValues) : 0;
-    var axis=revenueAxis(maxValue), currentWeek=currentWeekOf(month);
+    var axis=revenueAxis(maxValue), currentWeek=currentWeekOf(month), currentChartWeek=Math.min(currentWeek,4);
     var axisHtml=axis.labels.slice().reverse().map(function(value){
       return '<span>'+revenueAxisLabel(value)+'</span>';
     }).join("");
@@ -639,7 +642,7 @@
       return '<div class="revenue-bar-slot">'+
         '<div class="revenue-bar-stack '+(entered?"entered":"empty")+'" style="height:'+height.toFixed(2)+'%">'+
           (entered?'<span class="revenue-bar-value">'+formatRevenueWon(value)+'</span>':"")+
-          '<div class="revenue-bar '+(entered?(currentWeek===index+1?"current":"entered"):"empty")+'"></div></div>'+
+          '<div class="revenue-bar '+(entered?(currentChartWeek===index+1?"current":"entered"):"empty")+'"></div></div>'+
         '<span class="revenue-bar-week">'+(index+1)+'\uC8FC</span></div>';
     }).join("");
     var eligible=(reports||[]).filter(function(report){
@@ -675,11 +678,13 @@
       return (!rep.id || report.id!==rep.id) && report && report.type==="weekly";
     });
     related.push(rep);
-    var summary=revenueSummary(related,rep.clientId,month);
-    if(!summary.hasRevenue) return "";
+    var summary=revenueSummary(related,rep.clientId,month), savedWeeklyTotal=parseRevenueWon(revenue.weeklyTotal);
+    if(!summary.hasRevenue && savedWeeklyTotal===null) return "";
+    var weeklyTotal=summary.weeklyTotal!==null ? summary.weeklyTotal : savedWeeklyTotal;
+    var displayTotal=summary.displayTotal!==null ? summary.displayTotal : weeklyTotal;
     var cards="";
-    if(summary.displayTotal!==null) cards+='<div class="revenue-summary-card primary"><div class="revenue-summary-label">\uC774\uBC88 \uB2EC \uB9E4\uCD9C</div><div class="revenue-summary-value">'+formatRevenueWon(summary.displayTotal)+'</div></div>';
-    if(summary.weeklyTotal!==null) cards+='<div class="revenue-summary-card"><div class="revenue-summary-label">\uC8FC\uAC04 \uC790\uB3D9 \uD569\uACC4</div><div class="revenue-summary-value">'+formatRevenueWon(summary.weeklyTotal)+'</div></div>';
+    if(displayTotal!==null) cards+='<div class="revenue-summary-card primary"><div class="revenue-summary-label">\uC774\uBC88 \uB2EC \uB9E4\uCD9C</div><div class="revenue-summary-value">'+formatRevenueWon(displayTotal)+'</div></div>';
+    if(weeklyTotal!==null) cards+='<div class="revenue-summary-card"><div class="revenue-summary-label">\uC8FC\uAC04 \uC790\uB3D9 \uD569\uACC4</div><div class="revenue-summary-value">'+formatRevenueWon(weeklyTotal)+'</div></div>';
     if(summary.previousMonth!==null) cards+='<div class="revenue-summary-card"><div class="revenue-summary-label">\uC9C0\uB09C\uB2EC \uB9E4\uCD9C</div><div class="revenue-summary-value">'+formatRevenueWon(summary.previousMonth)+'</div></div>';
     return '<div class="rsection revenue-report-section fade-in"><div class="rsec-title">\uB9E4\uCD9C \uC694\uC57D</div><div class="revenue-summary-grid">'+cards+'</div></div>';
   }
@@ -1830,11 +1835,18 @@
     btn.disabled=true; btn.textContent="저장 중…";
     try{
       var b=state.editingBase||{};
+      var reportClientId=b.clientId || (state.currentClient?state.currentClient.id:null);
+      if(type==="monthly"){
+        var reportMonth=reportMonthKey(period);
+        var weeklySnapshot=reportClientId&&reportMonth ? revenueSummary(state.reports,reportClientId,reportMonth).weeklyTotal : null;
+        if(weeklySnapshot!==null) revenue.weeklyTotal=weeklySnapshot;
+      }
+      Object.keys(revenue).forEach(function(key){ if(revenue[key]===null) delete revenue[key]; });
       var rep={ type:type, client:client, period:period,
-        clientId: b.clientId || (state.currentClient?state.currentClient.id:null),
+        clientId: reportClientId,
         goal:document.getElementById("f-goal").value.trim(),
         channels:collectChannels(), updatedAt:Date.now() };
-      if(Object.keys(revenue).some(function(key){ return revenue[key]!==null; })) rep.revenue=revenue;
+      if(Object.keys(revenue).length) rep.revenue=revenue;
       else if(!hasRevenueInputs && b.revenue && typeof b.revenue==="object") rep.revenue=Object.assign({},b.revenue);
 
       if(type==="weekly"){

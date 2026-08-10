@@ -53,6 +53,17 @@ assert.deepStrictEqual(
 );
 
 assert.deepStrictEqual(
+  json(sandbox.revenueSummary([
+    { clientId:'c1', type:'weekly', period:'2026\uB144 8\uC6D4 1\uC8FC\uCC28', updatedAt:1, revenue:{weekly:1000000} },
+    { clientId:'c1', type:'weekly', period:'2026\uB144 8\uC6D4 4\uC8FC\uCC28', updatedAt:2, revenue:{weekly:400000} },
+    { clientId:'c1', type:'weekly', period:'2026\uB144 8\uC6D4 5\uC8FC\uCC28', updatedAt:3, revenue:{weekly:500000} }
+  ], 'c1', '2026-08')),
+  { weeklyByWeek:[1000000,null,null,900000], weeklyTotal:1900000,
+    monthlyOverride:null, previousMonth:null, displayTotal:1900000, hasRevenue:true },
+  'the finishing fifth weekly report must be included in the fourth chart slot and monthly total'
+);
+
+assert.deepStrictEqual(
   json(sandbox.revenueAxis(2180000)),
   { max:3000000, step:1000000, labels:[0,1000000,2000000,3000000] }
 );
@@ -135,6 +146,13 @@ assert.match(historicalMonthlySection, /330\uB9CC \uC6D0/,
 assert.doesNotMatch(historicalMonthlySection, /500\uB9CC \uC6D0/,
   'a newer monthly report must not rewrite an older report view');
 
+const sharedMonthlySection = sandbox.reportRevenueSection({
+  id:'shared-m1', clientId:'c1', type:'monthly', period:'2026\uB144 8\uC6D4',
+  revenue:{weeklyTotal:3180000}
+}, []);
+assert.match(sharedMonthlySection, /318\uB9CC \uC6D0/,
+  'a shared monthly report must render its embedded automatic weekly-total snapshot without loading other reports');
+
 const saveMatch = html.match(/(async function saveReport\(\)\{[\s\S]*?\r?\n  })\r?\n\r?\n  async function openReport/);
 assert.ok(saveMatch, 'saveReport must exist in index.html');
 
@@ -168,6 +186,8 @@ function saveSandbox(revenueValue, options = {}) {
   }
   const context = {
     parseRevenueWon: sandbox.parseRevenueWon,
+    reportMonthKey: sandbox.reportMonthKey,
+    revenueSummary: sandbox.revenueSummary,
     document: {
       getElementById(id) { return elements[id] || null; },
       querySelector(selector) {
@@ -176,7 +196,7 @@ function saveSandbox(revenueValue, options = {}) {
       }
     },
     state: {
-      editingBase: options.editingBase || {}, currentClient: { id: 'c1' }, reports: [],
+      editingBase: options.editingBase || {}, currentClient: { id: 'c1' }, reports: options.reports || [],
       currentReport: null, summaryMode: false, view: 'edit'
     },
     collectChannels() { return []; },
@@ -210,6 +230,13 @@ function saveSandbox(revenueValue, options = {}) {
   const populated = saveSandbox(' 1,250,000 ');
   await populated.context.saveReport();
   assert.deepStrictEqual(json(populated.stored[0].value.revenue), { weekly: 1250000 });
+
+  const monthlyWithWeeklySnapshot = saveSandbox('', {
+    type: 'monthly', reports: trendReports, previousValue: '', overrideValue: ''
+  });
+  await monthlyWithWeeklySnapshot.context.saveReport();
+  assert.deepStrictEqual(json(monthlyWithWeeklySnapshot.stored[0].value.revenue), { weeklyTotal: 3180000 },
+    'saving a monthly report must embed its current automatic weekly total for safe share-link rendering');
 
   const weeklyEditWithoutInput = saveSandbox(undefined, {
     includeRevenueInput: false,
