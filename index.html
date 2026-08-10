@@ -271,14 +271,36 @@
   .calendar-day.has-note::after{ content:""; display:block; width:6px; height:6px; margin-top:7px; border-radius:50%; background:var(--brand); }
   .calendar-day .date{ display:block; font-size:12px; font-weight:800; }
   .calendar-day .period{ display:block; margin-top:5px; color:var(--brand-dark); font-size:10px; font-weight:800; }
-  .workspace-columns{ display:grid; grid-template-columns:1.1fr .9fr; gap:16px; }
   .set-card{ border:1px solid var(--line); border-radius:12px; padding:13px; margin-bottom:9px; }
   .set-card h4{ margin:0 0 4px; font-size:14px; }
+  .checklist-head-actions{ display:flex; align-items:center; gap:8px; }
+  .set-collection-head{ align-items:flex-start; }
+  .set-empty{ border:1px dashed var(--line); border-radius:14px; padding:22px; text-align:center; background:#FAFBFC; }
+  .set-empty strong{ display:block; font-size:14px; margin-bottom:5px; }
+  .set-empty p{ margin:0 0 14px; font-size:12.5px; color:var(--ink-400); }
+  .set-editor-meta{ display:grid; grid-template-columns:1fr 1.4fr; gap:12px; margin-bottom:16px; }
+  .set-editor-meta label{ display:block; font-size:12px; font-weight:800; color:var(--ink-600); }
+  .set-editor-meta input{ width:100%; margin-top:6px; border:1px solid var(--line); border-radius:10px; padding:10px 12px; background:#FAFBFC; font-size:13.5px; }
+  .set-period-nav{ display:flex; gap:6px; padding:4px; margin-bottom:14px; border-radius:12px; background:#F2F4F6; overflow-x:auto; }
+  .set-period-nav button{ flex:1; min-width:70px; border:0; border-radius:9px; padding:8px 10px; background:transparent; color:var(--ink-500); font-size:12.5px; font-weight:800; }
+  .set-period-nav button.active{ background:#fff; color:var(--brand-dark); box-shadow:0 1px 4px rgba(15,23,42,.1); }
+  .set-day-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:10px; }
+  .set-day-card{ min-width:0; border:1px solid var(--line); border-radius:12px; padding:12px; background:#FAFBFC; }
+  .set-day-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px; }
+  .set-day-head strong{ font-size:13px; }
+  .set-day-empty{ padding:5px 0 9px; font-size:12px; color:var(--ink-400); }
+  .set-task-row{ display:flex; align-items:center; gap:6px; margin-bottom:7px; }
+  .set-task-row input{ min-width:0; flex:1; border:1px solid var(--line); border-radius:9px; padding:8px 9px; background:#fff; font-size:12.5px; }
+  .set-task-row .row-remove{ width:30px; height:30px; }
+  .set-legacy{ margin-bottom:14px; border:1px solid #DCE8FA; border-radius:12px; padding:12px; background:#F7FBFF; }
+  .set-legacy h4{ margin:0 0 3px; font-size:13px; }
+  .set-legacy p{ margin:0 0 9px; font-size:11.5px; color:var(--ink-400); }
+  .set-editor-actions{ display:flex; justify-content:flex-end; gap:8px; margin-top:16px; }
   .day-modal{ max-width:480px; }
   .day-task{ padding:8px 0; border-bottom:1px solid var(--line); font-size:13px; }
   .day-task.done{ color:var(--ink-400); text-decoration:line-through; }
   .day-note{ width:100%; min-height:104px; box-sizing:border-box; border:1px solid var(--line); border-radius:10px; padding:10px; font:inherit; resize:vertical; }
-  @media(max-width:640px){ .workspace-columns{ grid-template-columns:1fr; } .calendar-day{ min-height:60px; padding:7px; } .detail-tab{ padding:10px 7px; font-size:12px; } }
+  @media(max-width:640px){ .calendar-day{ min-height:60px; padding:7px; } .detail-tab{ padding:10px 7px; font-size:12px; } .set-editor-meta{ grid-template-columns:1fr; } .set-day-grid{ grid-template-columns:1fr; } }
   .check-ico{ flex:none; width:18px; height:18px; border-radius:6px; background:var(--brand-light); color:var(--brand-dark); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:800; margin-top:1px; }
 
   .fact-interp{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
@@ -507,6 +529,9 @@
     currentReport:null,
     editingClient:null,
     editingBase:null,
+    setCollectionOpen:false,
+    checklistSetDraft:null,
+    checklistSetPeriod:"1",
     summaryMode:false,
     readOnly:false
   };
@@ -952,16 +977,12 @@
   async function openClient(id){
     var cl=await getS("client:"+id);
     if(!cl){ showToast("업체 정보를 찾을 수 없습니다"); return; }
-    state.currentClient=cl; state.clientTab=null; state.calendarMonth=null; state.view="clientDetail"; render();
+    state.currentClient=cl; state.clientTab=null; state.calendarMonth=null; state.setCollectionOpen=false; state.checklistSetDraft=null; state.checklistSetPeriod="1"; state.view="clientDetail"; render();
   }
 
   /* ============ CLIENT DETAIL ============ */
   function defaultChecklistSets(){
-    return [{ id:"default-marketing", name:"기본 마케팅 온보딩", description:"신규 업체 첫 30일 기본 업무", items:[
-      {text:"업체 정보 및 목표 확인",week:"1"}, {text:"검색광고 및 키워드 세팅",week:"1"},
-      {text:"초기 성과 점검",week:"2"}, {text:"고객 피드백 확인",week:"3"},
-      {text:"월간 성과 리포트 준비",week:"4"}, {text:"다음 달 방향성 정리",week:"closing"}
-    ]}];
+    return [];
   }
   function periodLabel(period){ return period==="closing" ? "마무리" : period ? period+"주차" : "미배정"; }
   function isoDate(date){ return date.getFullYear()+"-"+String(date.getMonth()+1).padStart(2,"0")+"-"+String(date.getDate()).padStart(2,"0"); }
@@ -999,18 +1020,64 @@
     return '<div class="panel fade-in"><div class="panel-head"><div><h3 class="panel-title">'+y+'년 '+(m+1)+'월 일정 달력</h3><p class="panel-hint">날짜를 눌러 배정된 업무를 확인하고 특이사항을 기록하세요.</p></div><div class="report-actions"><button class="btn btn-ghost btn-sm" data-calendar-month="prev">‹ 이전</button><button class="btn btn-ghost btn-sm" data-calendar-month="next">다음 ›</button></div></div><div class="calendar-grid">'+labels+grid+'</div>'+(unassigned.length?'<div class="set-card" style="margin-top:16px"><h4>일정 미배정 업무</h4><div class="muted">아직 주차가 정해지지 않아 달력 날짜에는 배치되지 않았습니다.</div>'+unassigned.map(function(t){return '<div class="day-task">'+(t.done?"✓ ":"○ ")+esc(t.text)+'</div>';}).join("")+'</div>':"")+'</div>';
   }
   function checklistPanel(cl,tasks,done){
-    var taskHtml=tasks.length ? tasks.map(function(t){ return '<div class="check-row '+(t.done?"done":"")+'"><button class="check-box '+(t.done?"on":"")+'" data-toggle-work="'+esc(t.id)+'">✓</button><span class="check-week">'+esc(periodLabel(t.week))+'</span><span class="check-text">'+esc(t.text)+'</span><button class="check-del" data-del-work="'+esc(t.id)+'">×</button></div>'; }).join("") : '<div class="muted">세트를 적용하면 업체별 실행 목록이 만들어집니다.</div>';
-    var setHtml=state.checklistSets.map(function(s){ return '<div class="set-card"><h4>'+esc(s.name)+'</h4><div class="muted">'+esc(s.description||"")+' · '+(s.items||[]).length+'개 항목</div><button class="btn btn-ghost btn-sm" data-apply-set="'+esc(s.id)+'" style="margin-top:10px">현재 업체에 적용</button><button class="btn btn-plain btn-sm" data-edit-set="'+esc(s.id)+'" style="margin-top:10px">수정</button></div>'; }).join("");
-    return '<div class="workspace-columns"><div class="panel fade-in"><div class="panel-head"><h3 class="panel-title">현재 업체 업무</h3><span class="count muted">'+done+' / '+tasks.length+' 완료</span></div>'+taskHtml+'<div class="check-add"><input id="new-work-text" type="text" placeholder="업무를 직접 추가하세요" /><select id="new-work-week"><option value="">미배정</option><option value="1">1주차</option><option value="2">2주차</option><option value="3">3주차</option><option value="4">4주차</option><option value="closing">마무리</option></select><button class="btn btn-ghost btn-sm" data-add-task>추가</button></div></div><div class="panel fade-in"><div class="panel-head"><h3 class="panel-title">체크리스트 세트</h3><button class="btn btn-primary btn-sm" id="btn-new-set">+ 새 세트</button></div><p class="panel-hint">여기서 만든 세트는 모든 업체에서 사용할 수 있습니다.</p>'+setHtml+'</div></div>';
+    var taskHtml=tasks.length ? tasks.map(function(t){ var label=t.day ? t.day+"일차" : periodLabel(t.week); return '<div class="check-row '+(t.done?"done":"")+'"><button class="check-box '+(t.done?"on":"")+'" data-toggle-work="'+esc(t.id)+'">✓</button><span class="check-week">'+esc(label)+'</span><span class="check-text">'+esc(t.text)+'</span><button class="check-del" data-del-work="'+esc(t.id)+'">×</button></div>'; }).join("") : '<div class="muted">세트를 적용하거나 업무를 직접 추가하면 실행 목록이 만들어집니다.</div>';
+    var toggleLabel=state.setCollectionOpen ? "세트 닫기" : "체크리스트 세트";
+    var setPanel=state.setCollectionOpen ? checklistSetCollectionPanel() : "";
+    return '<div class="panel fade-in"><div class="panel-head"><h3 class="panel-title">현재 업체 업무</h3><div class="checklist-head-actions"><span class="count muted">'+done+' / '+tasks.length+' 완료</span><button class="btn btn-plain btn-sm" id="btn-toggle-sets" aria-expanded="'+(state.setCollectionOpen?"true":"false")+'">'+toggleLabel+'</button></div></div>'+taskHtml+'<div class="check-add"><input id="new-work-text" type="text" placeholder="업무를 직접 추가하세요" /><select id="new-work-week"><option value="">미배정</option><option value="1">1주차</option><option value="2">2주차</option><option value="3">3주차</option><option value="4">4주차</option><option value="closing">마무리</option></select><button class="btn btn-ghost btn-sm" data-add-task>추가</button></div></div>'+setPanel;
+  }
+  function checklistSetCollectionPanel(){
+    if(state.checklistSetDraft) return checklistSetEditorPanel();
+    var sets=state.checklistSets||[];
+    var body=sets.length ? sets.map(function(s){
+      var daily=(s.items||[]).filter(function(i){return dailyPeriod(Number(i.day));}).length;
+      var legacy=(s.items||[]).length-daily;
+      var detail=daily+"개 일별 업무"+(legacy?" · "+legacy+"개 기존 주차 업무":"");
+      return '<div class="set-card"><h4>'+esc(s.name)+'</h4><div class="muted">'+esc(s.description||"설명 없음")+' · '+detail+'</div><button class="btn btn-ghost btn-sm" data-apply-set="'+esc(s.id)+'" style="margin-top:10px">현재 업체에 적용</button><button class="btn btn-plain btn-sm" data-edit-set="'+esc(s.id)+'" style="margin-top:10px">수정</button></div>';
+    }).join("") : '<div class="set-empty"><strong>아직 만든 세트가 없습니다</strong><p>30일 동안 반복해서 사용할 업무를 날짜별로 정리해 보세요.</p><button class="btn btn-primary btn-sm" id="btn-empty-new-set">첫 세트 만들기</button></div>';
+    return '<div class="panel fade-in"><div class="panel-head set-collection-head"><div><h3 class="panel-title">체크리스트 세트</h3><p class="panel-hint">필요할 때 업체에 적용할 30일 업무 모음입니다.</p></div><button class="btn btn-primary btn-sm" id="btn-new-set">+ 새 세트</button></div>'+body+'</div>';
+  }
+  function checklistSetEditorPanel(){
+    var draft=state.checklistSetDraft, period=state.checklistSetPeriod||"1";
+    var nav='<div class="set-period-nav" aria-label="세트 기간"><button class="'+(period==="1"?"active":"")+'" data-set-period="1">1주차</button><button class="'+(period==="2"?"active":"")+'" data-set-period="2">2주차</button><button class="'+(period==="3"?"active":"")+'" data-set-period="3">3주차</button><button class="'+(period==="4"?"active":"")+'" data-set-period="4">4주차</button><button class="'+(period==="closing"?"active":"")+'" data-set-period="closing">마무리</button></div>';
+    var legacy=checklistSetLegacyRows(draft,period), days="";
+    if(period==="closing"){
+      days=checklistSetDayCard(draft,29,'data-set-day="29"')+checklistSetDayCard(draft,30,'data-set-day="30"');
+    }else{
+      var first=(Number(period)-1)*7+1;
+      for(var day=first;day<first+7;day++) days+=checklistSetDayCard(draft,day,'data-set-day="'+day+'"');
+    }
+    return '<div class="panel fade-in"><div class="panel-head"><div><h3 class="panel-title">'+(draft.id?"체크리스트 세트 수정":"새 체크리스트 세트")+'</h3><p class="panel-hint">각 날짜에는 업무를 원하는 만큼 추가하거나 비워둘 수 있습니다.</p></div></div><div class="set-editor-meta"><label>세트 이름<input id="set-editor-name" type="text" value="'+esc(draft.name||"")+'" placeholder="예: 신규 업체 30일 운영" /></label><label>설명<input id="set-editor-description" type="text" value="'+esc(draft.description||"")+'" placeholder="이 세트의 용도를 적어주세요" /></label></div>'+nav+legacy+'<div class="set-day-grid">'+days+'</div><div class="set-editor-actions"><button class="btn btn-plain btn-sm" id="btn-cancel-set-editor">취소</button><button class="btn btn-primary btn-sm" id="btn-save-set-editor">세트 저장</button></div></div>';
+  }
+  function checklistSetDayCard(draft,day,dayAttr){
+    var rows="";
+    (draft.items||[]).forEach(function(item,index){
+      if(Number(item.day)!==day) return;
+      rows+='<div class="set-task-row"><input type="text" data-set-item-text="'+index+'" value="'+esc(item.text||"")+'" placeholder="'+day+'일차 업무" /><button class="row-remove" data-remove-set-task="'+index+'" aria-label="'+day+'일차 업무 삭제">×</button></div>';
+    });
+    return '<section class="set-day-card" '+dayAttr+'><div class="set-day-head"><strong>'+day+'일차</strong><button class="btn btn-ghost btn-sm" data-add-set-task data-set-day-new="'+day+'">+ 업무</button></div>'+(rows||'<div class="set-day-empty">등록된 업무가 없습니다.</div>')+'</section>';
+  }
+  function checklistSetLegacyRows(draft,period){
+    var rows="";
+    (draft.items||[]).forEach(function(item,index){
+      if(item.day || String(item.week||"")!==period) return;
+      rows+='<div class="set-task-row"><input type="text" data-set-item-text="'+index+'" value="'+esc(item.text||"")+'" placeholder="기존 주차 업무" /><button class="row-remove" data-remove-set-task="'+index+'" aria-label="기존 주차 업무 삭제">×</button></div>';
+    });
+    return rows ? '<div class="set-legacy"><h4>기존 주차 단위 업무</h4><p>이전 방식으로 만든 항목입니다. 업체에 적용할 때도 주차 정보가 그대로 유지됩니다.</p>'+rows+'</div>' : "";
   }
   function bindCalendarPanel(cl){ app.querySelectorAll("[data-day]").forEach(function(b){ b.onclick=function(){ openDayModal(cl,b.getAttribute("data-day")); }; }); app.querySelectorAll("[data-calendar-month]").forEach(function(b){b.onclick=function(){var base=state.calendarMonth || monthKey(cl.startDate?new Date(cl.startDate+"T12:00:00"):new Date()); state.calendarMonth=calendarMonthShift(base,b.getAttribute("data-calendar-month")==="prev"?-1:1); renderClientWorkspace(cl);};}); }
   function bindChecklistPanel(cl){
     app.querySelectorAll("[data-toggle-work]").forEach(function(b){ b.onclick=function(){ var id=b.getAttribute("data-toggle-work"); (cl.checklist||[]).forEach(function(t){ if(t.id===id)t.done=!t.done; }); saveClientAndRefresh(cl); }; });
     app.querySelectorAll("[data-del-work]").forEach(function(b){ b.onclick=function(){ var id=b.getAttribute("data-del-work"); cl.checklist=(cl.checklist||[]).filter(function(t){return t.id!==id;}); saveClientAndRefresh(cl); }; });
     var add=document.querySelector("[data-add-task]"); if(add) add.onclick=function(){ var text=document.getElementById("new-work-text").value.trim(); if(!text){showToast("업무 내용을 입력하세요");return;} cl.checklist=cl.checklist||[]; cl.checklist.push({id:uid("ck"),text:text,week:document.getElementById("new-work-week").value,done:false}); saveClientAndRefresh(cl); };
+    var toggle=document.getElementById("btn-toggle-sets"); if(toggle) toggle.onclick=function(){ state.setCollectionOpen=!state.setCollectionOpen; if(!state.setCollectionOpen)state.checklistSetDraft=null; renderClientWorkspace(cl); };
     app.querySelectorAll("[data-apply-set]").forEach(function(b){ b.onclick=function(){ var set=state.checklistSets.filter(function(s){return s.id===b.getAttribute("data-apply-set");})[0]; if(!set)return; cl.checklist=(cl.checklist||[]).concat(cloneChecklistSet(set,function(){return uid("ck");})); saveClientAndRefresh(cl); showToast("체크리스트 세트를 적용했습니다"); }; });
-    var create=document.getElementById("btn-new-set"); if(create) create.onclick=function(){ editChecklistSet(); };
-    app.querySelectorAll("[data-edit-set]").forEach(function(b){ b.onclick=function(){ editChecklistSet(b.getAttribute("data-edit-set")); }; });
+    [document.getElementById("btn-new-set"),document.getElementById("btn-empty-new-set")].forEach(function(create){ if(create) create.onclick=function(){ openChecklistSetEditor(); }; });
+    app.querySelectorAll("[data-edit-set]").forEach(function(b){ b.onclick=function(){ openChecklistSetEditor(b.getAttribute("data-edit-set")); }; });
+    app.querySelectorAll("[data-set-period]").forEach(function(b){ b.onclick=function(){ syncChecklistSetEditor(); state.checklistSetPeriod=b.getAttribute("data-set-period"); renderClientWorkspace(cl); }; });
+    app.querySelectorAll("[data-add-set-task]").forEach(function(b){ b.onclick=function(){ syncChecklistSetEditor(); state.checklistSetDraft.items.push({day:Number(b.getAttribute("data-set-day-new")),text:""}); renderClientWorkspace(cl); }; });
+    app.querySelectorAll("[data-remove-set-task]").forEach(function(b){ b.onclick=function(){ syncChecklistSetEditor(); state.checklistSetDraft.items.splice(Number(b.getAttribute("data-remove-set-task")),1); renderClientWorkspace(cl); }; });
+    var cancel=document.getElementById("btn-cancel-set-editor"); if(cancel) cancel.onclick=function(){ state.checklistSetDraft=null; renderClientWorkspace(cl); };
+    var save=document.getElementById("btn-save-set-editor"); if(save) save.onclick=function(){ saveChecklistSetEditor(cl); };
   }
   function bindReportPanel(cl){
     var weekly=document.getElementById("btn-new-weekly"), monthly=document.getElementById("btn-new-monthly");
@@ -1025,13 +1092,44 @@
     layer.innerHTML='<div class="modal day-modal"><h3>'+esc(key)+' '+(period?"· "+periodLabel(period):"")+'</h3><p>이 날짜에 확인할 업체 업무입니다. 완료 상태는 체크리스트 화면에서 관리합니다.</p><div>'+ (tasks.length?tasks.map(function(t){return '<div class="day-task '+(t.done?"done":"")+'">'+(t.done?"✓ ":"○ ")+esc(t.text)+'</div>';}).join(""):'<div class="muted">배정된 업무가 없습니다.</div>') +(unassigned.length?'<div class="day-task"><b>일정 미배정 업무</b></div>'+unassigned.map(function(t){return '<div class="day-task '+(t.done?"done":"")+'">'+(t.done?"✓ ":"○ ")+esc(t.text)+'</div>';}).join(""):"")+'</div><label style="display:block;margin:18px 0 7px;font-size:13px;font-weight:800">특이사항 메모</label><textarea id="daily-note" class="day-note" placeholder="그날의 특이사항을 남겨주세요.">'+esc(existing)+'</textarea><div class="modal-actions" style="margin-top:12px"><button class="btn btn-plain" id="day-close">닫기</button><button class="btn btn-primary" id="day-save">메모 저장</button></div></div>';
     document.body.appendChild(layer); document.getElementById("day-close").onclick=function(){layer.remove();}; document.getElementById("day-save").onclick=async function(){cl.dailyNotes=cl.dailyNotes||{}; var note=document.getElementById("daily-note").value.trim(); if(note)cl.dailyNotes[key]=note; else delete cl.dailyNotes[key]; await saveClientAndRefresh(cl); layer.remove();};
   }
-  function editChecklistSet(id){
+  function openChecklistSetEditor(id){
     var set=id ? state.checklistSets.filter(function(s){return s.id===id;})[0] : null;
-    var name=prompt("체크리스트 세트 이름",set?set.name:""); if(name===null || !name.trim())return;
-    var description=prompt("세트 설명",set?set.description||"":""); if(description===null)return;
-    var raw=prompt("항목 입력 (한 줄에 하나, 형식: 주차|업무. 마무리도 가능)",set?(set.items||[]).map(function(i){return (i.week==="closing"?"마무리":i.week+"주차")+"|"+i.text;}).join("\n"):"1주차|업체 정보 확인\n2주차|성과 점검\n마무리|다음 달 계획"); if(raw===null)return;
-    var items=raw.split(/\r?\n/).map(function(line){var p=line.split("|"); var period=(p[0]||"").trim().replace("주차",""); period=period==="마무리"?"closing":period; return {week:["1","2","3","4","closing"].indexOf(period)>=0?period:"1",text:(p.slice(1).join("|")||"").trim()};}).filter(function(i){return i.text;});
-    if(!items.length){showToast("최소 한 개의 업무를 입력하세요");return;} if(set){set.name=name.trim();set.description=description.trim();set.items=items;}else state.checklistSets.push({id:uid("set"),name:name.trim(),description:description.trim(),items:items}); saveChecklistSets().then(function(){renderClientWorkspace(state.currentClient);});
+    if(id && !set){ showToast("체크리스트 세트를 찾을 수 없습니다"); return; }
+    state.setCollectionOpen=true;
+    state.checklistSetPeriod="1";
+    state.checklistSetDraft={
+      id:set?set.id:null,
+      name:set?set.name||"":"",
+      description:set?set.description||"":"",
+      items:set?(set.items||[]).map(function(item){return Object.assign({},item);}):[]
+    };
+    renderClientWorkspace(state.currentClient);
+  }
+  function syncChecklistSetEditor(){
+    var draft=state.checklistSetDraft;
+    if(!draft) return;
+    var name=document.getElementById("set-editor-name"), description=document.getElementById("set-editor-description");
+    if(name) draft.name=name.value;
+    if(description) draft.description=description.value;
+    app.querySelectorAll("[data-set-item-text]").forEach(function(input){
+      var item=draft.items[Number(input.getAttribute("data-set-item-text"))];
+      if(item) item.text=input.value;
+    });
+  }
+  async function saveChecklistSetEditor(cl){
+    syncChecklistSetEditor();
+    var draft=state.checklistSetDraft;
+    if(!draft || !draft.name.trim()){ showToast("세트 이름을 입력하세요"); return; }
+    var items=(draft.items||[]).filter(function(item){return (item.text||"").trim();}).map(function(item){
+      var copy=Object.assign({},item); copy.text=copy.text.trim(); return copy;
+    });
+    var saved={id:draft.id||uid("set"),name:draft.name.trim(),description:draft.description.trim(),items:items};
+    var existing=state.checklistSets.findIndex(function(set){return set.id===saved.id;});
+    if(existing>=0) state.checklistSets[existing]=saved; else state.checklistSets.push(saved);
+    await saveChecklistSets();
+    state.checklistSetDraft=null;
+    renderClientWorkspace(cl);
+    showToast("체크리스트 세트를 저장했습니다");
   }
   function renderClientDetail(cl){
     return renderClientWorkspace(cl);
