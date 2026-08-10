@@ -482,8 +482,10 @@
   function calendarTasksForDate(startDate,dateKey,tasks){
     var period=checklistPeriod(startDate,dateKey);
     if(!period) return [];
-    var start=new Date(startDate+"T12:00:00"), date=new Date(dateKey+"T12:00:00");
-    var day=Math.floor((date-start)/86400000)+1;
+    var startParts=startDate.split("-"), dateParts=dateKey.split("-");
+    var startOrdinal=Date.UTC(+startParts[0],+startParts[1]-1,+startParts[2]);
+    var dateOrdinal=Date.UTC(+dateParts[0],+dateParts[1]-1,+dateParts[2]);
+    var day=Math.floor((dateOrdinal-startOrdinal)/86400000)+1;
     return (tasks||[]).filter(function(task){
       var hasDay=task.day!==undefined && task.day!==null && task.day!=="";
       return hasDay ? Number(task.day)===day : String(task.week||"")===period;

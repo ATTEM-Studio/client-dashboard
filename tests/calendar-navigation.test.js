@@ -1,3 +1,5 @@
+process.env.TZ = 'America/New_York';
+
 const assert = require('assert');
 const fs = require('fs');
 const vm = require('vm');
@@ -37,6 +39,16 @@ assert.deepStrictEqual(
     { id: 'task-1', text: 'first task on day 3', day: 3, done: false, setId: 'set-daily' },
     { id: 'task-2', text: 'second task on day 3', day: 3, done: false, setId: 'set-daily' }
   ]
+);
+
+const dstTasks = [
+  { id: 'dst-day-2', text: 'day two task', day: 2, done: false },
+  { id: 'dst-day-3', text: 'day three task', day: 3, done: false }
+];
+assert.deepStrictEqual(
+  JSON.parse(JSON.stringify(sandbox.calendarTasksForDate('2026-03-07', '2026-03-09', dstTasks))),
+  [{ id: 'dst-day-3', text: 'day three task', day: 3, done: false }],
+  'calendar dates spanning the spring DST boundary must retain their ordinal day'
 );
 
 assert.deepStrictEqual(
