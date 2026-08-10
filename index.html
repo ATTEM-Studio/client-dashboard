@@ -430,6 +430,11 @@
     if(day<1 || day>30) return null;
     return day>28 ? "closing" : String(Math.ceil(day/7));
   }
+  function dailyPeriod(day){
+    var value=Number(day);
+    if(!isFinite(value) || Math.floor(value)!==value || value<1 || value>30) return null;
+    return value>28 ? "closing" : String(Math.ceil(value/7));
+  }
   function calendarMonthShift(key, amount){
     var p=/^(\d{4})-(\d{2})$/.exec(key||"");
     if(!p){ var now=new Date(); return now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0"); }
@@ -439,7 +444,12 @@
 
   function cloneChecklistSet(set, idFactory){
     return (set.items||[]).map(function(item){
-      return { id:idFactory(), text:item.text||"", week:item.week||"1", done:false, setId:set.id };
+      var day=Number(item.day), period=dailyPeriod(day);
+      var copy={ id:idFactory(), text:item.text||"", done:false, setId:set.id };
+      if(period) copy.day=day;
+      if(item.week) copy.week=item.week;
+      else if(!period) copy.week="1";
+      return copy;
     });
   }
   function computeDelta(v,c){
