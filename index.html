@@ -301,11 +301,22 @@
   .detail-tab.active{ color:var(--brand-dark); border-bottom-color:var(--brand); }
   .calendar-grid{ display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:7px; }
   .calendar-weekday{ text-align:center; color:var(--ink-400); font-size:11px; font-weight:800; padding:3px 0; }
-  .calendar-day{ min-height:76px; padding:9px; border:1px solid var(--line); background:#fff; border-radius:10px; text-align:left; cursor:pointer; color:var(--ink-700); }
-  .calendar-day.in-period{ border-color:#B7D5FF; background:#F7FBFF; }
+  .calendar-day{ position:relative; min-height:76px; padding:9px; border:1px solid var(--line); background:#fff; border-radius:10px; text-align:left; cursor:pointer; color:var(--ink-700); }
+  .calendar-day.period-1{ border-color:#60A5FA; background:#EFF6FF; }
+  .calendar-day.period-2{ border-color:#34D399; background:#ECFDF5; }
+  .calendar-day.period-3{ border-color:#A78BFA; background:#F5F3FF; }
+  .calendar-day.period-4{ border-color:#FBBF24; background:#FFFBEB; }
+  .calendar-day.period-closing{ border-color:#FB7185; background:#FFF1F2; }
+  .calendar-day.period-1 .period{ border:1px solid #93C5FD; background:#DBEAFE; color:#1E3A8A; }
+  .calendar-day.period-2 .period{ border:1px solid #6EE7B7; background:#D1FAE5; color:#065F46; }
+  .calendar-day.period-3 .period{ border:1px solid #C4B5FD; background:#EDE9FE; color:#5B21B6; }
+  .calendar-day.period-4 .period{ border:1px solid #FCD34D; background:#FEF3C7; color:#92400E; }
+  .calendar-day.period-closing .period{ border:1px solid #FDA4AF; background:#FFE4E6; color:#9F1239; }
+  .calendar-day.has-unfinished{ outline:2px solid #DC2626; outline-offset:-2px; }
+  .calendar-day.has-unfinished::before{ content:""; position:absolute; top:7px; right:7px; width:8px; height:8px; border-radius:50%; background:#DC2626; box-shadow:0 0 0 2px #fff; }
   .calendar-day.has-note::after{ content:""; display:block; width:6px; height:6px; margin-top:7px; border-radius:50%; background:var(--brand); }
   .calendar-day .date{ display:block; font-size:12px; font-weight:800; }
-  .calendar-day .period{ display:block; margin-top:5px; color:var(--brand-dark); font-size:10px; font-weight:800; }
+  .calendar-day .period{ display:inline-block; margin-top:5px; padding:2px 5px; border-radius:5px; font-size:10px; font-weight:800; }
   .set-card{ border:1px solid var(--line); border-radius:12px; padding:13px; margin-bottom:9px; }
   .set-card h4{ margin:0 0 4px; font-size:14px; }
   .checklist-head-actions{ display:flex; align-items:center; gap:8px; }
@@ -544,6 +555,20 @@
       var hasDay=task.day!==undefined && task.day!==null && task.day!=="";
       return hasDay ? Number(task.day)===day : String(task.week||"")===period;
     });
+  }
+  function contractLabel(client){
+    if(client && client.contractType==="renewal"){
+      var count=Number(client.renewalCount);
+      return "재계약 "+(Number.isInteger(count)&&count>0 ? count : 1)+"회차";
+    }
+    return "신규";
+  }
+  function calendarPeriodClass(period){
+    var value=String(period||"");
+    return value==="closing" ? "period-closing" : /^[1-4]$/.test(value) ? "period-"+value : "";
+  }
+  function calendarDateHasUnfinishedTasks(startDate,dateKey,tasks){
+    return calendarTasksForDate(startDate,dateKey,tasks).some(function(task){ return task.done!==true; });
   }
   function parseRevenueWon(raw){
     var text=String(raw==null?"":raw).replace(/[\s,]/g,"");
@@ -899,7 +924,6 @@
       '<div class="hero">'+
         '<p class="eyebrow">'+esc(monthLabel(state.month))+' 기준</p>'+
         '<h1>이번 달 어디까지 진행됐는지 한눈에</h1>'+
-        '<p class="sub">업체별 주차 진행 상황과 신규·재계약 현황을 확인하고, 업체를 선택해 리포트와 체크리스트를 관리하십시오.</p>'+
       '</div>'+
       '<div class="monthbar">'+
         '<button class="mb-arrow" data-month-shift="-1">‹</button>'+
@@ -976,9 +1000,7 @@
               '<div class="day-progress-track"><div class="day-progress-fill" style="width:'+day.percent+'%"></div></div>'+
               '<div class="day-progress-weeks"><span>1주차<small>1일–7일</small></span><span>2주차<small>8일–14일</small></span><span>3주차<small>15일–21일</small></span><span>4주차<small>22일–28일</small></span><span>5주차<small>29일–30일</small></span></div>'+
             '</div>';
-        var tags="";
-        if(isNewIn(c,mk)) tags+='<span class="tag tag-new">신규</span>';
-        if(renewalsIn(c,mk)) tags+='<span class="tag tag-renew">재계약</span>';
+        var tags='<span class="tag '+(c.contractType==="renewal"?'tag-renew':'tag-new')+'">'+esc(contractLabel(c))+'</span>';
         if(c.status==="paused") tags+='<span class="tag tag-paused">일시중지</span>';
         if(c.status==="ended") tags+='<span class="tag tag-ended">종료</span>';
         var end=contractEndKey(c);
@@ -1239,7 +1261,7 @@
     var first=new Date(y,m,1), days=new Date(y,m+1,0).getDate(), blanks=first.getDay();
     var labels=["일","월","화","수","목","금","토"].map(function(x){ return '<div class="calendar-weekday">'+x+'</div>'; }).join("");
     var grid=Array(blanks+1).join('<div></div>');
-    for(var d=1;d<=days;d++){ var date=new Date(y,m,d), key=isoDate(date), period=checklistPeriod(cl.startDate,key), note=(cl.dailyNotes||{})[key]; grid+='<button class="calendar-day '+(period?"in-period ":"")+(note?"has-note":"")+'" data-day="'+key+'"><span class="date">'+d+'</span>'+(period?'<span class="period">'+periodLabel(period)+'</span>':"")+'</button>'; }
+    for(var d=1;d<=days;d++){ var date=new Date(y,m,d), key=isoDate(date), period=checklistPeriod(cl.startDate,key), periodClass=calendarPeriodClass(period), unfinished=calendarDateHasUnfinishedTasks(cl.startDate,key,cl.checklist), note=(cl.dailyNotes||{})[key]; grid+='<button class="calendar-day '+periodClass+(unfinished?' has-unfinished':'')+(note?' has-note':'')+'" data-day="'+key+'"><span class="date">'+d+'</span>'+(period?'<span class="period">'+periodLabel(period)+'</span>':"")+'</button>'; }
     var unassigned=calendarUnassignedTasks(cl.checklist);
     return '<div class="panel fade-in"><div class="panel-head"><div><h3 class="panel-title">'+y+'년 '+(m+1)+'월 일정 달력</h3><p class="panel-hint">날짜를 눌러 배정된 업무를 확인하고 특이사항을 기록하세요.</p></div><div class="report-actions"><button class="btn btn-ghost btn-sm" data-calendar-month="prev">‹ 이전</button><button class="btn btn-ghost btn-sm" data-calendar-month="next">다음 ›</button></div></div><div class="calendar-grid">'+labels+grid+'</div>'+(unassigned.length?'<div class="set-card" style="margin-top:16px"><h4>일정 미배정 업무</h4><div class="muted">아직 주차가 정해지지 않아 달력 날짜에는 배치되지 않았습니다.</div>'+unassigned.map(function(t){return '<div class="day-task">'+(t.done?"✓ ":"○ ")+esc(t.text)+'</div>';}).join("")+'</div>':"")+'</div>';
   }
@@ -1539,6 +1561,8 @@
   async function markRenewal(id){
     var cl=await getS("client:"+id);
     if(!cl) return;
+    var renewalCount=Number(cl.renewalCount);
+    cl.renewalCount=Number.isInteger(renewalCount)&&renewalCount>0 ? renewalCount+1 : 1;
     cl.renewals=cl.renewals||[];
     if(cl.renewals.indexOf(state.month)===-1) cl.renewals.push(state.month);
     cl.contractType="renewal";
