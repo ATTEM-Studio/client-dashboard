@@ -196,9 +196,13 @@ function parseStoredGuide(value, guideId) {
       guide.id !== guideId || typeof guide.clientId !== "string" ||
       !Number.isFinite(guide.createdAt) || !Number.isFinite(guide.updatedAt) ||
       (guide.submittedAt !== null && !Number.isFinite(guide.submittedAt)) ||
-      !guide.answers || typeof guide.answers !== "object" || Array.isArray(guide.answers)
+      !guide.answers || typeof guide.answers !== "object"
     ) {
       return null;
+    }
+    if (Array.isArray(guide.answers)) {
+      if (guide.answers.length) return null;
+      guide.answers = {};
     }
     return guide;
   } catch {

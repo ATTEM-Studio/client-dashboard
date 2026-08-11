@@ -78,6 +78,19 @@ test('unauthenticated GET accepts an exact high-entropy guide key but generic PO
   assert.strictEqual(write.calls.length, 0);
 });
 
+test('guide GET treats Redis JSON empty answer arrays as empty answer objects', async () => {
+  const read = await requestApi({
+    method: 'GET', query: { key: validGuideKey },
+    storageResult: JSON.stringify({
+      id: 'guide_abcdefghijklmnopqrstuvwx', clientId: 'client-one',
+      createdAt: 100, updatedAt: 100, submittedAt: null, answers: []
+    })
+  });
+
+  assert.strictEqual(read.response.statusCode, 200);
+  assert.deepStrictEqual(JSON.parse(read.response.body.value).answers, {});
+});
+
 test('public guide API strips internal review data from reads', async () => {
   const publicDocument = {
     id: 'guide_abcdefghijklmnopqrstuvwx', clientId: 'client-one',
