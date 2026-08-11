@@ -114,6 +114,71 @@ test('internal guide review keys require authentication for reads and writes', a
   assert.strictEqual(authenticatedWrite.response.statusCode, 200);
 });
 
+test('authenticated guide issuance reservation atomically returns one stored guide to concurrent callers', async () => {
+  const redisStore = new Map();
+  const previousFetch = global.fetch;
+  let setNxCalls = 0;
+  global.fetch = async (url, options = {}) => {
+    if (url === 'https://redis.example.test' && options.method === 'POST') {
+      const command = JSON.parse(options.body);
+      assert.strictEqual(command[0], 'SET');
+      assert.strictEqual(command[1], 'rs:guide-issue:client-one');
+      assert.strictEqual(command[3], 'NX');
+      setNxCalls += 1;
+      await new Promise((resolve) => setImmediate(resolve));
+      if (redisStore.has(command[1])) {
+        return { ok: true, async json() { return { result: null }; }, async text() { return ''; } };
+      }
+      redisStore.set(command[1], command[2]);
+      return { ok: true, async json() { return { result: 'OK' }; }, async text() { return ''; } };
+    }
+
+    const parsed = new URL(url);
+    const path = parsed.pathname.split('/').filter(Boolean).map(decodeURIComponent);
+    assert.deepStrictEqual(path, ['get', 'rs:guide-issue:client-one']);
+    return {
+      ok: true,
+      async json() { return { result: redisStore.get('rs:guide-issue:client-one') ?? null }; },
+      async text() { return ''; }
+    };
+  };
+
+  const firstResponse = responseDouble();
+  const secondResponse = responseDouble();
+  const request = {
+    method: 'POST', headers: { 'x-team-token': 'team-secret' },
+    body: { operation: 'reserve-guide-issue', clientId: 'client-one' }, query: {}
+  };
+  try {
+    const unauthenticatedResponse = responseDouble();
+    await dataApi({ ...request, headers: {} }, unauthenticatedResponse);
+    assert.strictEqual(unauthenticatedResponse.statusCode, 401);
+    assert.strictEqual(setNxCalls, 0);
+
+    await Promise.all([
+      dataApi({ ...request }, firstResponse),
+      dataApi({ ...request }, secondResponse)
+    ]);
+  } finally {
+    global.fetch = previousFetch;
+  }
+
+  assert.strictEqual(firstResponse.statusCode, 200);
+  assert.strictEqual(secondResponse.statusCode, 200);
+  assert.strictEqual(setNxCalls, 2);
+  assert.strictEqual(redisStore.size, 1);
+  assert.deepStrictEqual(
+    [firstResponse.body.created, secondResponse.body.created].sort(),
+    [false, true]
+  );
+  assert.strictEqual(firstResponse.body.reservation.guide.id, secondResponse.body.reservation.guide.id);
+  assert.match(firstResponse.body.reservation.guide.id, /^guide_[A-Za-z0-9_-]{24,}$/);
+  assert.deepStrictEqual(
+    JSON.parse(redisStore.get('rs:guide-issue:client-one')),
+    firstResponse.body.reservation
+  );
+});
+
 test('malformed, short, and bare guide keys never reach storage without authentication', async () => {
   const malformedKeys = [
     'guide:',
@@ -470,11 +535,20 @@ test('manual issuance re-reads the client and stores public guide, private revie
   const storage = new Map([
     ['client:client-one', { id: 'client-one', name: '저장소의 최신 업체명', checklist: [{ id: 'task-one' }], memo: '유지할 메모' }]
   ]);
+  const reservedGuide = { id: 'guide_once', clientId: 'client-one', createdAt: 100, updatedAt: 100, submittedAt: null, answers: {} };
+  let creations = 0;
+  let reservations = 0;
   const sandbox = {
     Object,
     async getS(key) { return storage.has(key) ? JSON.parse(JSON.stringify(storage.get(key))) : null; },
     newGuide(clientId) {
+      creations += 1;
       return { id: 'guide_once', clientId, createdAt: 100, updatedAt: 100, submittedAt: null, answers: {} };
+    },
+    async reserveGuideIssue(clientId) {
+      assert.strictEqual(clientId, 'client-one');
+      reservations += 1;
+      return { guide: JSON.parse(JSON.stringify(reservedGuide)) };
     },
     newGuideReview(guide) {
       return { guideId: guide.id, clientId: guide.clientId, status: 'unreviewed', memo: '' };
@@ -491,9 +565,11 @@ test('manual issuance re-reads the client and stores public guide, private revie
   const guide = await sandbox.issueGuideForClient(client);
   assert.strictEqual(guide.id, 'guide_once');
   assert.deepStrictEqual(writes.map((write) => write.key), [
-    'guide-issue:client-one', 'guide:guide_once', 'guide-review:guide_once', 'client:client-one'
+    'guide:guide_once', 'guide-review:guide_once', 'client:client-one'
   ]);
-  const linkedClient = writes[3].value;
+  assert.strictEqual(reservations, 1);
+  assert.strictEqual(creations, 0);
+  const linkedClient = writes[2].value;
   assert.strictEqual(linkedClient.guideId, 'guide_once');
   assert.strictEqual(linkedClient.name, '저장소의 최신 업체명');
   assert.deepStrictEqual(linkedClient.checklist, [{ id: 'task-one' }]);
@@ -511,6 +587,7 @@ test('a stale client session loads the already-issued guide instead of replacing
     Object,
     newGuide() { creations += 1; return { id: 'guide_replacement' }; },
     newGuideReview() { throw new Error('existing issuance must not create review data'); },
+    async reserveGuideIssue() { throw new Error('stored guideId must win before reservation'); },
     async getS(key) {
       if (key === 'client:client-one') return { id: 'client-one', name: '최신 업체', guideId: 'guide_existing' };
       if (key === 'guide:guide_existing') return existingGuide;
@@ -535,13 +612,23 @@ test('a partial issuance retry reuses the recovery marker and never creates a se
   ]);
   const writes = [];
   let creations = 0;
+  let reservations = 0;
   let failClientLink = true;
+  const reservedGuide = {
+    id: 'guide_recoverable', clientId: 'client-one', createdAt: 100, updatedAt: 100,
+    submittedAt: null, answers: {}
+  };
   const sandbox = {
     Object,
     async getS(key) { return storage.has(key) ? JSON.parse(JSON.stringify(storage.get(key))) : null; },
     newGuide(clientId) {
       creations += 1;
-      return { id: 'guide_recoverable', clientId, createdAt: 100, updatedAt: 100, submittedAt: null, answers: {} };
+      return { ...reservedGuide, clientId };
+    },
+    async reserveGuideIssue(clientId) {
+      assert.strictEqual(clientId, 'client-one');
+      reservations += 1;
+      return { guide: JSON.parse(JSON.stringify(reservedGuide)) };
     },
     newGuideReview(guide) {
       return { guideId: guide.id, clientId: guide.clientId, status: 'unreviewed', memo: '' };
@@ -564,9 +651,77 @@ test('a partial issuance retry reuses the recovery marker and never creates a se
   const retried = await sandbox.issueGuideForClient(client);
   assert.strictEqual(retried.id, 'guide_recoverable');
   assert.strictEqual(client.guideId, 'guide_recoverable');
-  assert.strictEqual(creations, 1);
+  assert.strictEqual(reservations, 2);
+  assert.strictEqual(creations, 0);
   assert.strictEqual(writes.filter((write) => write.key === 'guide:guide_recoverable').length, 1);
   assert.strictEqual(storage.get('client:client-one').guideId, 'guide_recoverable');
+});
+
+test('concurrent stale sessions reuse one atomic reservation and store no orphan public guide', async () => {
+  const issuerMatch = html.match(/(async function issueGuideForClient[\s\S]*?)(?=\n  async function saveGuideReview)/);
+  assert.ok(issuerMatch, 'issueGuideForClient must be independently testable');
+  const storage = new Map([
+    ['client:client-one', { id: 'client-one', name: '업체' }]
+  ]);
+  const writes = [];
+  let creations = 0;
+  let reservationCalls = 0;
+  let openReservationGate;
+  const reservationGate = new Promise((resolve) => { openReservationGate = resolve; });
+  const reservedGuide = {
+    id: 'guide_atomic_reservation_1234567890', clientId: 'client-one',
+    createdAt: 100, updatedAt: 100, submittedAt: null, answers: {}
+  };
+  const sandbox = {
+    Object,
+    async getS(key) {
+      if (key === 'client:client-one' && !storage.get(key).guideId) {
+        await new Promise((resolve) => setImmediate(resolve));
+      }
+      return storage.has(key) ? JSON.parse(JSON.stringify(storage.get(key))) : null;
+    },
+    newGuide(clientId) {
+      creations += 1;
+      return {
+        id: `guide_orphan_${creations}_abcdefghijklmnopqrstuvwx`, clientId,
+        createdAt: 100, updatedAt: 100, submittedAt: null, answers: {}
+      };
+    },
+    async reserveGuideIssue(clientId) {
+      assert.strictEqual(clientId, 'client-one');
+      reservationCalls += 1;
+      if (reservationCalls === 2) openReservationGate();
+      await reservationGate;
+      return { guide: JSON.parse(JSON.stringify(reservedGuide)) };
+    },
+    newGuideReview(guide) {
+      return { guideId: guide.id, clientId: guide.clientId, status: 'unreviewed', memo: '' };
+    },
+    async setS(key, value) {
+      writes.push({ key, value: JSON.parse(JSON.stringify(value)) });
+      storage.set(key, JSON.parse(JSON.stringify(value)));
+      return { key };
+    }
+  };
+  vm.runInNewContext(issuerMatch[1], sandbox);
+
+  const firstClient = { id: 'client-one', name: '첫 세션' };
+  const secondClient = { id: 'client-one', name: '둘째 세션' };
+  const [firstGuide, secondGuide] = await Promise.all([
+    sandbox.issueGuideForClient(firstClient),
+    sandbox.issueGuideForClient(secondClient)
+  ]);
+
+  assert.strictEqual(firstGuide.id, reservedGuide.id);
+  assert.strictEqual(secondGuide.id, reservedGuide.id);
+  assert.strictEqual(firstClient.guideId, reservedGuide.id);
+  assert.strictEqual(secondClient.guideId, reservedGuide.id);
+  assert.strictEqual(creations, 0);
+  assert.strictEqual(reservationCalls, 2);
+  assert.deepStrictEqual(
+    [...new Set(writes.filter((write) => write.key.startsWith('guide:')).map((write) => write.key))],
+    [`guide:${reservedGuide.id}`]
+  );
 });
 
 test('saving an internal review writes only the authenticated review document', async () => {

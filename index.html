@@ -524,6 +524,20 @@
       }
       return { key: key, value: value };
     },
+    async reserveGuideIssue(clientId){
+      var res = await fetch("/api/data", {
+        method: "POST",
+        headers: Object.assign({ "Content-Type": "application/json" }, authHeaders()),
+        body: JSON.stringify({ operation: "reserve-guide-issue", clientId: clientId })
+      });
+      if (res.status === 401) { forceLogout(); throw new Error("unauthorized"); }
+      if (!res.ok) {
+        var e = await res.json().catch(function(){ return {}; });
+        throw new Error(e.error || ("guide reservation failed " + res.status));
+      }
+      var data = await res.json();
+      return data.reservation || null;
+    },
     async delete(key){
       var res = await fetch("/api/data?key=" + encodeURIComponent(key), {
         method: "DELETE", headers: authHeaders()
@@ -901,6 +915,7 @@
   async function getS(k){ try{ var r=await storageBackend.get(k,true); return r&&r.value?JSON.parse(r.value):null; }catch(e){ return null; } }
   async function setS(k,v){ try{ return await storageBackend.set(k,JSON.stringify(v),true); }catch(e){ console.error(e); return null; } }
   async function delS(k){ try{ return await storageBackend.delete(k,true); }catch(e){ return null; } }
+  async function reserveGuideIssue(clientId){ try{ return await storageBackend.reserveGuideIssue(clientId); }catch(e){ console.error(e); return null; } }
 
   /* ============ public client information guide ============ */
   var publicGuideSaveChain=Promise.resolve(true);
@@ -1664,14 +1679,9 @@
       client.guideId=storedClient.guideId;
       return await getS("guide:"+storedClient.guideId);
     }
-    var issueKey="guide-issue:"+client.id;
-    var marker=await getS(issueKey);
-    var guide=marker&&marker.guide&&marker.guide.clientId===client.id?marker.guide:null;
-    if(!guide){
-      guide=newGuide(client.id);
-      var markerSaved=await setS(issueKey,{guide:guide});
-      if(!markerSaved) return null;
-    }
+    var reservation=await reserveGuideIssue(client.id);
+    var guide=reservation&&reservation.guide&&reservation.guide.clientId===client.id?reservation.guide:null;
+    if(!guide) return null;
     var storedGuide=await getS("guide:"+guide.id);
     if(storedGuide){
       guide=storedGuide;

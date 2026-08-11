@@ -5,6 +5,8 @@
 // 직접 설정해야 하는 환경변수:
 //   TEAM_PASSWORD  — 팀원이 대시보드에 접속할 때 입력하는 공용 비밀번호
 
+const crypto = require("crypto");
+
 const PREFIX = "rs:";
 
 function redisEnv() {
@@ -26,6 +28,26 @@ async function redis(command, pathParts, body) {
       ...(body === undefined ? {} : { "Content-Type": "text/plain" }),
     },
     ...(body === undefined ? {} : { body }),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`REDIS_ERROR ${res.status} ${text}`);
+  }
+  return res.json();
+}
+
+async function redisCommand(parts) {
+  const { url, token } = redisEnv();
+  if (!url || !token) {
+    throw new Error("REDIS_NOT_CONFIGURED");
+  }
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(parts),
   });
   if (!res.ok) {
     const text = await res.text().catch(() => "");
@@ -62,6 +84,31 @@ const PUBLIC_GUIDE_ANSWER_FIELDS = [
   "story", "contentTone", "avoidExpressions", "materialStatus", "approverName",
   "approverContact", "operatingNotes",
 ];
+
+function newGuideIssueReservation(clientId) {
+  const now = Date.now();
+  const answers = {};
+  for (const field of PUBLIC_GUIDE_ANSWER_FIELDS) answers[field] = "";
+  return {
+    guide: {
+      id: `guide_${crypto.randomBytes(24).toString("hex")}`,
+      clientId,
+      createdAt: now,
+      updatedAt: now,
+      submittedAt: null,
+      answers,
+    },
+  };
+}
+
+function isValidGuideIssueReservation(value, clientId) {
+  return Boolean(
+    value && typeof value === "object" && !Array.isArray(value) &&
+    value.guide && typeof value.guide === "object" && !Array.isArray(value.guide) &&
+    typeof value.guide.id === "string" && /^guide_[A-Za-z0-9_-]{24,}$/.test(value.guide.id) &&
+    value.guide.clientId === clientId
+  );
+}
 
 function sanitizePublicGuideValue(value) {
   try {
@@ -119,6 +166,30 @@ module.exports = async (req, res) => {
       let body = req.body;
       if (typeof body === "string") {
         try { body = JSON.parse(body); } catch { body = {}; }
+      }
+      if (body && body.operation === "reserve-guide-issue") {
+        if (!isAuthed(req)) {
+          return res.status(401).json({ error: "?몄쬆???꾩슂?⑸땲??" });
+        }
+        const clientId = body.clientId;
+        if (typeof clientId !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(clientId)) {
+          return res.status(400).json({ error: "clientId ?뺤떇???щ컮瑜댁? ?딆뒿?덈떎" });
+        }
+
+        const issueKey = PREFIX + "guide-issue:" + clientId;
+        const candidate = newGuideIssueReservation(clientId);
+        const created = await redisCommand(["SET", issueKey, JSON.stringify(candidate), "NX"]);
+        if (created.result === "OK") {
+          return res.status(200).json({ reservation: candidate, created: true });
+        }
+
+        const existingResult = await redis("get", [issueKey]);
+        let reservation = null;
+        try { reservation = JSON.parse(existingResult.result); } catch {}
+        if (!isValidGuideIssueReservation(reservation, clientId)) {
+          throw new Error("GUIDE_ISSUE_RESERVATION_INVALID");
+        }
+        return res.status(200).json({ reservation, created: false });
       }
       const { key, value } = body || {};
       if (!isAuthed(req) && !isPublicWritable(key)) {
