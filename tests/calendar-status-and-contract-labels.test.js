@@ -176,6 +176,11 @@ async function main() {
   };
   const transformed = renewalTransformationSandbox.buildRenewalClient(renewalClient, '2026-09-14', set);
   assert.strictEqual(renewalTransformationSandbox.contractEndDate(renewalClient), '2026-09-09');
+  assert.strictEqual(
+    renewalTransformationSandbox.contractEndDate(Object.assign({}, renewalClient, { contractMonths: 'abc' })),
+    '2026-09-09',
+    'non-numeric contract months must default to one month'
+  );
   assert.strictEqual(transformed.contractType, 'renewal');
   assert.strictEqual(transformed.renewalCount, 1);
   assert.strictEqual(transformed.startDate, '2026-09-14');

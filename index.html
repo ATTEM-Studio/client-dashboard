@@ -671,7 +671,8 @@
   }
   function contractEndDate(client){
     if(!client || !client.startDate) return "";
-    var months=Math.max(1,Number(client.contractMonths||1));
+    var months=Number(client.contractMonths||1);
+    if(!Number.isFinite(months) || months<1) months=1;
     var parts=parseIsoDateParts(client.startDate);
     if(!parts) return "";
     var date=new Date(Date.UTC(parts.y,parts.m-1,parts.d));
