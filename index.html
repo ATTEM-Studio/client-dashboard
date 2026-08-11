@@ -457,6 +457,65 @@
 
   /* ============ utils ============ */
   function uid(p){ return (p||"id")+"_"+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+  function newGuide(clientId){
+    var bytes=new Uint8Array(24);
+    crypto.getRandomValues(bytes);
+    var id="guide_"+Array.prototype.map.call(bytes,function(byte){return byte.toString(16).padStart(2,"0");}).join("");
+    var now=Date.now();
+    return {
+      id:id, clientId:clientId, createdAt:now, updatedAt:now, submittedAt:null,
+      answers:{
+        concern:"", goal:"", priorityMenu:"", currentCustomers:"", desiredCustomers:"",
+        strengths:"", story:"", contentTone:"", avoidExpressions:"", materialStatus:"",
+        approverName:"", approverContact:"", operatingNotes:""
+      },
+      review:{status:"unreviewed",memo:""}
+    };
+  }
+  function guideSummary(answers){
+    var source=answers&&typeof answers==="object"?answers:{};
+    return [
+      ["goal","최우선 마케팅 목표"],
+      ["priorityMenu","우선 홍보 메뉴"],
+      ["desiredCustomers","유치하고 싶은 고객"],
+      ["strengths","매장 핵심 강점"],
+      ["story","꼭 알리고 싶은 이야기"]
+    ].map(function(field){
+      return {label:field[1],value:String(source[field[0]]==null?"":source[field[0]]).trim()};
+    }).filter(function(item){return item.value!=="";});
+  }
+  function guideFollowUps(answers){
+    var source=answers&&typeof answers==="object"?answers:{};
+    var fields=[
+      ["concern","현재 매장의 가장 큰 고민"],
+      ["goal","최우선 마케팅 목표"],
+      ["priorityMenu","우선 홍보 메뉴"],
+      ["currentCustomers","현재 주요 고객"],
+      ["desiredCustomers","유치하고 싶은 고객"],
+      ["strengths","매장 핵심 강점"],
+      ["story","꼭 알리고 싶은 이야기"],
+      ["contentTone","원하는 콘텐츠 분위기"],
+      ["avoidExpressions","피하고 싶은 표현"],
+      ["approverName","검수 및 승인 담당자 이름"],
+      ["approverContact","검수 및 승인 담당자 연락 수단"],
+      ["operatingNotes","운영 시 주의사항"]
+    ];
+    var result=[];
+    fields.forEach(function(field){
+      if(Object.prototype.hasOwnProperty.call(source,field[0]) && !String(source[field[0]]==null?"":source[field[0]]).trim()) result.push(field[1]);
+    });
+    if(Object.prototype.hasOwnProperty.call(source,"materialStatus")){
+      var materialStatus=String(source.materialStatus==null?"":source.materialStatus).trim();
+      if(!materialStatus) result.push("보유 사진·영상 자료 상태");
+      else if(materialStatus==="별도 전달 예정") result.push("자료 별도 전달 확인");
+    }
+    return result;
+  }
+  function guideStatus(guide){
+    if(guide&&guide.submittedAt!==null&&guide.submittedAt!==undefined) return "submitted";
+    if(guide&&Number(guide.updatedAt)>Number(guide.createdAt)) return "draft";
+    return "not_started";
+  }
   function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
   function toNum(v){ if(v==null) return NaN; return parseFloat(String(v).replace(/,/g,"").trim()); }
   function fmtDate(ts){ if(!ts) return ""; var d=new Date(ts); return d.getFullYear()+"."+String(d.getMonth()+1).padStart(2,"0")+"."+String(d.getDate()).padStart(2,"0"); }

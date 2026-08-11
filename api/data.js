@@ -43,9 +43,17 @@ function isAuthed(req) {
   return given === expected;
 }
 
-// 리포트는 링크 공유를 위해 인증 없이 읽기 허용
+function isPublicGuideKey(key) {
+  return typeof key === "string" && /^guide:guide_[A-Za-z0-9_-]{24,}$/.test(key);
+}
+
+// 리포트와 고엔트로피 안내문 링크는 인증 없이 읽기 허용
 function isPublicReadable(key) {
-  return typeof key === "string" && key.startsWith("report:");
+  return typeof key === "string" && (key.startsWith("report:") || isPublicGuideKey(key));
+}
+
+function isPublicWritable(key) {
+  return isPublicGuideKey(key);
 }
 
 module.exports = async (req, res) => {
@@ -74,12 +82,14 @@ module.exports = async (req, res) => {
     }
 
     if (method === "POST") {
-      if (!isAuthed(req)) return res.status(401).json({ error: "인증이 필요합니다" });
       let body = req.body;
       if (typeof body === "string") {
         try { body = JSON.parse(body); } catch { body = {}; }
       }
       const { key, value } = body || {};
+      if (!isAuthed(req) && !isPublicWritable(key)) {
+        return res.status(401).json({ error: "인증이 필요합니다" });
+      }
       if (!key || typeof value !== "string") {
         return res.status(400).json({ error: "key와 문자열 value가 필요합니다" });
       }
