@@ -477,6 +477,13 @@
   .guide-save-row[data-state="saved"]{ color:#0B8F55; }
   .guide-save-row[data-state="failed"]{ color:var(--stop); }
   .guide-retry{ border:0; border-radius:8px; padding:6px 9px; background:var(--stop-light); color:var(--stop); font-size:11.5px; font-weight:800; }
+  .contract-readonly-card{ display:grid; gap:10px; padding:16px; border:1px solid rgba(229,232,235,.95); border-radius:18px; background:linear-gradient(180deg,#fff,#FAFBFF); box-shadow:0 10px 24px rgba(25,31,40,.05); }
+  .contract-readonly-row{ display:flex; justify-content:space-between; gap:14px; padding:11px 0; border-bottom:1px solid rgba(229,232,235,.72); }
+  .contract-readonly-row:last-child{ border-bottom:0; }
+  .contract-readonly-label{ color:var(--ink-500); font-size:12.5px; font-weight:800; }
+  .contract-readonly-value{ max-width:68%; color:var(--ink); font-size:14px; font-weight:800; text-align:right; line-height:1.45; white-space:pre-wrap; }
+  .contract-readonly-terms{ margin-top:12px; padding:15px; border-radius:16px; background:#F8FAFC; color:var(--ink-700); font-size:13px; line-height:1.7; white-space:pre-wrap; }
+  .contract-public-inputs{ margin-top:16px; padding-top:6px; }
   .guide-actions{ position:sticky; bottom:0; display:flex; gap:9px; padding:14px 20px 20px; border-top:1px solid var(--line); background:rgba(255,255,255,.96); backdrop-filter:blur(10px); }
   .guide-actions .btn{ flex:1; }
   .guide-complete{ padding:48px 24px 28px; border-radius:20px; background:var(--bg-card); box-shadow:var(--shadow-card); text-align:center; }
@@ -1943,34 +1950,40 @@
     contract=publicContractPayload(contract||{});
     var submitted=contract.submittedAt!==null&&contract.submittedAt!==undefined;
     var preview=contract.signatureDataUrl ? '<img class="signature-preview" src="'+esc(contract.signatureDataUrl)+'" alt="저장된 서명" />' : "";
+    var typeLabel=contract.contractType==="renewal"?"재계약 "+(contract.renewalCount||1)+"회차":"신규";
+    var productLabel=contract.productType==="photo"?"사진/달 파운드":"광고비용";
+    function row(label,value){ return '<div class="contract-readonly-row"><span class="contract-readonly-label">'+esc(label)+'</span><span class="contract-readonly-value">'+esc(value||"-")+'</span></div>'; }
     if(submitted){
       return '<div class="public-guide public-contract"><div class="guide-complete"><div class="guide-complete-icon">✓</div><h1>계약서 제출이 완료되었습니다</h1><p class="guide-complete-copy">계약 정보와 서명이 저장되었습니다. 담당자가 확인 후 진행하겠습니다.</p></div></div>';
     }
-    return '<div class="public-guide public-contract"><div class="public-guide-head"><div class="public-guide-brand"><span class="brand-mark"></span>계약 신청서</div><p class="public-guide-kicker">CONTRACT</p><h1>계약 정보를 작성해 주세요</h1><p class="public-guide-intro">아래 내용을 확인하고 필요한 정보를 입력한 뒤 서명해 주세요.</p></div>'+
+    return '<div class="public-guide public-contract"><div class="public-guide-head"><div class="public-guide-brand"><span class="brand-mark"></span>계약 신청서</div><p class="public-guide-kicker">CONTRACT</p><h1>계약 내용을 확인하고 서명해 주세요</h1><p class="public-guide-intro">계약 조건은 담당자가 먼저 작성했습니다. 내용을 확인한 뒤 필요한 연락 정보와 서명만 남겨주세요.</p></div>'+
       '<div class="guide-form">'+
-        '<section class="guide-section"><div class="guide-section-label">01</div><h2>계약 정보</h2>'+
-          '<div class="guide-question"><label>업체명</label><input id="contract-client-name" type="text" value="'+esc(contract.clientName||"")+'" /></div>'+
-          '<div class="guide-question"><label>계약 구분</label><select id="contract-type"><option value="new" '+(contract.contractType==="new"?"selected":"")+'>신규</option><option value="renewal" '+(contract.contractType==="renewal"?"selected":"")+'>재계약</option></select></div>'+
-          '<div class="guide-question" id="contract-renewal-count-field" style="'+(contract.contractType==="renewal"?"":"display:none")+'"><label>재계약 회차</label><input id="contract-renewal-count" type="number" min="1" step="1" value="'+esc(contract.renewalCount||1)+'" /></div>'+
-          '<div class="guide-question"><label>계약 시작일</label><input id="contract-start" type="date" value="'+esc(contract.startDate||"")+'" /></div>'+
+        '<section class="guide-section"><div class="guide-section-label">01</div><h2>계약 내용</h2><p class="guide-section-desc">아래 항목은 담당자가 작성한 계약 조건입니다.</p>'+
+          '<div class="contract-readonly-card">'+
+            row("업체명",contract.clientName)+
+            row("계약 구분",typeLabel)+
+            row("계약 시작일",contract.startDate)+
+            row("계약 기간",contract.contractMonths ? contract.contractMonths+"개월" : "")+
+          '</div>'+
         '</section>'+
         '<section class="guide-section"><div class="guide-section-label">02</div><h2>상품 및 결제</h2>'+
-          '<div class="guide-question"><label>상품</label><select id="contract-product-type"><option value="regular" '+(contract.productType==="regular"?"selected":"")+'>광고비용</option><option value="photo" '+(contract.productType==="photo"?"selected":"")+'>사진/달 파운드</option></select></div>'+
-          '<div class="guide-question"><label>상품명</label><input id="contract-product-name" type="text" value="'+esc(contract.productName||"")+'" /></div>'+
-          '<div class="guide-question"><label>공급가</label><input id="contract-supply-price" type="text" value="'+esc(contract.supplyPrice||"")+'" /></div>'+
-          '<div class="guide-question"><label>최종 금액</label><input id="contract-fee" type="text" value="'+esc(contract.fee||"")+'" /></div>'+
-          '<div class="guide-question"><label>결제 방식</label><select id="contract-payment-method"><option value="regular" '+(contract.paymentMethod==="regular"?"selected":"")+'>정기결제</option><option value="first" '+(contract.paymentMethod==="first"?"selected":"")+'>선결제 1회차</option><option value="sixth" '+(contract.paymentMethod==="sixth"?"selected":"")+'>선결제 6회차</option><option value="twelfth" '+(contract.paymentMethod==="twelfth"?"selected":"")+'>선결제 12회차</option></select></div>'+
-          '<div class="guide-question"><label>설명 / 주요 조건</label><textarea id="contract-terms">'+esc(contract.terms||"")+'</textarea></div>'+
+          '<div class="contract-readonly-card">'+
+            row("상품",productLabel)+
+            row("상품명",contract.productName)+
+            row("공급가",contract.supplyPrice)+
+            row("최종 금액",contract.fee)+
+            row("결제 방식",contract.paymentMethod==="first"?"선결제 1회차":contract.paymentMethod==="sixth"?"선결제 6회차":contract.paymentMethod==="twelfth"?"선결제 12회차":"정기결제")+
+          '</div>'+
+          (contract.terms ? '<div class="contract-readonly-terms">'+esc(contract.terms)+'</div>' : '')+
         '</section>'+
-        '<section class="guide-section"><div class="guide-section-label">03</div><h2>기재 사항 및 서명</h2>'+
+        '<section class="guide-section"><div class="guide-section-label">03</div><h2>확인 정보 및 서명</h2><p class="guide-section-desc">계약 확인에 필요한 정보만 입력해 주세요.</p><div class="contract-public-inputs">'+
           '<div class="guide-question"><label>사업자등록번호</label><input id="contract-business-number" type="text" value="'+esc(contract.businessNumber||"")+'" /></div>'+
           '<div class="guide-question"><label>연락처</label><input id="contract-contact" type="text" value="'+esc(contract.contact||"")+'" /></div>'+
           '<div class="guide-question"><label>이메일</label><input id="contract-email" type="text" value="'+esc(contract.email||"")+'" /></div>'+
-          '<div class="guide-question"><label>계약 기간 (개월)</label><input id="contract-months" type="text" value="'+esc(contract.contractMonths||"3")+'" /></div>'+
-          '<div class="guide-question"><label>특약 사항</label><textarea id="contract-special-terms">'+esc(contract.specialTerms||"")+'</textarea></div>'+
-          '<div class="guide-question"><label>기본 계약 내용</label><textarea id="contract-base-terms">'+esc(contract.baseTerms||"")+'</textarea></div>'+
           '<div class="guide-question"><label>서명자</label><input id="contract-signer" type="text" value="'+esc(contract.signerName||"")+'" /></div>'+
-          '<div class="signature-box"><canvas id="contract-signature" class="signature-canvas" width="720" height="220"></canvas>'+preview+'</div>'+
+          '<div class="signature-box"><canvas id="contract-signature" class="signature-canvas" width="720" height="220"></canvas>'+preview+'</div></div>'+
+          (contract.specialTerms ? '<div class="contract-readonly-terms"><strong>특약 사항</strong><br>'+esc(contract.specialTerms)+'</div>' : '')+
+          (contract.baseTerms ? '<div class="contract-readonly-terms"><strong>기본 계약 내용</strong><br>'+esc(contract.baseTerms)+'</div>' : '')+
         '</section>'+
         '<div class="guide-actions"><button class="btn btn-primary" id="btn-submit-public-contract">계약서 제출</button></div>'+
       '</div></div>';
@@ -2043,25 +2056,29 @@
     var el=document.getElementById(id);
     return el&&typeof el.value==="string" ? el.value.trim() : "";
   }
+  function formValueOr(id,fallback){
+    var el=document.getElementById(id);
+    return el&&typeof el.value==="string" ? el.value.trim() : (fallback==null?"":String(fallback));
+  }
   function collectContractFromForm(base){
     var contract=Object.assign(blankContract(),base||state.currentContract||{});
-    contract.clientName=formValue("contract-client-name");
-    contract.contractType=formValue("contract-type")==="renewal"?"renewal":"new";
-    var count=Number(formValue("contract-renewal-count"));
+    contract.clientName=formValueOr("contract-client-name",contract.clientName);
+    contract.contractType=formValueOr("contract-type",contract.contractType)==="renewal"?"renewal":"new";
+    var count=Number(formValueOr("contract-renewal-count",contract.renewalCount));
     contract.renewalCount=contract.contractType==="renewal"&&Number.isInteger(count)&&count>0 ? count : 1;
-    contract.productType=formValue("contract-product-type")||"regular";
-    contract.productName=formValue("contract-product-name");
-    contract.supplyPrice=formValue("contract-supply-price");
-    contract.paymentMethod=formValue("contract-payment-method")||"regular";
+    contract.productType=formValueOr("contract-product-type",contract.productType)||"regular";
+    contract.productName=formValueOr("contract-product-name",contract.productName);
+    contract.supplyPrice=formValueOr("contract-supply-price",contract.supplyPrice);
+    contract.paymentMethod=formValueOr("contract-payment-method",contract.paymentMethod)||"regular";
     contract.businessNumber=formValue("contract-business-number");
     contract.contact=formValue("contract-contact");
     contract.email=formValue("contract-email");
-    contract.startDate=formValue("contract-start");
-    contract.contractMonths=formValue("contract-months")||"3";
-    contract.fee=formValue("contract-fee");
-    contract.terms=formValue("contract-terms");
-    contract.specialTerms=formValue("contract-special-terms");
-    contract.baseTerms=formValue("contract-base-terms");
+    contract.startDate=formValueOr("contract-start",contract.startDate);
+    contract.contractMonths=formValueOr("contract-months",contract.contractMonths)||"3";
+    contract.fee=formValueOr("contract-fee",contract.fee);
+    contract.terms=formValueOr("contract-terms",contract.terms);
+    contract.specialTerms=formValueOr("contract-special-terms",contract.specialTerms);
+    contract.baseTerms=formValueOr("contract-base-terms",contract.baseTerms);
     contract.internalMemo=formValue("contract-internal-memo")||contract.internalMemo||"";
     contract.owner=formValue("contract-owner")||contract.owner||"";
     contract.signerName=formValue("contract-signer");

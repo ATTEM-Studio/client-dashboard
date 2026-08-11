@@ -145,6 +145,7 @@ vm.runInNewContext([
   functionSource('renderPublicContract'),
   functionSource('blankClient'),
   functionSource('formValue'),
+  functionSource('formValueOr'),
   functionSource('collectContractFromForm'),
   functionSource('saveContractFromForm')
 ].join('\n'), saveSandbox);
@@ -166,10 +167,55 @@ assert.strictEqual(publicPayload.owner, undefined, 'public contract payload must
 assert.strictEqual(publicPayload.clientName, 'Visible Client');
 const publicHtml = saveSandbox.renderPublicContract(publicPayload);
 assert.match(publicHtml, /public-contract/);
-assert.match(publicHtml, /contract-client-name/);
+assert.match(publicHtml, /contract-readonly-card/, 'public contract should present a branded read-only contract summary');
+assert.doesNotMatch(publicHtml, /id="contract-client-name"/, 'public signer link must not allow editing the client name');
+assert.doesNotMatch(publicHtml, /id="contract-type"/, 'public signer link must not allow editing contract type');
+assert.doesNotMatch(publicHtml, /id="contract-product-name"/, 'public signer link must not allow editing product details');
+assert.doesNotMatch(publicHtml, /id="contract-fee"/, 'public signer link must not allow editing the fee');
+assert.match(publicHtml, /contract-public-inputs/, 'public signer link should separate the small set of editable signer fields');
+assert.match(publicHtml, /계약 내용을 확인하고 서명해 주세요|계약 내용/, 'public signer link should read like a confirmation and signing page');
 assert.doesNotMatch(publicHtml, /contract-internal-memo/);
-assert.match(saveSandbox.renderPublicContract(Object.assign({}, publicPayload, { contractType: 'new' })), /id="contract-renewal-count-field" style="display:none"/, 'public new contract must hide renewal count');
-assert.doesNotMatch(saveSandbox.renderPublicContract(Object.assign({}, publicPayload, { contractType: 'renewal' })), /id="contract-renewal-count-field" style="display:none"/, 'public renewal contract must show renewal count');
+assert.doesNotMatch(saveSandbox.renderPublicContract(Object.assign({}, publicPayload, { contractType: 'new' })), /id="contract-renewal-count"/, 'public new contract must not expose renewal-count editing');
+assert.doesNotMatch(saveSandbox.renderPublicContract(Object.assign({}, publicPayload, { contractType: 'renewal' })), /id="contract-renewal-count"/, 'public renewal contract must show renewal count as read-only text, not an input');
+
+const publicCollectSandbox = Object.assign({}, saveSandbox, {
+  document: {
+    getElementById(id) {
+      const values = {
+        'contract-business-number': { value: '222-22-22222' },
+        'contract-contact': { value: '010-2222-2222' },
+        'contract-email': { value: 'owner@example.com' },
+        'contract-signer': { value: 'Owner' },
+        'contract-signature': { toDataURL: () => 'data:image/png;base64,publicsigned' }
+      };
+      return values[id];
+    }
+  }
+});
+vm.runInNewContext([
+  functionSource('blankContract'),
+  functionSource('formValue'),
+  functionSource('formValueOr'),
+  functionSource('collectContractFromForm')
+].join('\n'), publicCollectSandbox);
+const collectedPublic = publicCollectSandbox.collectContractFromForm({
+  id: 'contract_public',
+  clientId: 'cl_public',
+  clientName: 'Locked Client',
+  contractType: 'renewal',
+  renewalCount: 4,
+  productName: 'Locked Plan',
+  fee: '770000',
+  startDate: '2026-08-17',
+  terms: 'Locked terms'
+});
+assert.strictEqual(collectedPublic.clientName, 'Locked Client', 'public signature save must preserve locked client name');
+assert.strictEqual(collectedPublic.contractType, 'renewal', 'public signature save must preserve locked contract type');
+assert.strictEqual(collectedPublic.renewalCount, 4, 'public signature save must preserve locked renewal count');
+assert.strictEqual(collectedPublic.productName, 'Locked Plan', 'public signature save must preserve locked product name');
+assert.strictEqual(collectedPublic.fee, '770000', 'public signature save must preserve locked fee');
+assert.strictEqual(collectedPublic.businessNumber, '222-22-22222');
+assert.strictEqual(collectedPublic.signatureDataUrl, 'data:image/png;base64,publicsigned');
 
 saveSandbox.saveContractFromForm().then(() => {
   const contractWrite = saveSandbox.secureWrites.find((write) => write.key === 'contract:ct_new');
