@@ -85,10 +85,15 @@ assert.match(renderedForm, /id="contract-renewal-count"/);
 assert.doesNotMatch(renderedForm, /id="contract-renewal-count-field" style="display:none"/, 'renewal contract form must show renewal count');
 assert.match(renderedForm, /id="contract-product-name"/);
 assert.match(renderedForm, /id="contract-payment-method"/);
+assert.match(renderedForm, /value="card"/, 'contract payment method should include card');
+assert.match(renderedForm, /value="transfer"/, 'contract payment method should include bank transfer');
+assert.doesNotMatch(renderedForm, /정기결제|선결제 1회차|선결제 6회차|선결제 12회차/, 'old recurring/prepay payment choices should be removed');
 assert.match(renderedForm, /id="contract-base-terms"/);
 assert.match(renderedForm, /id="contract-signature"/);
 assert.match(renderedForm, /id="btn-save-contract"/);
-assert.match(renderedForm, /data:image\/png;base64,abc/);
+assert.doesNotMatch(renderedForm, /signature-preview/, 'signature area should not render a separate preview box under the canvas');
+assert.doesNotMatch(renderedForm, /예: 최진혁\(경기\)/, 'owner placeholder example should be removed');
+assert.ok(renderedForm.indexOf('id="contract-months"') < renderedForm.indexOf('PAYMENT'), 'contract months should live in the contract application section');
 const newContractForm = contractSandbox.renderContractForm({
   id: 'contract_secret_new_123456789012345678901',
   clientId: 'cl_new_secret',
@@ -175,6 +180,8 @@ assert.doesNotMatch(publicHtml, /id="contract-fee"/, 'public signer link must no
 assert.match(publicHtml, /contract-public-inputs/, 'public signer link should separate the small set of editable signer fields');
 assert.match(publicHtml, /계약 내용을 확인하고 서명해 주세요|계약 내용/, 'public signer link should read like a confirmation and signing page');
 assert.doesNotMatch(publicHtml, /contract-internal-memo/);
+assert.doesNotMatch(publicHtml, /signature-preview/, 'public signer link should not show a redundant saved-signature preview box');
+assert.doesNotMatch(publicHtml, /정기결제|선결제 1회차|선결제 6회차|선결제 12회차/, 'public contract should not show old recurring/prepay labels');
 assert.doesNotMatch(saveSandbox.renderPublicContract(Object.assign({}, publicPayload, { contractType: 'new' })), /id="contract-renewal-count"/, 'public new contract must not expose renewal-count editing');
 assert.doesNotMatch(saveSandbox.renderPublicContract(Object.assign({}, publicPayload, { contractType: 'renewal' })), /id="contract-renewal-count"/, 'public renewal contract must show renewal count as read-only text, not an input');
 
