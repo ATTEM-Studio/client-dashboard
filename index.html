@@ -230,6 +230,13 @@
   .check-section-count{ font-size:12px; font-weight:800; color:var(--ink-400); }
   .check-section-body{ padding:0 13px 3px; }
   .check-section-empty{ padding:13px; font-size:13px; color:var(--ink-400); }
+  .top-actions{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
+  .contract-card{ border:1px solid var(--line); border-radius:14px; padding:14px; margin-bottom:10px; background:#fff; }
+  .contract-card h4{ margin:0 0 4px; font-size:14px; }
+  .contract-meta{ font-size:12.5px; color:var(--ink-400); display:flex; gap:8px; flex-wrap:wrap; }
+  .signature-box{ border:1.5px dashed var(--line); border-radius:14px; background:#FAFBFC; padding:10px; }
+  .signature-canvas{ width:100%; height:160px; display:block; border-radius:10px; background:#fff; touch-action:none; }
+  .signature-preview{ max-width:100%; height:90px; object-fit:contain; border:1px solid var(--line); border-radius:10px; background:#fff; margin-top:8px; }
 
   /* report rows in detail */
   .report-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 0; border-bottom:1px solid var(--line); }
@@ -1364,6 +1371,7 @@
     month: monthKey(new Date()),
     clients:[],            // index: {id,name,contractType,startDate,status,updatedAt}
     reports:[],            // index: {id,clientId,clientName,period,type,updatedAt,revenue?}
+    contracts:[],
     checklistSets:[],
     currentClient:null,
     currentGuide:null,
@@ -1371,6 +1379,7 @@
     currentGuideLoadState:"idle",
     currentGuideReviewLoadState:"idle",
     currentReport:null,
+    currentContract:null,
     editingClient:null,
     editingBase:null,
     setCollectionOpen:false,
@@ -1418,6 +1427,7 @@
     app.innerHTML = '<div style="padding:60px;text-align:center;color:#8B95A1;">불러오는 중…</div>';
     var c = await getP("clients-index"); state.clients = Array.isArray(c) ? c : [];
     var r = await getP("reports-index"); state.reports = Array.isArray(r) ? r : [];
+    var contracts = await getP("contracts-index"); state.contracts = Array.isArray(contracts) ? contracts : [];
     var sets = await getP("checklist-sets");
     state.checklistSets = Array.isArray(sets) ? sets : defaultChecklistSets();
     if (!Array.isArray(sets)) await setP("checklist-sets", state.checklistSets);
@@ -1486,6 +1496,7 @@
     if(state.view==="dashboard") return renderDashboard();
     if(state.view==="clientForm") return renderClientForm(state.editingClient);
     if(state.view==="clientDetail") return renderClientDetail(state.currentClient);
+    if(state.view==="contractForm") return renderContractBuilder(state.currentContract);
     if(state.view==="edit") return renderEdit(state.editingBase);
     if(state.view==="report") return renderReportView(state.currentReport);
   }
@@ -1533,7 +1544,7 @@
     app.innerHTML=
       '<div class="topbar">'+
         '<div class="brand"><span class="brand-mark"></span>업체 관리 대시보드</div>'+
-        '<button class="btn btn-primary" id="btn-new-client">+ 업체 등록</button>'+
+        '<div class="top-actions"><button class="btn btn-ghost" id="btn-new-contract">계약서 생성</button><button class="btn btn-primary" id="btn-new-client">+ 업체 등록</button></div>'+
       '</div>'+
       '<div class="hero">'+
         '<p class="eyebrow">'+esc(monthLabel(state.month))+' 기준</p>'+
@@ -1549,6 +1560,9 @@
 
     document.getElementById("btn-new-client").addEventListener("click", function(){
       state.editingClient=null; state.view="clientForm"; render();
+    });
+    document.getElementById("btn-new-contract").addEventListener("click", function(){
+      state.currentContract=null; state.view="contractForm"; render();
     });
     document.getElementById("btn-this-month").addEventListener("click", function(){
       state.month=monthKey(new Date()); render();
@@ -1684,7 +1698,7 @@
     cl.progress={}; cl.progress[monthKey(now)]={ 1:"done", 2:"doing" };
     cl.createdAt=Date.now(); cl.updatedAt=Date.now();
     await setS("client:"+cl.id, cl);
-    state.clients.push({ id:cl.id, name:cl.name, contractType:cl.contractType, startDate:cl.startDate, status:cl.status, updatedAt:cl.updatedAt });
+    state.clients.push({ id:cl.id, name:cl.name, contractType:cl.contractType, renewalCount:cl.renewalCount, startDate:cl.startDate, status:cl.status, updatedAt:cl.updatedAt });
     await setP("clients-index", state.clients);
     showToast("예시 업체가 등록되었습니다");
     render();
@@ -1723,6 +1737,7 @@
               '<button type="button" data-contract="renewal" class="'+(c.contractType==="renewal"?"active":"")+'">재계약</button>'+
             '</div>'+
           '</div>'+
+          '<div class="field" id="renewal-count-field" style="'+(c.contractType==="renewal"?"":"display:none")+'"><label>재계약 회차</label><input type="number" id="c-renewal-count" min="1" step="1" value="'+esc(c.renewalCount||1)+'" /><p class="field-hint">잘못 누른 재계약 회차는 여기서 직접 보정할 수 있습니다. 기존 체크리스트·리포트·매출 기록은 유지됩니다.</p></div>'+
           '<div class="two-col">'+
             '<div class="field"><label>계약 시작일</label><input type="date" id="c-start" value="'+esc(c.startDate)+'" /></div>'+
             '<div class="field"><label>계약 기간 (개월)</label><input type="text" id="c-months" placeholder="예: 6" value="'+esc(c.contractMonths)+'" /></div>'+
@@ -1752,6 +1767,8 @@
         pick.contract=b.getAttribute("data-contract");
         document.querySelectorAll("#seg-contract button").forEach(function(x){ x.classList.remove("active"); });
         b.classList.add("active");
+        var renewalField=document.getElementById("renewal-count-field");
+        if(renewalField) renewalField.style.display=pick.contract==="renewal"?"":"none";
       });
     });
     document.querySelectorAll("#seg-status button").forEach(function(b){
@@ -1787,8 +1804,11 @@
         obj.fee=document.getElementById("c-fee").value.trim();
         obj.contractType=pick.contract;
         if(obj.contractType==="renewal"){
-          var renewalCount=Number(obj.renewalCount);
+          var renewalInput=document.getElementById("c-renewal-count");
+          var renewalCount=Number(renewalInput ? renewalInput.value : obj.renewalCount);
           obj.renewalCount=Number.isInteger(renewalCount)&&renewalCount>0 ? renewalCount : 1;
+        } else {
+          delete obj.renewalCount;
         }
         obj.startDate=document.getElementById("c-start").value;
         obj.contractMonths=document.getElementById("c-months").value.trim()||"3";
@@ -1814,7 +1834,7 @@
         var ok=await setS("client:"+obj.id, obj);
         if(!ok) throw new Error("save failed");
         var idx=state.clients.filter(function(x){ return x.id!==obj.id; });
-        idx.push({ id:obj.id, name:obj.name, contractType:obj.contractType, startDate:obj.startDate, status:obj.status, updatedAt:obj.updatedAt });
+        idx.push({ id:obj.id, name:obj.name, contractType:obj.contractType, renewalCount:obj.renewalCount, startDate:obj.startDate, status:obj.status, updatedAt:obj.updatedAt });
         state.clients=idx;
         await setP("clients-index", idx);
 
@@ -1827,6 +1847,105 @@
         btn.disabled=false; btn.textContent=isEdit?"저장":"등록";
       }
     });
+  }
+
+  /* ============ CONTRACTS ============ */
+  function blankContract(){
+    return { id:"", clientId:"", clientName:"", contractType:"new", renewalCount:1, startDate:"", contractMonths:"3", fee:"", terms:"", signerName:"", signatureDataUrl:"", createdAt:null, updatedAt:null };
+  }
+  function contractClientOptions(clients){
+    return (clients||[]).slice().sort(function(a,b){ return (a.name||"").localeCompare(b.name||""); }).map(function(c){
+      return '<option value="'+esc(c.id)+'">'+esc(c.name||"이름 없는 업체")+'</option>';
+    }).join("");
+  }
+  function clientContracts(clientId){
+    return (state.contracts||[]).filter(function(contract){ return contract.clientId===clientId; }).sort(function(a,b){ return (b.updatedAt||0)-(a.updatedAt||0); });
+  }
+  function renderContractForm(base){
+    var contract=Object.assign(blankContract(),base||{});
+    var selectedClient=(state.clients||[]).filter(function(c){ return c.id===contract.clientId; })[0]||{};
+    if(!contract.clientId && selectedClient.id) contract.clientId=selectedClient.id;
+    var preview=contract.signatureDataUrl ? '<img class="signature-preview" src="'+esc(contract.signatureDataUrl)+'" alt="저장된 서명" />' : "";
+    return '<div class="topbar"><div class="brand"><span class="brand-mark"></span>계약서 생성</div><button class="btn btn-text" id="btn-back">← 돌아가기</button></div>'+
+      '<div class="form-card fade-in">'+
+        '<div class="fsection"><div class="fsec-num">CONTRACT</div><h3 class="fsec-title">계약 정보</h3><p class="fsec-hint">업체를 선택하면 계약서와 업체 상세 계약서 탭에 함께 저장됩니다.</p>'+
+          '<div class="two-col"><div class="field"><label>업체 선택 *</label><select id="contract-client"><option value="">업체를 선택하세요</option>'+contractClientOptions(state.clients).replace('value="'+esc(contract.clientId)+'"','value="'+esc(contract.clientId)+'" selected')+'</select></div>'+
+          '<div class="field"><label>계약 구분</label><select id="contract-type"><option value="new" '+(contract.contractType==="new"?"selected":"")+'>신규</option><option value="renewal" '+(contract.contractType==="renewal"?"selected":"")+'>재계약</option></select></div></div>'+
+          '<div class="two-col"><div class="field"><label>재계약 회차</label><input type="number" min="1" step="1" id="contract-renewal-count" value="'+esc(contract.renewalCount||selectedClient.renewalCount||1)+'" /></div>'+
+          '<div class="field"><label>계약 시작일</label><input type="date" id="contract-start" value="'+esc(contract.startDate||selectedClient.startDate||"")+'" /></div></div>'+
+          '<div class="two-col"><div class="field"><label>계약 기간 (개월)</label><input type="text" id="contract-months" value="'+esc(contract.contractMonths||selectedClient.contractMonths||"3")+'" /></div>'+
+          '<div class="field"><label>월 금액</label><input type="text" id="contract-fee" value="'+esc(contract.fee||selectedClient.fee||"")+'" placeholder="예: 800000" /></div></div>'+
+          '<div class="field"><label>주요 조건</label><textarea id="contract-terms" rows="5" placeholder="계약 범위, 포함 서비스, 특이 조건을 적어주세요.">'+esc(contract.terms||"")+'</textarea></div>'+
+        '</div>'+
+        '<div class="fsection"><div class="fsec-num">SIGN</div><h3 class="fsec-title">서명</h3><p class="fsec-hint">마우스 또는 터치로 서명할 수 있습니다.</p>'+
+          '<div class="field"><label>서명자</label><input type="text" id="contract-signer" value="'+esc(contract.signerName||"")+'" placeholder="예: 홍길동" /></div>'+
+          '<div class="signature-box"><canvas id="contract-signature" class="signature-canvas" width="720" height="220"></canvas>'+preview+'<div style="margin-top:8px"><button type="button" class="btn btn-plain btn-sm" id="btn-clear-signature">서명 지우기</button></div></div>'+
+        '</div>'+
+        '<div class="form-actions"><button class="btn btn-plain" id="btn-cancel">취소</button><button class="btn btn-primary" id="btn-save-contract">계약서 저장</button></div>'+
+      '</div>';
+  }
+  function renderContractBuilder(base){
+    app.innerHTML=renderContractForm(base);
+    document.getElementById("btn-back").onclick=function(){ state.view=state.currentClient?"clientDetail":"dashboard"; render(); };
+    document.getElementById("btn-cancel").onclick=function(){ state.view=state.currentClient?"clientDetail":"dashboard"; render(); };
+    bindSignaturePad(document.getElementById("contract-signature"));
+    document.getElementById("btn-clear-signature").onclick=function(){ var canvas=document.getElementById("contract-signature"), ctx=canvas.getContext("2d"); ctx.clearRect(0,0,canvas.width,canvas.height); };
+    document.getElementById("btn-save-contract").onclick=saveContractFromForm;
+  }
+  function bindSignaturePad(canvas){
+    if(!canvas || !canvas.getContext) return;
+    var ctx=canvas.getContext("2d"), drawing=false, last=null;
+    ctx.lineWidth=3; ctx.lineCap="round"; ctx.strokeStyle="#191F28";
+    function point(e){ var r=canvas.getBoundingClientRect(), t=e.touches&&e.touches[0]||e; return { x:(t.clientX-r.left)*(canvas.width/r.width), y:(t.clientY-r.top)*(canvas.height/r.height) }; }
+    function start(e){ drawing=true; last=point(e); e.preventDefault&&e.preventDefault(); }
+    function move(e){ if(!drawing) return; var p=point(e); ctx.beginPath(); ctx.moveTo(last.x,last.y); ctx.lineTo(p.x,p.y); ctx.stroke(); last=p; e.preventDefault&&e.preventDefault(); }
+    function end(){ drawing=false; last=null; }
+    canvas.addEventListener("mousedown",start); canvas.addEventListener("mousemove",move); window.addEventListener("mouseup",end);
+    canvas.addEventListener("touchstart",start,{passive:false}); canvas.addEventListener("touchmove",move,{passive:false}); canvas.addEventListener("touchend",end);
+  }
+  async function saveContractFromForm(){
+    var clientId=document.getElementById("contract-client").value;
+    var client=(state.clients||[]).filter(function(c){ return c.id===clientId; })[0];
+    if(!client){ showToast("계약서를 연결할 업체를 선택하세요"); return; }
+    var type=document.getElementById("contract-type").value==="renewal"?"renewal":"new";
+    var count=Number(document.getElementById("contract-renewal-count").value);
+    var now=Date.now();
+    var contract=Object.assign(blankContract(),state.currentContract||{});
+    contract.id=contract.id||uid("ct");
+    contract.clientId=client.id;
+    contract.clientName=client.name||"";
+    contract.contractType=type;
+    contract.renewalCount=type==="renewal"&&Number.isInteger(count)&&count>0 ? count : 1;
+    contract.startDate=document.getElementById("contract-start").value;
+    contract.contractMonths=document.getElementById("contract-months").value.trim()||"3";
+    contract.fee=document.getElementById("contract-fee").value.trim();
+    contract.terms=document.getElementById("contract-terms").value.trim();
+    contract.signerName=document.getElementById("contract-signer").value.trim();
+    var canvas=document.getElementById("contract-signature");
+    contract.signatureDataUrl=canvas&&canvas.toDataURL ? canvas.toDataURL("image/png") : (contract.signatureDataUrl||"");
+    contract.createdAt=contract.createdAt||now;
+    contract.updatedAt=now;
+    var saved=await setS("contract:"+contract.id,contract);
+    if(!saved){ showToast("계약서 저장에 실패했습니다"); return; }
+    var index=(state.contracts||[]).filter(function(c){ return c.id!==contract.id; });
+    index.push({ id:contract.id, clientId:contract.clientId, clientName:contract.clientName, contractType:contract.contractType, renewalCount:contract.renewalCount, startDate:contract.startDate, contractMonths:contract.contractMonths, fee:contract.fee, signerName:contract.signerName, updatedAt:contract.updatedAt });
+    state.contracts=index;
+    var indexSaved=await setP("contracts-index",index);
+    if(!indexSaved){ showToast("계약서 목록 저장에 실패했습니다"); return; }
+    state.currentContract=contract;
+    state.currentClient=state.currentClient&&state.currentClient.id===client.id ? state.currentClient : (typeof getS==="function" ? await getS("client:"+client.id) : null);
+    state.view=state.currentClient?"clientDetail":"dashboard";
+    showToast("계약서가 저장되었습니다");
+    render();
+  }
+  function contractsPanel(client){
+    var items=clientContracts(client&&client.id);
+    var rows=items.length ? items.map(function(contract){
+      var pseudo={ contractType:contract.contractType, renewalCount:contract.renewalCount };
+      var amount=toNum(contract.fee) ? Number(toNum(contract.fee)).toLocaleString("ko-KR")+"원" : "금액 미입력";
+      return '<div class="contract-card"><h4>'+esc(contract.clientName||client.name||"계약서")+'</h4><div class="contract-meta"><span>'+esc(contractLabel(pseudo))+'</span><span>시작 '+esc(contract.startDate||"미입력")+'</span><span>'+amount+'</span><span>서명자 '+esc(contract.signerName||"미입력")+'</span></div></div>';
+    }).join("") : '<div class="set-empty"><strong>저장된 계약서가 없습니다</strong><p>계약서 생성 버튼으로 이 업체의 계약서를 남겨보세요.</p></div>';
+    return '<div class="panel fade-in"><div class="panel-head"><div><h3 class="panel-title">계약서</h3><p class="panel-hint">작성·서명·저장된 계약서를 업체별로 확인합니다.</p></div><button class="btn btn-primary btn-sm" data-new-client-contract="'+esc(client&&client.id||"")+'">계약서 생성</button></div>'+rows+'</div>';
   }
 
   async function deleteClient(id){
@@ -2078,15 +2197,17 @@
     if(activeTab==="calendar") content=calendarPanel(cl);
     if(activeTab==="checklist") content=checklistPanel(cl, tasks, done);
     if(activeTab==="reports") content='<div class="panel fade-in"><div class="panel-head"><h3 class="panel-title">리포트</h3><span class="count muted">'+state.reports.filter(function(r){return r.clientId===cl.id;}).length+'건</span></div><div class="report-actions" style="margin-bottom:16px"><button class="btn btn-primary btn-sm" id="btn-new-weekly">+ 주간 리포트</button><button class="btn btn-ghost btn-sm" id="btn-new-monthly">+ 월간 리포트</button></div>'+reportRows(cl)+revenueTrendPanel(cl.id,state.reports,state.month)+"</div>";
+    if(activeTab==="contracts") content=contractsPanel(cl);
     if(activeTab==="guide") content=informationGuidePanel(cl,state.currentGuide,state.currentGuideReview,state.currentGuideLoadState,state.currentGuideReviewLoadState);
     app.innerHTML='<div class="report-top"><button class="back-btn" id="btn-back">←</button><div class="report-actions"><button class="btn btn-plain btn-sm" id="btn-renew">재계약 처리</button><button class="btn btn-plain btn-sm" id="btn-edit-client">정보 수정</button></div></div>'+
       '<div class="detail-head fade-in"><div class="dh-tagrow"><span class="status-pill">'+(cl.contractType==="renewal"?"재계약":"신규")+'</span></div><h2 class="dh-name">'+esc(cl.name)+'</h2><div class="dh-meta"><span>'+esc(cl.industry||"")+'</span><span>시작 '+esc(cl.startDate||"미등록")+'</span></div></div>'+
-      '<div class="detail-tabs"><button class="detail-tab '+(activeTab==="calendar"?"active":"")+'" data-client-tab="calendar">일정 달력</button><button class="detail-tab '+(activeTab==="checklist"?"active":"")+'" data-client-tab="checklist">업무 체크리스트 <small>'+done+'/'+tasks.length+'</small></button><button class="detail-tab '+(activeTab==="reports"?"active":"")+'" data-client-tab="reports">리포트</button><button class="detail-tab '+(activeTab==="guide"?"active":"")+'" data-client-tab="guide">정보 안내문</button></div>'+content;
+      '<div class="detail-tabs"><button class="detail-tab '+(activeTab==="calendar"?"active":"")+'" data-client-tab="calendar">일정 달력</button><button class="detail-tab '+(activeTab==="checklist"?"active":"")+'" data-client-tab="checklist">업무 체크리스트 <small>'+done+'/'+tasks.length+'</small></button><button class="detail-tab '+(activeTab==="reports"?"active":"")+'" data-client-tab="reports">리포트</button><button class="detail-tab '+(activeTab==="contracts"?"active":"")+'" data-client-tab="contracts">계약서</button><button class="detail-tab '+(activeTab==="guide"?"active":"")+'" data-client-tab="guide">정보 안내문</button></div>'+content;
     document.getElementById("btn-back").onclick=function(){ state.view="dashboard"; render(); };
     document.getElementById("btn-edit-client").onclick=function(){ state.editingClient=cl; state.view="clientForm"; render(); };
     document.getElementById("btn-renew").onclick=function(){ markRenewal(cl.id); };
     app.querySelectorAll("[data-client-tab]").forEach(function(b){ b.onclick=function(){ selectClientWorkspaceTab(cl,b.getAttribute("data-client-tab")); }; });
     bindCalendarPanel(cl); bindChecklistPanel(cl); bindReportPanel(cl);
+    if(typeof bindContractsPanel==="function") bindContractsPanel(cl);
     if(activeTab==="guide") bindGuidePanel(cl,state.currentGuide,state.currentGuideReview,state.currentGuideLoadState,state.currentGuideReviewLoadState);
   }
   function calendarPanel(cl){
@@ -2194,6 +2315,21 @@
     return rows ? '<div class="set-legacy"><h4>기존 주차 단위 업무</h4><p>이전 방식으로 만든 항목입니다. 업체에 적용할 때도 주차 정보가 그대로 유지됩니다.</p>'+rows+'</div>' : "";
   }
   function bindCalendarPanel(cl){ app.querySelectorAll("[data-day]").forEach(function(b){ b.onclick=function(){ openDayModal(cl,b.getAttribute("data-day")); }; }); app.querySelectorAll("[data-calendar-month]").forEach(function(b){b.onclick=function(){var base=state.calendarMonth || monthKey(cl.startDate?new Date(cl.startDate+"T12:00:00"):new Date()); state.calendarMonth=calendarMonthShift(base,b.getAttribute("data-calendar-month")==="prev"?-1:1); renderClientWorkspace(cl);};}); }
+  function bindContractsPanel(cl){
+    app.querySelectorAll("[data-new-client-contract]").forEach(function(b){ b.onclick=function(){
+      state.currentContract=Object.assign(blankContract(),{
+        clientId:cl.id,
+        clientName:cl.name||"",
+        contractType:cl.contractType||"new",
+        renewalCount:cl.renewalCount||1,
+        startDate:cl.startDate||"",
+        contractMonths:cl.contractMonths||"3",
+        fee:cl.fee||""
+      });
+      state.view="contractForm";
+      render();
+    }; });
+  }
   function bindChecklistPanel(cl){
     app.querySelectorAll("[data-toggle-check-section]").forEach(function(b){ b.onclick=function(){ var key=b.getAttribute("data-toggle-check-section"); state.checklistWeeksOpen=state.checklistWeeksOpen||{}; state.checklistWeeksOpen[key]=b.getAttribute("aria-expanded")!=="true"; renderClientWorkspace(cl); }; });
     app.querySelectorAll("[data-toggle-work]").forEach(function(b){ b.onclick=function(){ var id=b.getAttribute("data-toggle-work"); (cl.checklist||[]).forEach(function(t){ if(t.id===id)t.done=!t.done; }); saveClientAndRefresh(cl); }; });
@@ -2429,7 +2565,7 @@
     cl.updatedAt=Date.now();
     await setS("client:"+cl.id, cl);
     var idx=state.clients.filter(function(x){ return x.id!==cl.id; });
-    idx.push({ id:cl.id, name:cl.name, contractType:cl.contractType, startDate:cl.startDate, status:cl.status, updatedAt:cl.updatedAt });
+    idx.push({ id:cl.id, name:cl.name, contractType:cl.contractType, renewalCount:cl.renewalCount, startDate:cl.startDate, status:cl.status, updatedAt:cl.updatedAt });
     state.clients=idx;
     await setP("clients-index", idx);
     state.currentClient=cl;
@@ -2475,7 +2611,7 @@
       var saved=await setS("client:"+client.id,renewed);
       if(!saved){ showToast("재계약 저장에 실패했습니다"); return; }
       var index=state.clients.filter(function(item){ return item.id!==renewed.id; });
-      index.push({ id:renewed.id, name:renewed.name, contractType:renewed.contractType, startDate:renewed.startDate, status:renewed.status, updatedAt:renewed.updatedAt });
+      index.push({ id:renewed.id, name:renewed.name, contractType:renewed.contractType, renewalCount:renewed.renewalCount, startDate:renewed.startDate, status:renewed.status, updatedAt:renewed.updatedAt });
       var indexSaved=await setP("clients-index",index);
       if(!indexSaved){ showToast("\uC7AC\uACC4\uC57D \uC800\uC7A5\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4"); return; }
       state.currentClient=renewed;
