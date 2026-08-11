@@ -56,6 +56,35 @@ function isPublicWritable(key) {
   return isPublicGuideKey(key);
 }
 
+const PUBLIC_GUIDE_FIELDS = ["id", "clientId", "createdAt", "updatedAt", "submittedAt", "answers"];
+const PUBLIC_GUIDE_ANSWER_FIELDS = [
+  "concern", "goal", "priorityMenu", "currentCustomers", "desiredCustomers", "strengths",
+  "story", "contentTone", "avoidExpressions", "materialStatus", "approverName",
+  "approverContact", "operatingNotes",
+];
+
+function sanitizePublicGuideValue(value) {
+  try {
+    const source = JSON.parse(value);
+    if (!source || typeof source !== "object" || Array.isArray(source)) return null;
+    const sanitized = {};
+    for (const field of PUBLIC_GUIDE_FIELDS) {
+      if (field === "answers") continue;
+      if (Object.prototype.hasOwnProperty.call(source, field)) sanitized[field] = source[field];
+    }
+    const answers = source.answers && typeof source.answers === "object" && !Array.isArray(source.answers)
+      ? source.answers
+      : {};
+    sanitized.answers = {};
+    for (const field of PUBLIC_GUIDE_ANSWER_FIELDS) {
+      if (Object.prototype.hasOwnProperty.call(answers, field)) sanitized.answers[field] = answers[field];
+    }
+    return JSON.stringify(sanitized);
+  } catch {
+    return null;
+  }
+}
+
 module.exports = async (req, res) => {
   res.setHeader("Cache-Control", "no-store");
 
@@ -78,6 +107,11 @@ module.exports = async (req, res) => {
       if (out.result === null || out.result === undefined) {
         return res.status(404).json({ error: "해당 키를 찾을 수 없습니다" });
       }
+      if (isPublicGuideKey(key)) {
+        const value = sanitizePublicGuideValue(out.result);
+        if (value === null) return res.status(500).json({ error: "안내문 데이터 형식이 올바르지 않습니다" });
+        return res.status(200).json({ key, value });
+      }
       return res.status(200).json({ key, value: out.result });
     }
 
@@ -93,11 +127,15 @@ module.exports = async (req, res) => {
       if (!key || typeof value !== "string") {
         return res.status(400).json({ error: "key와 문자열 value가 필요합니다" });
       }
-      if (value.length > 2_000_000) {
+      const storedValue = isPublicGuideKey(key) ? sanitizePublicGuideValue(value) : value;
+      if (storedValue === null) {
+        return res.status(400).json({ error: "안내문 데이터 형식이 올바르지 않습니다" });
+      }
+      if (storedValue.length > 2_000_000) {
         return res.status(413).json({ error: "저장할 데이터가 너무 큽니다" });
       }
-      await redis("set", [PREFIX + key], value);
-      return res.status(200).json({ key, value });
+      await redis("set", [PREFIX + key], storedValue);
+      return res.status(200).json({ key, value: storedValue });
     }
 
     if (method === "DELETE") {

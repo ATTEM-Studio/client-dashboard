@@ -6,6 +6,7 @@ const { after, test } = require('node:test');
 const html = fs.readFileSync('index.html', 'utf8');
 const dataApi = require('../api/data.js');
 const validGuideKey = 'guide:guide_abcdefghijklmnopqrstuvwx';
+const validReviewKey = 'guide-review:guide_abcdefghijklmnopqrstuvwx';
 
 const originalEnv = {
   TEAM_PASSWORD: process.env.TEAM_PASSWORD,
@@ -42,7 +43,9 @@ async function requestApi(request) {
     calls.push({ url, options });
     return {
       ok: true,
-      async json() { return { result: request.method === 'GET' ? '{"stored":true}' : 'OK' }; },
+      async json() {
+        return { result: request.method === 'GET' ? (request.storageResult ?? '{"stored":true}') : 'OK' };
+      },
       async text() { return ''; }
     };
   };
@@ -63,6 +66,52 @@ test('unauthenticated GET and POST accept an exact high-entropy guide key', asyn
   const write = await requestApi({ method: 'POST', body: { key: validGuideKey, value: '{"answers":{}}' } });
   assert.strictEqual(write.response.statusCode, 200);
   assert.strictEqual(write.calls.length, 1);
+});
+
+test('public guide API strips internal review data from reads and writes', async () => {
+  const publicDocument = {
+    id: 'guide_abcdefghijklmnopqrstuvwx', answers: { goal: '공개 목표' },
+    review: { status: 'reviewed', memo: '외부에 노출되면 안 되는 메모' }
+  };
+  const read = await requestApi({
+    method: 'GET', query: { key: validGuideKey }, storageResult: JSON.stringify(publicDocument)
+  });
+  assert.strictEqual(read.response.statusCode, 200);
+  assert.deepStrictEqual(JSON.parse(read.response.body.value), {
+    id: 'guide_abcdefghijklmnopqrstuvwx', answers: { goal: '공개 목표' }
+  });
+
+  const write = await requestApi({
+    method: 'POST', body: { key: validGuideKey, value: JSON.stringify(publicDocument) }
+  });
+  assert.strictEqual(write.response.statusCode, 200);
+  assert.deepStrictEqual(JSON.parse(write.calls[0].options.body), {
+    id: 'guide_abcdefghijklmnopqrstuvwx', answers: { goal: '공개 목표' }
+  });
+  assert.deepStrictEqual(JSON.parse(write.response.body.value), {
+    id: 'guide_abcdefghijklmnopqrstuvwx', answers: { goal: '공개 목표' }
+  });
+});
+
+test('internal guide review keys require authentication for reads and writes', async () => {
+  for (const request of [
+    { method: 'GET', query: { key: validReviewKey } },
+    { method: 'POST', body: { key: validReviewKey, value: '{"status":"reviewed","memo":"secret"}' } }
+  ]) {
+    const result = await requestApi(request);
+    assert.strictEqual(result.response.statusCode, 401);
+    assert.strictEqual(result.calls.length, 0);
+  }
+
+  const authenticatedRead = await requestApi({
+    method: 'GET', headers: { 'x-team-token': 'team-secret' }, query: { key: validReviewKey }
+  });
+  assert.strictEqual(authenticatedRead.response.statusCode, 200);
+  const authenticatedWrite = await requestApi({
+    method: 'POST', headers: { 'x-team-token': 'team-secret' },
+    body: { key: validReviewKey, value: '{"status":"reviewed","memo":"secret"}' }
+  });
+  assert.strictEqual(authenticatedWrite.response.statusCode, 200);
 });
 
 test('malformed, short, and bare guide keys never reach storage without authentication', async () => {
@@ -111,7 +160,7 @@ test('existing report reads stay public while every non-guide write stays authen
   assert.strictEqual(authenticatedWrite.calls.length, 1);
 });
 
-test('newGuide creates a unique opaque guide with empty answers and review defaults', () => {
+test('newGuide creates a unique opaque public document without internal review fields', () => {
   const helperMatch = html.match(/(function newGuide[\s\S]*?\n  function guideStatus[\s\S]*?\n  })/);
   assert.ok(helperMatch, 'guide data helpers must exist together in index.html');
 
@@ -142,7 +191,10 @@ test('newGuide creates a unique opaque guide with empty answers and review defau
     strengths: '', story: '', contentTone: '', avoidExpressions: '', materialStatus: '',
     approverName: '', approverContact: '', operatingNotes: ''
   });
-  assert.deepStrictEqual(JSON.parse(JSON.stringify(first.review)), { status: 'unreviewed', memo: '' });
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(first, 'review'), false);
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(sandbox.newGuideReview(first))), {
+    guideId: first.id, clientId: 'client-one', status: 'unreviewed', memo: ''
+  });
 });
 
 test('guideSummary returns only meaningful summary fields in stable display order', () => {
@@ -378,7 +430,11 @@ test('issued guide panel shows permanent-link management, answers, follow-ups, a
     guideSummary() { return [{ label: '최우선 마케팅 목표', value: '재방문 확대' }]; },
     guideFollowUps() { return ['자료 별도 전달 확인']; },
     guideStatus() { return 'submitted'; },
-    fmtGuideTimestamp() { return '2026.08.11 10:30'; },
+    fmtGuideTimestamp(timestamp) {
+      if (timestamp === 1700000000400) return '최근 시각';
+      if (timestamp === 1700000000200) return '제출 시각';
+      return '기타 시각';
+    },
     location: { origin: 'https://dashboard.example.test' },
     encodeURIComponent
   };
@@ -387,14 +443,15 @@ test('issued guide panel shows permanent-link management, answers, follow-ups, a
   const markup = sandbox.informationGuidePanel(
     { id: 'client-one', guideId: 'guide_permanent' },
     {
-      id: 'guide_permanent', submittedAt: 1700000000200, updatedAt: 1700000000200,
-      answers: { goal: '재방문 확대', materialStatus: '별도 전달 예정' },
-      review: { status: 'reviewing', memo: '자료 도착 후 확인' }
-    }
+      id: 'guide_permanent', submittedAt: 1700000000200, updatedAt: 1700000000400,
+      answers: { goal: '재방문 확대', materialStatus: '별도 전달 예정' }
+    },
+    { guideId: 'guide_permanent', status: 'reviewing', memo: '자료 도착 후 확인' }
   );
   assert.match(markup, /https:\/\/dashboard\.example\.test\/\?guide=guide_permanent/);
   assert.match(markup, /제출 완료/);
-  assert.match(markup, /2026\.08\.11 10:30/);
+  assert.match(markup, /최근 저장 최근 시각/);
+  assert.match(markup, /제출 제출 시각/);
   assert.match(markup, /최우선 마케팅 목표/);
   assert.match(markup, /재방문 확대/);
   assert.match(markup, /<details/);
@@ -406,35 +463,45 @@ test('issued guide panel shows permanent-link management, answers, follow-ups, a
   assert.doesNotMatch(markup, /재발급|링크 회수|안내문 삭제/);
 });
 
-test('manual issuance creates one guide, links it to the client, and preserves legacy fields', async () => {
+test('manual issuance re-reads the client and stores public guide, private review, and recovery marker separately', async () => {
   const issuerMatch = html.match(/(async function issueGuideForClient[\s\S]*?)(?=\n  async function saveGuideReview)/);
   assert.ok(issuerMatch, 'issueGuideForClient must be independently testable');
   const writes = [];
+  const storage = new Map([
+    ['client:client-one', { id: 'client-one', name: '저장소의 최신 업체명', checklist: [{ id: 'task-one' }], memo: '유지할 메모' }]
+  ]);
   const sandbox = {
     Object,
-    async getS() { throw new Error('new issuance must not read an absent guide'); },
+    async getS(key) { return storage.has(key) ? JSON.parse(JSON.stringify(storage.get(key))) : null; },
     newGuide(clientId) {
-      return { id: 'guide_once', clientId, answers: {}, submittedAt: null, review: { status: 'unreviewed', memo: '' } };
+      return { id: 'guide_once', clientId, createdAt: 100, updatedAt: 100, submittedAt: null, answers: {} };
+    },
+    newGuideReview(guide) {
+      return { guideId: guide.id, clientId: guide.clientId, status: 'unreviewed', memo: '' };
     },
     async setS(key, value) {
       writes.push({ key, value: JSON.parse(JSON.stringify(value)) });
+      storage.set(key, JSON.parse(JSON.stringify(value)));
       return { key };
     }
   };
   vm.runInNewContext(issuerMatch[1], sandbox);
 
-  const client = { id: 'client-one', name: '기존 업체', checklist: [{ id: 'task-one' }], memo: '유지할 메모' };
+  const client = { id: 'client-one', name: '오래된 업체명' };
   const guide = await sandbox.issueGuideForClient(client);
   assert.strictEqual(guide.id, 'guide_once');
-  assert.deepStrictEqual(writes.map((write) => write.key), ['guide:guide_once', 'client:client-one']);
-  assert.strictEqual(writes[1].value.guideId, 'guide_once');
-  assert.strictEqual(writes[1].value.name, '기존 업체');
-  assert.deepStrictEqual(writes[1].value.checklist, [{ id: 'task-one' }]);
-  assert.strictEqual(writes[1].value.memo, '유지할 메모');
+  assert.deepStrictEqual(writes.map((write) => write.key), [
+    'guide-issue:client-one', 'guide:guide_once', 'guide-review:guide_once', 'client:client-one'
+  ]);
+  const linkedClient = writes[3].value;
+  assert.strictEqual(linkedClient.guideId, 'guide_once');
+  assert.strictEqual(linkedClient.name, '저장소의 최신 업체명');
+  assert.deepStrictEqual(linkedClient.checklist, [{ id: 'task-one' }]);
+  assert.strictEqual(linkedClient.memo, '유지할 메모');
   assert.strictEqual(client.guideId, 'guide_once');
 });
 
-test('manual issuance never replaces an existing guide id', async () => {
+test('a stale client session loads the already-issued guide instead of replacing it', async () => {
   const issuerMatch = html.match(/(async function issueGuideForClient[\s\S]*?)(?=\n  async function saveGuideReview)/);
   assert.ok(issuerMatch, 'issueGuideForClient must be independently testable');
   const writes = [];
@@ -443,19 +510,66 @@ test('manual issuance never replaces an existing guide id', async () => {
   const sandbox = {
     Object,
     newGuide() { creations += 1; return { id: 'guide_replacement' }; },
-    async getS(key) { assert.strictEqual(key, 'guide:guide_existing'); return existingGuide; },
+    newGuideReview() { throw new Error('existing issuance must not create review data'); },
+    async getS(key) {
+      if (key === 'client:client-one') return { id: 'client-one', name: '최신 업체', guideId: 'guide_existing' };
+      if (key === 'guide:guide_existing') return existingGuide;
+      throw new Error(`unexpected read ${key}`);
+    },
     async setS(key, value) { writes.push({ key, value }); return { key }; }
   };
   vm.runInNewContext(issuerMatch[1], sandbox);
 
-  const client = { id: 'client-one', guideId: 'guide_existing' };
+  const client = { id: 'client-one', name: '오래된 업체' };
   assert.strictEqual(await sandbox.issueGuideForClient(client), existingGuide);
   assert.strictEqual(client.guideId, 'guide_existing');
   assert.strictEqual(creations, 0);
   assert.deepStrictEqual(writes, []);
 });
 
-test('saving an internal review changes only review fields in the guide document', async () => {
+test('a partial issuance retry reuses the recovery marker and never creates a second public guide', async () => {
+  const issuerMatch = html.match(/(async function issueGuideForClient[\s\S]*?)(?=\n  async function saveGuideReview)/);
+  assert.ok(issuerMatch, 'issueGuideForClient must be independently testable');
+  const storage = new Map([
+    ['client:client-one', { id: 'client-one', name: '업체' }]
+  ]);
+  const writes = [];
+  let creations = 0;
+  let failClientLink = true;
+  const sandbox = {
+    Object,
+    async getS(key) { return storage.has(key) ? JSON.parse(JSON.stringify(storage.get(key))) : null; },
+    newGuide(clientId) {
+      creations += 1;
+      return { id: 'guide_recoverable', clientId, createdAt: 100, updatedAt: 100, submittedAt: null, answers: {} };
+    },
+    newGuideReview(guide) {
+      return { guideId: guide.id, clientId: guide.clientId, status: 'unreviewed', memo: '' };
+    },
+    async setS(key, value) {
+      writes.push({ key, value: JSON.parse(JSON.stringify(value)) });
+      if (key === 'client:client-one' && failClientLink) {
+        failClientLink = false;
+        return null;
+      }
+      storage.set(key, JSON.parse(JSON.stringify(value)));
+      return { key };
+    }
+  };
+  vm.runInNewContext(issuerMatch[1], sandbox);
+
+  const client = { id: 'client-one' };
+  assert.strictEqual(await sandbox.issueGuideForClient(client), null);
+  assert.strictEqual(client.guideId, undefined);
+  const retried = await sandbox.issueGuideForClient(client);
+  assert.strictEqual(retried.id, 'guide_recoverable');
+  assert.strictEqual(client.guideId, 'guide_recoverable');
+  assert.strictEqual(creations, 1);
+  assert.strictEqual(writes.filter((write) => write.key === 'guide:guide_recoverable').length, 1);
+  assert.strictEqual(storage.get('client:client-one').guideId, 'guide_recoverable');
+});
+
+test('saving an internal review writes only the authenticated review document', async () => {
   const saverMatch = html.match(/(async function saveGuideReview[\s\S]*?)(?=\n  function bindGuidePanel)/);
   assert.ok(saverMatch, 'saveGuideReview must be independently testable');
   const writes = [];
@@ -465,15 +579,8 @@ test('saving an internal review changes only review fields in the guide document
   };
   const sandbox = {
     Object,
+    Date: { now() { return 400; } },
     document: { getElementById(id) { return controls[id] || null; } },
-    async getS(key) {
-      assert.strictEqual(key, 'guide:guide_permanent');
-      return {
-        id: 'guide_permanent', clientId: 'client-one', createdAt: 100, updatedAt: 300, submittedAt: 300,
-        answers: { goal: '공개 링크의 최신 목표', materialStatus: '없음' },
-        review: { status: 'unreviewed', memo: '이전 메모' }
-      };
-    },
     async setS(key, value) {
       writes.push({ key, value: JSON.parse(JSON.stringify(value)) });
       return { key };
@@ -483,16 +590,68 @@ test('saving an internal review changes only review fields in the guide document
 
   const guide = {
     id: 'guide_permanent', clientId: 'client-one', createdAt: 100, updatedAt: 200, submittedAt: 200,
-    answers: { goal: '대시보드의 오래된 목표', materialStatus: '없음' },
-    review: { status: 'unreviewed', memo: '이전 메모' }
+    answers: { goal: '공개 목표', materialStatus: '없음' }
   };
-  assert.strictEqual(await sandbox.saveGuideReview(guide), true);
+  const review = { guideId: 'guide_permanent', clientId: 'client-one', status: 'unreviewed', memo: '이전 메모' };
+  assert.strictEqual(await sandbox.saveGuideReview(guide, review), true);
   assert.strictEqual(writes.length, 1);
-  assert.strictEqual(writes[0].key, 'guide:guide_permanent');
-  assert.deepStrictEqual(writes[0].value.answers, { goal: '공개 링크의 최신 목표', materialStatus: '없음' });
-  assert.strictEqual(writes[0].value.createdAt, 100);
-  assert.strictEqual(writes[0].value.updatedAt, 300);
-  assert.strictEqual(writes[0].value.submittedAt, 300);
-  assert.deepStrictEqual(writes[0].value.review, { status: 'reviewed', memo: '확인 완료 메모' });
-  assert.deepStrictEqual(JSON.parse(JSON.stringify(guide.review)), { status: 'reviewed', memo: '확인 완료 메모' });
+  assert.strictEqual(writes[0].key, 'guide-review:guide_permanent');
+  assert.deepStrictEqual(writes[0].value, {
+    guideId: 'guide_permanent', clientId: 'client-one', status: 'reviewed',
+    memo: '확인 완료 메모', updatedAt: 400
+  });
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(writes[0].value, 'answers'), false);
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(writes[0].value, 'submittedAt'), false);
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(review)), writes[0].value);
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(guide, 'review'), false);
+});
+
+test('interleaved public answer and internal review saves cannot overwrite each other', async () => {
+  const publicSaverMatch = html.match(/(async function savePublicGuide[\s\S]*?)(?=\n  function renderGuideComplete)/);
+  const reviewSaverMatch = html.match(/(async function saveGuideReview[\s\S]*?)(?=\n  function bindGuidePanel)/);
+  assert.ok(publicSaverMatch, 'savePublicGuide must be independently testable');
+  assert.ok(reviewSaverMatch, 'saveGuideReview must be independently testable');
+  const storage = new Map();
+  let releasePublic;
+  const controls = {
+    'guide-review-status': { value: 'reviewing' },
+    'guide-review-memo': { value: '내부 전용' }
+  };
+  const sandbox = {
+    Object,
+    Date: { now() { return 500; } },
+    JSON,
+    Promise,
+    publicGuideSaveChain: Promise.resolve(true),
+    document: { getElementById(id) { return controls[id] || null; } },
+    async setS(key, value) {
+      if (key === 'guide:guide_interleaved') {
+        await new Promise((resolve) => { releasePublic = resolve; });
+      }
+      storage.set(key, JSON.parse(JSON.stringify(value)));
+      return { key };
+    }
+  };
+  vm.runInNewContext(publicSaverMatch[1], sandbox);
+  vm.runInNewContext(reviewSaverMatch[1], sandbox);
+
+  const guide = {
+    id: 'guide_interleaved', clientId: 'client-one', createdAt: 100, updatedAt: 100,
+    submittedAt: null, answers: { goal: '최신 공개 답변' },
+    review: { status: 'reviewed', memo: '공개 저장에서 제거되어야 함' }
+  };
+  const review = { guideId: guide.id, clientId: guide.clientId, status: 'unreviewed', memo: '' };
+  const publicSave = sandbox.savePublicGuide(guide, true);
+  while (!releasePublic) await new Promise((resolve) => setImmediate(resolve));
+  assert.strictEqual(await sandbox.saveGuideReview(guide, review), true);
+  releasePublic();
+  assert.strictEqual(await publicSave, true);
+
+  assert.deepStrictEqual(storage.get('guide-review:guide_interleaved'), {
+    guideId: 'guide_interleaved', clientId: 'client-one', status: 'reviewing', memo: '내부 전용', updatedAt: 500
+  });
+  assert.deepStrictEqual(storage.get('guide:guide_interleaved'), {
+    id: 'guide_interleaved', clientId: 'client-one', createdAt: 100, updatedAt: 500,
+    submittedAt: 500, answers: { goal: '최신 공개 답변' }
+  });
 });
