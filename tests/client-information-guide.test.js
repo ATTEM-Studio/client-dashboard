@@ -264,6 +264,67 @@ test('a failed submission never marks the local guide as submitted', async () =>
   assert.strictEqual(guide.submittedAt, null);
 });
 
+test('input during an in-flight submit preserves submittedAt and reaches completion', async () => {
+  const saverMatch = html.match(/(async function savePublicGuide[\s\S]*?)(?=\n  function renderGuideComplete)/);
+  const coordinationMatch = html.match(/(function queuePublicGuideSave[\s\S]*?)(?=\n  function bindPublicGuide)/);
+  assert.ok(saverMatch, 'savePublicGuide must be independently testable');
+  assert.ok(coordinationMatch, 'public save coordination must be independently testable');
+
+  const writes = [];
+  let releaseSubmit;
+  const submitButton = { disabled: false, textContent: '제출하기' };
+  const sandbox = {
+    Date: { now() { return 1700000000200; } },
+    JSON,
+    Promise,
+    publicGuideSaveChain: Promise.resolve(true),
+    publicGuideSaveTimer: null,
+    publicGuideRevision: 0,
+    publicGuideSubmitting: false,
+    publicGuideSavePending: false,
+    clearTimeout() {},
+    setTimeout(callback) { callback(); return 1; },
+    async setS(key, value) {
+      writes.push({ key, value: JSON.parse(JSON.stringify(value)) });
+      if (writes.length === 1) await new Promise((resolve) => { releaseSubmit = resolve; });
+      return { key };
+    },
+    setGuideSaveStatus() {},
+    document: {
+      getElementById(id) {
+        if (id === 'guide-submit') return submitButton;
+        return null;
+      }
+    },
+    app: {
+      innerHTML: 'questionnaire',
+      querySelectorAll() { return []; }
+    },
+    renderGuideComplete() { return 'completion'; },
+    mountPublicGuide() {}
+  };
+  vm.runInNewContext(saverMatch[1], sandbox);
+  vm.runInNewContext(coordinationMatch[1], sandbox);
+
+  const guide = {
+    id: 'guide_race', createdAt: 1700000000000, updatedAt: 1700000000000,
+    submittedAt: null, answers: { goal: 'before submit' }
+  };
+  const submitting = sandbox.submitPublicGuide(guide);
+  while (!releaseSubmit) await new Promise((resolve) => setImmediate(resolve));
+  guide.answers.goal = 'typed during submit';
+  sandbox.queuePublicGuideSave(guide);
+  releaseSubmit();
+  await submitting;
+  await sandbox.publicGuideSaveChain;
+
+  assert.strictEqual(writes.length, 2);
+  assert.strictEqual(writes[0].value.submittedAt, 1700000000200);
+  assert.strictEqual(writes[1].value.submittedAt, 1700000000200);
+  assert.strictEqual(writes[1].value.answers.goal, 'typed during submit');
+  assert.strictEqual(sandbox.app.innerHTML, 'completion');
+});
+
 test('completion keeps the permanent link editable without lock or reissue controls', () => {
   const completeMatch = html.match(/(function renderGuideComplete[\s\S]*?)(?=\n  function setGuideSaveStatus)/);
   assert.ok(completeMatch, 'renderGuideComplete must be independently testable');

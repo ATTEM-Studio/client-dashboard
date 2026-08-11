@@ -878,6 +878,8 @@
   var publicGuideSaveTimer=null;
   var publicGuideSection=0;
   var publicGuideRevision=0;
+  var publicGuideSubmitting=false;
+  var publicGuideSavePending=false;
 
   function renderPublicGuide(guide){
     var answers=guide&&guide.answers&&typeof guide.answers==="object"?guide.answers:{};
@@ -1003,12 +1005,14 @@
   }
   function queuePublicGuideSave(guide){
     clearTimeout(publicGuideSaveTimer);
+    if(publicGuideSubmitting){ publicGuideSavePending=true; return; }
     var revision=++publicGuideRevision;
     setGuideSaveStatus("saving","저장 대기 중…",null);
     publicGuideSaveTimer=setTimeout(function(){ persistPublicGuideDraft(guide,revision); },500);
   }
   async function persistPublicGuideDraft(guide,revision){
     clearTimeout(publicGuideSaveTimer);
+    if(publicGuideSubmitting){ publicGuideSavePending=true; return false; }
     var saveRevision=revision||++publicGuideRevision;
     setGuideSaveStatus("saving","저장 중…",null);
     var saved=await savePublicGuide(guide,false);
@@ -1021,15 +1025,24 @@
     return saved;
   }
   async function submitPublicGuide(guide){
+    if(publicGuideSubmitting) return;
     clearTimeout(publicGuideSaveTimer);
-    var revision=++publicGuideRevision;
+    ++publicGuideRevision;
+    publicGuideSubmitting=true;
+    publicGuideSavePending=false;
     var submit=document.getElementById("guide-submit");
     if(submit){ submit.disabled=true; submit.textContent="제출 중…"; }
+    app.querySelectorAll("[data-guide-field],#guide-prev,#guide-next").forEach(function(control){ control.disabled=true; });
     setGuideSaveStatus("saving","제출 내용을 저장 중…",null);
     var saved=await savePublicGuide(guide,true);
-    if(revision!==publicGuideRevision) return;
+    while(saved&&publicGuideSavePending){
+      publicGuideSavePending=false;
+      saved=await savePublicGuide(guide,false);
+    }
+    publicGuideSubmitting=false;
     if(!saved){
       if(submit){ submit.disabled=false; submit.textContent="제출하기"; }
+      app.querySelectorAll("[data-guide-field],#guide-prev,#guide-next").forEach(function(control){ control.disabled=false; });
       setGuideSaveStatus("failed","저장에 실패했습니다",function(){ submitPublicGuide(guide); });
       return;
     }
