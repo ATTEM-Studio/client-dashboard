@@ -779,6 +779,7 @@
     next.previousCycles=archived;
     next.checklist=checklistSet ? checklistTasksFromSet(checklistSet) : [];
     next.progress={};
+    next.updatedAt=Date.now();
     return next;
   }
   function monthKey(d){ return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"); }

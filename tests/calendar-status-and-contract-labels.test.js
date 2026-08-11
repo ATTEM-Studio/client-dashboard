@@ -268,7 +268,9 @@ async function main() {
   assert.strictEqual(renewalSandbox.renderedClient, undefined,
     'an index write failure must not render the renewed client');
 
-  const renewalTransformationSandbox = {};
+  class FixedDate extends Date {}
+  FixedDate.now = () => 987654321;
+  const renewalTransformationSandbox = { Date: FixedDate };
   vm.runInNewContext([
     functionSource('buildRenewalClient'),
     functionSource('contractEndDate'),
@@ -316,6 +318,10 @@ async function main() {
   assert.strictEqual(transformed.contractType, 'renewal');
   assert.strictEqual(transformed.renewalCount, 1);
   assert.strictEqual(transformed.startDate, '2026-09-14');
+  assert.strictEqual(transformed.updatedAt, 987654321,
+    'renewal transformation must refresh the client updated timestamp');
+  assert.strictEqual(transformed.previousCycles[0].archivedAt, 987654321,
+    'archived cycles must keep the same deterministic timestamp source');
   assert.deepStrictEqual(json(transformed.progress), {});
   assert.strictEqual(transformed.dailyNotes['2026-08-11'], 'note');
   assert.strictEqual(transformed.guideId, 'guide_keep');
