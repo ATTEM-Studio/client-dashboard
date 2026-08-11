@@ -136,7 +136,7 @@ test('public draft operation rejects a valid but nonexistent guide instead of cr
   assert.match(result.calls[0].url, /\/get\/rs%3Aguide%3Aguide_abcdefghijklmnopqrstuvwx$/);
 });
 
-test('public draft operation rejects an existing guide without an authenticated issuance reservation', async () => {
+test('public draft operation repairs an existing guide that is missing its issuance reservation', async () => {
   const stored = {
     id: 'guide_abcdefghijklmnopqrstuvwx', clientId: 'client-not-issued',
     createdAt: 100, updatedAt: 100, submittedAt: null, answers: {}
@@ -145,6 +145,18 @@ test('public draft operation rejects an existing guide without an authenticated 
   const previousFetch = global.fetch;
   global.fetch = async (url, options = {}) => {
     calls.push({ url, options });
+    if (options.body) {
+      const command = JSON.parse(options.body);
+      if (command[0] === 'SET' && command[1] === 'rs:guide-issue:client-not-issued') {
+        return { ok: true, async json() { return { result: 'OK' }; }, async text() { return ''; } };
+      }
+      if (command[0] === 'EVAL') {
+        return { ok: true, async json() { return { result: JSON.stringify({
+          status: 'ok',
+          guide: Object.assign({}, stored, { updatedAt: 200, answers: { goal: 'fixed' } })
+        }) }; }, async text() { return ''; } };
+      }
+    }
     return {
       ok: true,
       async json() { return { result: calls.length === 1 ? JSON.stringify(stored) : null }; },
@@ -154,14 +166,15 @@ test('public draft operation rejects an existing guide without an authenticated 
   const response = responseDouble();
   try {
     await dataApi({ method: 'POST', headers: {}, query: {}, body: {
-      operation: 'save-public-guide', guideId: stored.id, answers: { goal: 'must not save' }
+      operation: 'save-public-guide', guideId: stored.id, answers: { goal: 'fixed' }
     } }, response);
   } finally {
     global.fetch = previousFetch;
   }
 
-  assert.strictEqual(response.statusCode, 404);
-  assert.strictEqual(calls.length, 2, 'no SET is allowed without the issuance reservation');
+  assert.strictEqual(response.statusCode, 200);
+  assert.strictEqual(response.body.guide.answers.goal, 'fixed');
+  assert.ok(calls.some((call) => call.options && call.options.body && call.options.body.includes('guide-issue:client-not-issued')), 'missing reservation should be recreated for the existing guide');
   assert.match(calls[1].url, /\/get\/rs%3Aguide-issue%3Aclient-not-issued$/);
 });
 
@@ -1148,22 +1161,26 @@ test('private guide loading never replaces a review after a read error but may i
   assert.strictEqual(reviewCreations, 1, 'invalid stored review data must not become a blank review');
 });
 
-test('guide tab reconnects an existing issuance reservation when the client link is missing', async () => {
+test('guide tab repairs and reconnects an existing issuance when the client link is missing', async () => {
   const selectorMatch = html.match(/(async function selectClientWorkspaceTab[\s\S]*?)(?=\n  function setChecklistCollectionOpen)/);
   assert.ok(selectorMatch, 'guide tab loader must be independently testable');
   const client = { id: 'client-one', name: 'linked later' };
   const guide = { id: 'guide_recovered', clientId: 'client-one', createdAt: 1, updatedAt: 2, submittedAt: null, answers: {} };
   const state = { currentClient: client, clientTab: 'guide' };
   const reads = [];
+  const reservations = [];
   const writes = [];
   const sandbox = {
     state,
     setClientWorkspaceTab(tab) { state.clientTab = tab; },
     renderClientWorkspace() {},
     newGuideReview() { return { guideId: guide.id, clientId: guide.clientId, status: 'unreviewed', memo: '' }; },
+    async reserveGuideIssue(clientId) {
+      reservations.push(clientId);
+      return { guide };
+    },
     async readS(key) {
       reads.push(key);
-      if (key === 'guide-issue:client-one') return { status: 'found', value: { guide } };
       if (key === 'guide:guide_recovered') return { status: 'found', value: guide };
       if (key === 'guide-review:guide_recovered') return { status: 'missing' };
       throw new Error(`unexpected read ${key}`);
@@ -1177,7 +1194,8 @@ test('guide tab reconnects an existing issuance reservation when the client link
 
   await sandbox.selectClientWorkspaceTab(client, 'guide');
 
-  assert.deepStrictEqual(reads, ['guide-issue:client-one', 'guide:guide_recovered', 'guide-review:guide_recovered']);
+  assert.deepStrictEqual(reservations, ['client-one']);
+  assert.deepStrictEqual(reads, ['guide:guide_recovered', 'guide-review:guide_recovered']);
   assert.strictEqual(client.guideId, 'guide_recovered');
   assert.strictEqual(state.currentGuide, guide);
   assert.strictEqual(state.currentGuideLoadState, 'ready');

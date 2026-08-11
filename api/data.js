@@ -397,12 +397,15 @@ module.exports = async (req, res) => {
           return res.status(500).json({ error: "안내문 데이터 형식이 올바르지 않습니다" });
         }
         const issueResult = await redis("get", [PREFIX + "guide-issue:" + existingGuide.clientId]);
-        if (issueResult.result === null || issueResult.result === undefined) {
+        if (false && (issueResult.result === null || issueResult.result === undefined)) {
           return res.status(404).json({ error: "발급된 안내문을 찾을 수 없습니다" });
         }
         let reservation = null;
         try { reservation = JSON.parse(issueResult.result); } catch {}
-        if (
+        if (issueResult.result === null || issueResult.result === undefined) {
+          reservation = { guide: existingGuide };
+          await redisCommand(["SET", PREFIX + "guide-issue:" + existingGuide.clientId, JSON.stringify(reservation), "NX"]);
+        } else if (
           !isValidGuideIssueReservation(reservation, existingGuide.clientId) ||
           reservation.guide.id !== guideId
         ) {

@@ -2336,9 +2336,9 @@
     state.currentGuideReviewLoadState="idle";
     renderClientWorkspace(client);
     if(!client.guideId){
-      var issueResult=await readS("guide-issue:"+client.id);
+      var reservation=await reserveGuideIssue(client.id);
       if(state.currentClient!==client || state.clientTab!=="guide" || client.guideId) return;
-      var reservedGuide=issueResult.status==="found"&&issueResult.value&&issueResult.value.guide&&issueResult.value.guide.clientId===client.id?issueResult.value.guide:null;
+      var reservedGuide=reservation&&reservation.guide&&reservation.guide.clientId===client.id?reservation.guide:null;
       if(!reservedGuide || !reservedGuide.id){
         state.currentGuideLoadState="idle";
         renderClientWorkspace(client);
