@@ -388,6 +388,63 @@
   .share-box button{ flex:none; border:none; background:#3A4250; color:#fff; padding:7px 11px; border-radius:8px; font-size:12px; font-weight:700; }
   .share-box button:hover{ background:var(--brand); }
 
+  /* public client information guide */
+  .public-guide{ max-width:580px; margin:0 auto; }
+  .public-guide-head{ padding:12px 2px 20px; }
+  .public-guide-brand{ display:flex; align-items:center; gap:8px; margin-bottom:24px; color:var(--ink-600); font-size:13px; font-weight:800; }
+  .public-guide-brand .brand-mark{ width:22px; height:22px; border-radius:7px; }
+  .public-guide-kicker{ margin:0 0 7px; color:var(--brand); font-size:12px; font-weight:800; letter-spacing:.04em; }
+  .public-guide-head h1{ margin:0 0 9px; font-size:26px; line-height:1.3; letter-spacing:-.025em; }
+  .public-guide-intro{ margin:0; color:var(--ink-600); font-size:14px; line-height:1.65; }
+  .guide-state{ display:inline-flex; margin-top:14px; padding:5px 10px; border-radius:99px; background:var(--brand-light); color:var(--brand-dark); font-size:11.5px; font-weight:800; }
+  .guide-progress-card{ position:sticky; top:0; z-index:10; margin-bottom:12px; padding:13px 16px; border:1px solid rgba(229,232,235,.86); border-radius:14px; background:rgba(255,255,255,.94); box-shadow:var(--shadow-card); backdrop-filter:blur(10px); }
+  .guide-progress-copy{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; font-size:12px; }
+  .guide-progress-copy strong{ color:var(--ink-700); }
+  .guide-progress-copy span{ color:var(--ink-400); font-weight:700; }
+  .guide-progress-track{ height:7px; overflow:hidden; border-radius:99px; background:#EAF0F7; }
+  .guide-progress-fill{ height:100%; border-radius:inherit; background:linear-gradient(90deg,var(--brand-dark),var(--brand)); transition:width .25s ease; }
+  .guide-form{ overflow:hidden; border-radius:20px; background:var(--bg-card); box-shadow:var(--shadow-card); }
+  .guide-section{ padding:24px 20px 8px; }
+  .guide-section[hidden]{ display:none; }
+  .guide-section-label{ margin-bottom:5px; color:var(--brand); font-size:11px; font-weight:800; letter-spacing:.06em; }
+  .guide-section h2{ margin:0 0 5px; font-size:20px; letter-spacing:-.015em; }
+  .guide-section-desc{ margin:0 0 22px; color:var(--ink-500); font-size:13px; }
+  .guide-question{ margin-bottom:20px; }
+  .guide-question > label,.guide-question legend{ display:block; margin:0 0 7px; padding:0; color:var(--ink-700); font-size:13.5px; font-weight:800; }
+  .guide-optional{ margin-left:5px; color:var(--ink-400); font-size:10.5px; font-weight:700; }
+  .guide-question input[type=text],.guide-question textarea{ width:100%; border:1px solid var(--line); border-radius:12px; padding:12px 13px; background:#FAFBFC; color:var(--ink-900); font-size:14px; resize:vertical; }
+  .guide-question textarea{ min-height:92px; }
+  .guide-question input::placeholder,.guide-question textarea::placeholder{ color:var(--ink-300); }
+  .guide-radio-group{ display:grid; grid-template-columns:repeat(3,1fr); gap:7px; }
+  .guide-radio{ position:relative; }
+  .guide-radio input{ position:absolute; width:1px; height:1px; opacity:0; }
+  .guide-radio span{ display:flex; min-height:48px; align-items:center; justify-content:center; padding:8px; border:1px solid var(--line); border-radius:11px; background:#FAFBFC; color:var(--ink-600); font-size:12.5px; font-weight:700; text-align:center; }
+  .guide-radio input:checked + span{ border-color:var(--brand); background:var(--brand-light); color:var(--brand-dark); box-shadow:inset 0 0 0 1px var(--brand); }
+  .guide-radio input:focus-visible + span{ outline:2px solid var(--brand); outline-offset:2px; }
+  .guide-save-row{ min-height:42px; display:flex; align-items:center; justify-content:center; gap:9px; padding:4px 20px 8px; color:var(--ink-400); font-size:12px; font-weight:700; text-align:center; }
+  .guide-save-row[data-state="saving"]{ color:var(--brand-dark); }
+  .guide-save-row[data-state="saved"]{ color:#0B8F55; }
+  .guide-save-row[data-state="failed"]{ color:var(--stop); }
+  .guide-retry{ border:0; border-radius:8px; padding:6px 9px; background:var(--stop-light); color:var(--stop); font-size:11.5px; font-weight:800; }
+  .guide-actions{ position:sticky; bottom:0; display:flex; gap:9px; padding:14px 20px 20px; border-top:1px solid var(--line); background:rgba(255,255,255,.96); backdrop-filter:blur(10px); }
+  .guide-actions .btn{ flex:1; }
+  .guide-complete{ padding:48px 24px 28px; border-radius:20px; background:var(--bg-card); box-shadow:var(--shadow-card); text-align:center; }
+  .guide-complete-icon{ width:54px; height:54px; display:grid; place-items:center; margin:0 auto 18px; border-radius:50%; background:var(--scale-light); color:#0B8F55; font-size:25px; font-weight:900; }
+  .guide-complete h1{ margin:0 0 8px; font-size:24px; }
+  .guide-complete-copy{ max-width:400px; margin:0 auto 22px; color:var(--ink-600); font-size:14px; line-height:1.7; }
+  .guide-complete-summary{ margin:0 0 20px; padding:14px 15px; border-radius:13px; background:#F7F9FC; text-align:left; }
+  .guide-complete-summary div{ padding:5px 0; color:var(--ink-600); font-size:12.5px; }
+  .guide-complete-summary strong{ display:block; color:var(--ink-900); font-size:11.5px; }
+  .guide-complete-note{ margin:0 0 18px; color:var(--ink-400); font-size:12px; }
+  @media(max-width:600px){
+    #app:has(.public-guide){ padding:18px 14px 60px; }
+    .public-guide-head{ padding-top:4px; }
+    .public-guide-head h1{ font-size:23px; }
+    .guide-section{ padding:22px 17px 6px; }
+    .guide-actions{ padding:13px 17px 17px; }
+  }
+  @media(max-width:380px){ .guide-radio-group{ grid-template-columns:1fr; } }
+
   @media (prefers-reduced-motion: reduce){ *{ transition:none!important; animation:none!important; } }
   .fade-in{ animation:fadeIn .3s ease both; }
   @keyframes fadeIn{ from{opacity:0;transform:translateY(6px);} to{opacity:1;transform:translateY(0);} }
@@ -816,6 +873,199 @@
   async function setS(k,v){ try{ return await storageBackend.set(k,JSON.stringify(v),true); }catch(e){ console.error(e); return null; } }
   async function delS(k){ try{ return await storageBackend.delete(k,true); }catch(e){ return null; } }
 
+  /* ============ public client information guide ============ */
+  var publicGuideSaveChain=Promise.resolve(true);
+  var publicGuideSaveTimer=null;
+  var publicGuideSection=0;
+  var publicGuideRevision=0;
+
+  function renderPublicGuide(guide){
+    var answers=guide&&guide.answers&&typeof guide.answers==="object"?guide.answers:{};
+    var currentStatus=guideStatus(guide);
+    var statusLabel=currentStatus==="submitted"?"제출된 답변 · 계속 수정 가능":(currentStatus==="draft"?"임시 저장된 답변":"처음 작성 중");
+    function value(name){ return esc(answers[name]||""); }
+    function optional(){ return '<span class="guide-optional">선택</span>'; }
+    function textField(name,label,placeholder,autocomplete){
+      return '<div class="guide-question"><label for="guide-'+name+'">'+label+optional()+'</label>'+
+        '<input type="text" id="guide-'+name+'" data-guide-field="'+name+'" value="'+value(name)+'" placeholder="'+placeholder+'"'+(autocomplete?' autocomplete="'+autocomplete+'"':'')+' /></div>';
+    }
+    function textArea(name,label,placeholder){
+      return '<div class="guide-question"><label for="guide-'+name+'">'+label+optional()+'</label>'+
+        '<textarea id="guide-'+name+'" data-guide-field="'+name+'" placeholder="'+placeholder+'">'+value(name)+'</textarea></div>';
+    }
+    function materialRadio(option){
+      return '<label class="guide-radio"><input type="radio" name="materialStatus" data-guide-field="materialStatus" value="'+option+'"'+(answers.materialStatus===option?' checked':'')+' /><span>'+option+'</span></label>';
+    }
+    return '<main class="public-guide fade-in">'+
+      '<header class="public-guide-head">'+
+        '<div class="public-guide-brand"><span class="brand-mark"></span>함께 만드는 매장 안내</div>'+
+        '<p class="public-guide-kicker">CLIENT INFORMATION GUIDE</p>'+
+        '<h1>매장을 더 잘 이해할 수 있도록 알려주세요</h1>'+
+        '<p class="public-guide-intro">편하게 답할 수 있는 내용만 적어주세요. 모든 질문은 선택이며, 입력한 답변은 잠시 후 자동으로 저장됩니다.</p>'+
+        '<span class="guide-state">'+statusLabel+'</span>'+
+      '</header>'+
+      '<div class="guide-progress-card" aria-label="작성 진행 상황">'+
+        '<div class="guide-progress-copy"><strong id="guide-progress-title">매장과 목표</strong><span id="guide-progress-count">1 / 3</span></div>'+
+        '<div class="guide-progress-track"><div class="guide-progress-fill" id="guide-progress-fill" style="width:33.333%"></div></div>'+
+      '</div>'+
+      '<form class="guide-form" id="public-guide-form">'+
+        '<section class="guide-section" data-guide-section="0">'+
+          '<div class="guide-section-label">SECTION 1</div><h2>매장과 목표</h2><p class="guide-section-desc">요즘 가장 신경 쓰이는 일과 우선순위를 알려주세요.</p>'+
+          textArea("concern","현재 매장의 가장 큰 고민","예: 평일 저녁 방문 고객이 줄었어요")+
+          textArea("goal","최우선 마케팅 목표","예: 신메뉴 인지도 높이기, 재방문 늘리기")+
+          textField("priorityMenu","우선 홍보 메뉴","예: 시그니처 파스타")+
+        '</section>'+
+        '<section class="guide-section" data-guide-section="1" hidden>'+
+          '<div class="guide-section-label">SECTION 2</div><h2>고객과 메시지</h2><p class="guide-section-desc">우리 매장을 누구에게, 어떤 모습으로 소개하면 좋을지 들려주세요.</p>'+
+          textArea("currentCustomers","현재 주요 고객","예: 인근 직장인과 30대 커플")+
+          textArea("desiredCustomers","유치하고 싶은 고객","예: 주말 가족 고객")+
+          textArea("strengths","매장 핵심 강점","예: 매일 직접 만드는 소스와 친절한 응대")+
+          textArea("story","꼭 알리고 싶은 이야기","매장의 시작, 철학, 특별한 에피소드가 있다면 적어주세요")+
+          textField("contentTone","원하는 콘텐츠 분위기","예: 따뜻하고 친근하게")+
+          textArea("avoidExpressions","피하고 싶은 표현","사용하지 않았으면 하는 말이나 이미지가 있다면 적어주세요")+
+        '</section>'+
+        '<section class="guide-section" data-guide-section="2" hidden>'+
+          '<div class="guide-section-label">SECTION 3</div><h2>운영과 확인</h2><p class="guide-section-desc">자료 전달과 검수 과정에 필요한 내용을 확인할게요.</p>'+
+          '<fieldset class="guide-question" style="border:0;padding:0;"><legend>보유 사진·영상 자료 상태'+optional()+'</legend><div class="guide-radio-group">'+
+            materialRadio("보유함")+materialRadio("별도 전달 예정")+materialRadio("없음")+
+          '</div></fieldset>'+
+          textField("approverName","검수 및 승인 담당자 이름","예: 홍길동","name")+
+          textField("approverContact","담당자 연락 수단","예: 010-0000-0000 또는 이메일","tel")+
+          textArea("operatingNotes","운영 시 주의사항","휴무일, 촬영 가능 시간, 사전 확인이 필요한 내용 등을 적어주세요")+
+        '</section>'+
+        '<div class="guide-save-row" data-state="saved"><span id="guide-save-status" role="status" aria-live="polite">불러온 답변이 저장되어 있습니다.</span><button type="button" class="guide-retry" id="guide-retry-save" hidden>다시 시도</button></div>'+
+        '<div class="guide-actions">'+
+          '<button type="button" class="btn btn-plain" id="guide-prev" hidden>이전</button>'+
+          '<button type="button" class="btn btn-primary" id="guide-next">다음</button>'+
+          '<button type="submit" class="btn btn-primary" id="guide-submit" hidden>제출하기</button>'+
+        '</div>'+
+      '</form>'+
+    '</main>';
+  }
+  async function savePublicGuide(guide, submitted){
+    var savedAt=Date.now();
+    var snapshot=JSON.parse(JSON.stringify(guide));
+    snapshot.updatedAt=savedAt;
+    if(submitted) snapshot.submittedAt=savedAt;
+    var write=publicGuideSaveChain.catch(function(){ return false; }).then(async function(){
+      try{
+        var result=await setS("guide:"+guide.id,snapshot);
+        if(!result) return false;
+        guide.updatedAt=snapshot.updatedAt;
+        if(submitted) guide.submittedAt=snapshot.submittedAt;
+        return true;
+      }catch(e){
+        return false;
+      }
+    });
+    publicGuideSaveChain=write;
+    return write;
+  }
+  function renderGuideComplete(guide){
+    var answers=guide&&guide.answers&&typeof guide.answers==="object"?guide.answers:{};
+    var summary=guideSummary(answers);
+    var followUps=guideFollowUps(answers);
+    var summaryHtml=summary.length?'<div class="guide-complete-summary">'+summary.map(function(item){
+      return '<div><strong>'+esc(item.label)+'</strong>'+esc(item.value)+'</div>';
+    }).join("")+'</div>':"";
+    var followUpNote=followUps.length?'<p class="guide-complete-note">비워 둔 질문 '+followUps.length+'개는 필요할 때 같은 링크에서 보완할 수 있어요.</p>':"";
+    return '<main class="public-guide fade-in"><div class="public-guide-brand" style="padding-top:8px;"><span class="brand-mark"></span>함께 만드는 매장 안내</div>'+
+      '<section class="guide-complete"><div class="guide-complete-icon">✓</div><h1>답변을 전달했어요</h1>'+
+      '<p class="guide-complete-copy">소중한 내용을 바탕으로 매장을 더 잘 알릴 방법을 준비할게요. 이 같은 링크로 언제든 돌아와 답변을 수정할 수 있습니다.</p>'+
+      summaryHtml+followUpNote+'<button type="button" class="btn btn-ghost btn-block" id="guide-edit-answers">답변 수정하기</button></section></main>';
+  }
+  function setGuideSaveStatus(stateName,message,retryAction){
+    var status=document.getElementById("guide-save-status");
+    var retry=document.getElementById("guide-retry-save");
+    if(!status||!retry) return;
+    status.parentElement.setAttribute("data-state",stateName);
+    status.textContent=message;
+    retry.hidden=!retryAction;
+    retry.onclick=retryAction||null;
+  }
+  function syncPublicGuideSection(){
+    var names=["매장과 목표","고객과 메시지","운영과 확인"];
+    app.querySelectorAll("[data-guide-section]").forEach(function(section){
+      section.hidden=Number(section.getAttribute("data-guide-section"))!==publicGuideSection;
+    });
+    var title=document.getElementById("guide-progress-title");
+    var count=document.getElementById("guide-progress-count");
+    var fill=document.getElementById("guide-progress-fill");
+    if(title) title.textContent=names[publicGuideSection];
+    if(count) count.textContent=(publicGuideSection+1)+" / 3";
+    if(fill) fill.style.width=((publicGuideSection+1)/3*100)+"%";
+    var previous=document.getElementById("guide-prev");
+    var next=document.getElementById("guide-next");
+    var submit=document.getElementById("guide-submit");
+    if(previous) previous.hidden=publicGuideSection===0;
+    if(next) next.hidden=publicGuideSection===2;
+    if(submit) submit.hidden=publicGuideSection!==2;
+  }
+  function queuePublicGuideSave(guide){
+    clearTimeout(publicGuideSaveTimer);
+    var revision=++publicGuideRevision;
+    setGuideSaveStatus("saving","저장 대기 중…",null);
+    publicGuideSaveTimer=setTimeout(function(){ persistPublicGuideDraft(guide,revision); },500);
+  }
+  async function persistPublicGuideDraft(guide,revision){
+    clearTimeout(publicGuideSaveTimer);
+    var saveRevision=revision||++publicGuideRevision;
+    setGuideSaveStatus("saving","저장 중…",null);
+    var saved=await savePublicGuide(guide,false);
+    if(saveRevision!==publicGuideRevision) return saved;
+    if(saved){
+      setGuideSaveStatus("saved","저장되었습니다",null);
+    }else{
+      setGuideSaveStatus("failed","저장에 실패했습니다",function(){ persistPublicGuideDraft(guide,++publicGuideRevision); });
+    }
+    return saved;
+  }
+  async function submitPublicGuide(guide){
+    clearTimeout(publicGuideSaveTimer);
+    var revision=++publicGuideRevision;
+    var submit=document.getElementById("guide-submit");
+    if(submit){ submit.disabled=true; submit.textContent="제출 중…"; }
+    setGuideSaveStatus("saving","제출 내용을 저장 중…",null);
+    var saved=await savePublicGuide(guide,true);
+    if(revision!==publicGuideRevision) return;
+    if(!saved){
+      if(submit){ submit.disabled=false; submit.textContent="제출하기"; }
+      setGuideSaveStatus("failed","저장에 실패했습니다",function(){ submitPublicGuide(guide); });
+      return;
+    }
+    app.innerHTML=renderGuideComplete(guide);
+    var edit=document.getElementById("guide-edit-answers");
+    if(edit) edit.addEventListener("click",function(){ mountPublicGuide(guide); });
+  }
+  function bindPublicGuide(guide){
+    app.querySelectorAll("[data-guide-field]").forEach(function(field){
+      field.addEventListener("input",function(){
+        if(field.type==="radio"&&!field.checked) return;
+        guide.answers[field.getAttribute("data-guide-field")]=field.value;
+        queuePublicGuideSave(guide);
+      });
+    });
+    var previous=document.getElementById("guide-prev");
+    var next=document.getElementById("guide-next");
+    if(previous) previous.addEventListener("click",function(){
+      persistPublicGuideDraft(guide,++publicGuideRevision);
+      publicGuideSection=Math.max(0,publicGuideSection-1); syncPublicGuideSection();
+    });
+    if(next) next.addEventListener("click",function(){
+      persistPublicGuideDraft(guide,++publicGuideRevision);
+      publicGuideSection=Math.min(2,publicGuideSection+1); syncPublicGuideSection();
+    });
+    var form=document.getElementById("public-guide-form");
+    if(form) form.addEventListener("submit",function(event){ event.preventDefault(); submitPublicGuide(guide); });
+    syncPublicGuideSection();
+  }
+  function mountPublicGuide(guide){
+    clearTimeout(publicGuideSaveTimer);
+    publicGuideSection=0;
+    app.innerHTML=renderPublicGuide(guide);
+    bindPublicGuide(guide);
+  }
+
   /* ============ state ============ */
   var state={
     view:"loading",
@@ -837,8 +1087,30 @@
 
   /* ============ init ============ */
   async function init(){
-    // 공유 링크(?report=ID)로 접속한 경우 — 로그인 없이 열람만
     var params = new URLSearchParams(location.search);
+    // 고객 안내문(?guide=ID)은 팀 로그인보다 먼저 불러오며 해당 안내문 데이터만 사용한다.
+    var publicGuideId=params.get("guide");
+    if(params.has("guide")){
+      app.innerHTML='<div style="padding:60px;text-align:center;color:#8B95A1;">안내문을 불러오는 중…</div>';
+      var publicGuide=null;
+      if(/^guide_[A-Za-z0-9_-]{24,}$/.test(publicGuideId||"")) publicGuide=await getS("guide:"+publicGuideId);
+      if(!publicGuide||publicGuide.id!==publicGuideId){
+        app.innerHTML='<main class="public-guide fade-in"><div class="empty-state" style="margin-top:60px;">'+
+          '<div class="es-title">찾을 수 없는 안내문입니다</div><div class="es-sub">주소를 다시 확인하거나 안내문을 전달한 담당자에게 문의해 주세요.</div></div></main>';
+        return;
+      }
+      if(!publicGuide.answers||typeof publicGuide.answers!=="object") publicGuide.answers={};
+      if(guideStatus(publicGuide)==="submitted"){
+        app.innerHTML=renderGuideComplete(publicGuide);
+        var editPublicGuide=document.getElementById("guide-edit-answers");
+        if(editPublicGuide) editPublicGuide.addEventListener("click",function(){ mountPublicGuide(publicGuide); });
+      }else{
+        mountPublicGuide(publicGuide);
+      }
+      return;
+    }
+
+    // 공유 링크(?report=ID)로 접속한 경우 — 로그인 없이 열람만
     var sharedId = params.get("report");
     if (sharedId) {
       state.readOnly = true;

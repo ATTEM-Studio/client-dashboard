@@ -190,3 +190,92 @@ test('guideStatus derives not-started, draft, and submitted states from timestam
   assert.strictEqual(sandbox.guideStatus({ submittedAt: null, updatedAt: 2, createdAt: 1 }), 'draft');
   assert.strictEqual(sandbox.guideStatus({ submittedAt: 2, updatedAt: 2, createdAt: 1 }), 'submitted');
 });
+
+test('public guide route renders the mobile questionnaire and completion affordance', () => {
+  assert.match(html, /params\.get\("guide"\)/);
+  assert.match(html, /function renderPublicGuide\(/);
+  assert.match(html, /data-guide-section/);
+  assert.match(html, /id="guide-save-status"/);
+  assert.match(html, /답변 수정하기/);
+  assert.match(html, /별도 전달 예정/);
+});
+
+test('public questionnaire keeps all thirteen common answer fields optional across three sections', () => {
+  const rendererMatch = html.match(/(function renderPublicGuide[\s\S]*?)(?=\n  async function savePublicGuide)/);
+  assert.ok(rendererMatch, 'renderPublicGuide must be independently testable');
+  const sandbox = {
+    esc(value) { return String(value == null ? '' : value); },
+    guideStatus() { return 'draft'; }
+  };
+  vm.runInNewContext(rendererMatch[1], sandbox);
+
+  const markup = sandbox.renderPublicGuide({ answers: {} });
+  const sections = [...markup.matchAll(/data-guide-section="\d"/g)];
+  const fieldNames = [...markup.matchAll(/data-guide-field="([^"]+)"/g)].map((match) => match[1]);
+  const uniqueFields = [...new Set(fieldNames)].sort();
+  assert.strictEqual(sections.length, 3);
+  assert.deepStrictEqual(uniqueFields, [
+    'approverContact', 'approverName', 'avoidExpressions', 'concern', 'contentTone',
+    'currentCustomers', 'desiredCustomers', 'goal', 'materialStatus', 'operatingNotes',
+    'priorityMenu', 'story', 'strengths'
+  ]);
+  assert.doesNotMatch(markup, /\srequired(?:\s|=|>)/, 'blank answers must remain valid');
+  assert.deepStrictEqual(
+    [...markup.matchAll(/name="materialStatus"[^>]*value="([^"]+)"/g)].map((match) => match[1]),
+    ['보유함', '별도 전달 예정', '없음']
+  );
+});
+
+test('draft and submitted public saves update the same permanent guide document', async () => {
+  const saverMatch = html.match(/(async function savePublicGuide[\s\S]*?)(?=\n  function renderGuideComplete)/);
+  assert.ok(saverMatch, 'savePublicGuide must be independently testable');
+  const writes = [];
+  const sandbox = {
+    Date: { now() { return 1700000000100 + writes.length; } },
+    JSON,
+    Promise,
+    publicGuideSaveChain: Promise.resolve(true),
+    async setS(key, value) { writes.push({ key, value: JSON.parse(JSON.stringify(value)) }); return { key }; }
+  };
+  vm.runInNewContext(saverMatch[1], sandbox);
+
+  const guide = { id: 'guide_permanent', createdAt: 1700000000000, updatedAt: 1700000000000, submittedAt: null, answers: {} };
+  assert.strictEqual(await sandbox.savePublicGuide(guide, false), true);
+  assert.strictEqual(await sandbox.savePublicGuide(guide, true), true);
+  assert.deepStrictEqual(writes.map((write) => write.key), ['guide:guide_permanent', 'guide:guide_permanent']);
+  assert.strictEqual(writes[0].value.submittedAt, null);
+  assert.strictEqual(writes[1].value.submittedAt, 1700000000101);
+});
+
+test('a failed submission never marks the local guide as submitted', async () => {
+  const saverMatch = html.match(/(async function savePublicGuide[\s\S]*?)(?=\n  function renderGuideComplete)/);
+  assert.ok(saverMatch, 'savePublicGuide must be independently testable');
+  const sandbox = {
+    Date: { now() { return 1700000000100; } },
+    JSON,
+    Promise,
+    publicGuideSaveChain: Promise.resolve(true),
+    async setS() { return null; }
+  };
+  vm.runInNewContext(saverMatch[1], sandbox);
+
+  const guide = { id: 'guide_failed', createdAt: 1700000000000, updatedAt: 1700000000000, submittedAt: null, answers: {} };
+  assert.strictEqual(await sandbox.savePublicGuide(guide, true), false);
+  assert.strictEqual(guide.submittedAt, null);
+});
+
+test('completion keeps the permanent link editable without lock or reissue controls', () => {
+  const completeMatch = html.match(/(function renderGuideComplete[\s\S]*?)(?=\n  function setGuideSaveStatus)/);
+  assert.ok(completeMatch, 'renderGuideComplete must be independently testable');
+  const sandbox = {
+    esc(value) { return String(value == null ? '' : value); },
+    guideSummary() { return []; },
+    guideFollowUps() { return []; }
+  };
+  vm.runInNewContext(completeMatch[1], sandbox);
+
+  const markup = sandbox.renderGuideComplete({ answers: {} });
+  assert.match(markup, /같은 링크/);
+  assert.match(markup, /답변 수정하기/);
+  assert.doesNotMatch(markup, /잠금|재발급|새 링크|업로드/);
+});
