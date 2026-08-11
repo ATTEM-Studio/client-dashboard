@@ -1694,6 +1694,7 @@
           '</div>'+
           '<div class="field"><label>메모</label><textarea id="c-memo" rows="3" placeholder="예: 주력 채널은 플레이스, 인스타그램은 보조">'+esc(c.memo)+'</textarea></div>'+
         '</div>'+
+        '<label class="check-inline"><input id="f-exclude-weekends" type="checkbox"> 주말 제외</label>'+
         '<div class="form-actions">'+
           (isEdit?'<button class="btn btn-danger" id="btn-del-client">업체 삭제</button>':'')+
           '<button class="btn btn-plain" id="btn-cancel">취소</button>'+
@@ -1702,6 +1703,8 @@
       '</div>';
 
     var pick={ contract:c.contractType, status:c.status };
+    var exclude=document.getElementById("f-exclude-weekends");
+    exclude.checked = isEdit ? c.excludeWeekends===true : true;
     document.querySelectorAll("#seg-contract button").forEach(function(b){
       b.addEventListener("click", function(){
         pick.contract=b.getAttribute("data-contract");
@@ -1749,6 +1752,7 @@
         obj.contractMonths=document.getElementById("c-months").value.trim()||"3";
         obj.status=pick.status;
         obj.memo=document.getElementById("c-memo").value.trim();
+        obj.excludeWeekends=document.getElementById("f-exclude-weekends").checked;
         obj.checklist=obj.checklist||[];
         obj.progress=obj.progress||{};
         obj.renewals=obj.renewals||[];

@@ -9,6 +9,8 @@ new Function(script);
 assert.match(html, /id="renewal-modal"/);
 assert.match(html, /id="renewal-start-date"/);
 assert.match(html, /data-renewal-set=/);
+assert.match(html, /id="f-exclude-weekends"/);
+assert.match(html, /\uC8FC\uB9D0 ?\uC81C\uC678/);
 assert.match(html, /세트 없이 시작/);
 assert.match(html, /재계약 시작일은 월요일만 선택할 수 있습니다\./);
 assert.match(html, /재계약 저장에 실패했습니다/);

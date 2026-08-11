@@ -36,6 +36,7 @@ function saveRenewalClient(options) {
     'c-start': eventTarget({ value: startDate, customValidity: '' }),
     'c-months': { value: '3' },
     'c-memo': { value: '' },
+    'f-exclude-weekends': { checked: false },
     'btn-save-client': saveButton,
     'btn-back': eventTarget({}),
     'btn-cancel': eventTarget({})
@@ -66,6 +67,9 @@ function saveRenewalClient(options) {
   };
   vm.runInNewContext(source, context);
   context.renderClientForm(options.base);
+  if (Object.hasOwn(options, 'excludeWeekendsChecked')) {
+    elements['f-exclude-weekends'].checked = options.excludeWeekendsChecked;
+  }
   return saveButton.handlers.click.call(saveButton).then(() => stored);
 }
 
@@ -92,6 +96,23 @@ function eventTarget(target) {
   });
   assert.strictEqual(Object.hasOwn(newClient[0].value, 'renewalCount'), false,
     'saving a non-renewal client must keep the existing data shape');
+
+  const savedNewClient = await saveRenewalClient({});
+  assert.strictEqual(savedNewClient[0].value.excludeWeekends, true,
+    'saving a new client must enable weekend exclusion by default');
+
+  const savedExistingWithoutCheckboxDefault = await saveRenewalClient({
+    base: { id: 'legacy-client', name: 'Legacy Client', contractType: 'new', checklist: [], progress: {}, renewals: [] }
+  });
+  assert.strictEqual(savedExistingWithoutCheckboxDefault[0].value.excludeWeekends, false,
+    'saving an existing client without the setting must preserve weekend inclusion');
+
+  const savedExplicitUnchecked = await saveRenewalClient({
+    base: { id: 'weekend-client', name: 'Weekend Client', contractType: 'new', excludeWeekends: true, checklist: [], progress: {}, renewals: [] },
+    excludeWeekendsChecked: false
+  });
+  assert.strictEqual(savedExplicitUnchecked[0].value.excludeWeekends, false,
+    'saving an unchecked weekend setting must persist false');
 
   const invalidNewClient = await saveRenewalClient({ startDate: '2026-08-11' });
   assert.deepStrictEqual(invalidNewClient, [],
