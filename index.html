@@ -1880,7 +1880,7 @@
 
   /* ============ CONTRACTS ============ */
   function blankContract(){
-    return { id:"", clientId:"", clientName:"", contractType:"new", renewalCount:1, productType:"regular", productName:"", supplyPrice:"", paymentMethod:"card", businessNumber:"", contact:"", email:"", startDate:"", contractMonths:"3", fee:"", terms:"", baseTerms:"28일 단위 정기 결제형 마케팅 서비스 계약서\n\n제1조(목적)\n본 계약은 온라인 마케팅 실행·관리 용역의 내용, 기간, 비용, 결제 및 운영 기준을 정하는 것을 목적으로 합니다.", internalMemo:"", owner:"", signerName:"", signatureDataUrl:"", createdAt:null, updatedAt:null };
+    return { id:"", clientId:"", clientName:"", contractType:"new", renewalCount:1, productType:"regular", productName:"", supplyPrice:"", paymentMethod:"card", businessNumber:"", contact:"", email:"", startDate:"", contractMonths:"3", fee:"", terms:"", baseTerms:"", internalMemo:"", owner:"", signerName:"", signatureDataUrl:"", createdAt:null, updatedAt:null };
   }
   function newContractDraft(){
     var bytes=new Uint8Array(24);
@@ -1915,12 +1915,12 @@
           '<div class="guide-link-box"><code>'+esc(publicLink)+'</code><div class="guide-link-actions"><button type="button" class="btn btn-plain btn-sm" id="btn-copy-contract-link">링크 복사</button></div></div>'+
           '<div class="two-col"><div class="field"><label>업체명 *</label><input id="contract-client-name" type="text" value="'+esc(contract.clientName||"")+'" placeholder="예: 꿈카페 하단지점" /></div>'+
           '<div class="field"><label>계약 구분</label><select id="contract-type"><option value="new" '+(contract.contractType==="new"?"selected":"")+'>신규</option><option value="renewal" '+(contract.contractType==="renewal"?"selected":"")+'>재계약</option></select></div></div>'+
-          '<div class="two-col"><div class="field" id="contract-renewal-count-field" style="'+(contract.contractType==="renewal"?"":"display:none")+'"><label>재계약 회차</label><input type="number" min="1" step="1" id="contract-renewal-count" value="'+esc(contract.renewalCount||1)+'" /></div>'+
-          '<div class="field"><label>업체 시작일</label><input type="date" id="contract-start" value="'+esc(contract.startDate||"")+'" /></div></div>'+
-          '<div class="field"><label>계약 기간 (개월)</label><input type="text" id="contract-months" value="'+esc(contract.contractMonths||"3")+'" /></div>'+
+          '<div class="two-col"><div class="field"><label>업체 시작일</label><input type="date" id="contract-start" value="'+esc(contract.startDate||"")+'" /></div>'+
+          '<div class="field"><label>계약 기간 (개월)</label><input type="text" id="contract-months" value="'+esc(contract.contractMonths||"3")+'" /></div></div>'+
+          '<div class="field" id="contract-renewal-count-field" style="'+(contract.contractType==="renewal"?"":"display:none")+'"><label>재계약 회차</label><input type="number" min="1" step="1" id="contract-renewal-count" value="'+esc(contract.renewalCount||1)+'" /></div>'+
         '</div>'+
         '<div class="fsection"><div class="fsec-num">PRODUCT</div><h3 class="fsec-title">상품 명세</h3>'+
-          '<div class="two-col"><div class="field"><label>상품</label><select id="contract-product-type"><option value="regular" '+(contract.productType==="regular"?"selected":"")+'>광고비용</option><option value="photo" '+(contract.productType==="photo"?"selected":"")+'>사진/달 파운드</option></select></div>'+
+          '<div class="two-col"><div class="field"><label>상품</label><select id="contract-product-type"><option value="regular" '+(contract.productType==="regular"?"selected":"")+'>광고비용</option><option value="custom" '+(contract.productType==="custom"?"selected":"")+'>새로 생성</option></select></div>'+
           '<div class="field"><label>상품명</label><input id="contract-product-name" type="text" value="'+esc(contract.productName||"")+'" placeholder="예: 다각화 플랜" /></div></div>'+
           '<div class="two-col"><div class="field"><label>공급가</label><input id="contract-supply-price" type="text" value="'+esc(contract.supplyPrice||"")+'" placeholder="예: 700000" /></div>'+
           '<div class="field"><label>최종 금액</label><input type="text" id="contract-fee" value="'+esc(contract.fee||"")+'" placeholder="예: 770000" /></div></div>'+
@@ -1932,9 +1932,8 @@
           '<div class="field"><label>연락처</label><input id="contract-contact" type="text" value="'+esc(contract.contact||"")+'" placeholder="010-0000-0000" /></div></div>'+
           '<div class="field"><label>이메일</label><input id="contract-email" type="text" value="'+esc(contract.email||"")+'" placeholder="example@domain.com" /></div>'+
         '</div>'+
-        '<div class="fsection"><div class="fsec-num">TERMS</div><h3 class="fsec-title">기본 계약 내용</h3>'+
+        '<div class="fsection"><div class="fsec-num">TERMS</div><h3 class="fsec-title">특약 및 내부 메모</h3>'+
           '<div class="field"><label>특약 사항</label><textarea id="contract-special-terms" rows="3" placeholder="별도 특약이 있으면 적어주세요.">'+esc(contract.specialTerms||"")+'</textarea></div>'+
-          '<div class="field"><label>기본 계약 내용</label><textarea id="contract-base-terms" rows="10">'+esc(contract.baseTerms||"")+'</textarea></div>'+
           '<div class="field"><label>내부 메모</label><textarea id="contract-internal-memo" rows="3" placeholder="내부 참고용 메모입니다. 고객에게 공유되는 계약서에는 표시하지 않습니다.">'+esc(contract.internalMemo||"")+'</textarea></div>'+
           '<div class="field"><label>업무 담당자</label><input id="contract-owner" type="text" value="'+esc(contract.owner||"")+'" /></div>'+
         '</div>'+
@@ -1949,7 +1948,7 @@
     contract=publicContractPayload(contract||{});
     var submitted=contract.submittedAt!==null&&contract.submittedAt!==undefined;
     var typeLabel=contract.contractType==="renewal"?"재계약 "+(contract.renewalCount||1)+"회차":"신규";
-    var productLabel=contract.productType==="photo"?"사진/달 파운드":"광고비용";
+    var productLabel=contract.productType==="custom"?"새로 생성":"광고비용";
     var paymentLabel=contract.paymentMethod==="transfer"?"계좌이체":"카드";
     function row(label,value){ return '<div class="contract-readonly-row"><span class="contract-readonly-label">'+esc(label)+'</span><span class="contract-readonly-value">'+esc(value||"-")+'</span></div>'; }
     if(submitted){
@@ -1982,7 +1981,6 @@
           '<div class="guide-question"><label>서명자</label><input id="contract-signer" type="text" value="'+esc(contract.signerName||"")+'" /></div>'+
           '<div class="signature-box"><canvas id="contract-signature" class="signature-canvas" width="720" height="220"></canvas></div></div>'+
           (contract.specialTerms ? '<div class="contract-readonly-terms"><strong>특약 사항</strong><br>'+esc(contract.specialTerms)+'</div>' : '')+
-          (contract.baseTerms ? '<div class="contract-readonly-terms"><strong>기본 계약 내용</strong><br>'+esc(contract.baseTerms)+'</div>' : '')+
         '</section>'+
         '<div class="guide-actions"><button class="btn btn-primary" id="btn-submit-public-contract">계약서 제출</button></div>'+
       '</div></div>';

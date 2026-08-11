@@ -84,16 +84,18 @@ assert.match(renderedForm, /id="contract-type"/);
 assert.match(renderedForm, /id="contract-renewal-count"/);
 assert.doesNotMatch(renderedForm, /id="contract-renewal-count-field" style="display:none"/, 'renewal contract form must show renewal count');
 assert.match(renderedForm, /id="contract-product-name"/);
+assert.match(renderedForm, /value="custom"/, 'product picker should allow a custom newly-created product');
+assert.doesNotMatch(renderedForm, /사진\/달 파운드/, 'photo-related product option should be removed');
 assert.match(renderedForm, /id="contract-payment-method"/);
 assert.match(renderedForm, /value="card"/, 'contract payment method should include card');
 assert.match(renderedForm, /value="transfer"/, 'contract payment method should include bank transfer');
 assert.doesNotMatch(renderedForm, /정기결제|선결제 1회차|선결제 6회차|선결제 12회차/, 'old recurring/prepay payment choices should be removed');
-assert.match(renderedForm, /id="contract-base-terms"/);
+assert.doesNotMatch(renderedForm, /id="contract-base-terms"/, 'base contract terms editor should be hidden for now');
 assert.match(renderedForm, /id="contract-signature"/);
 assert.match(renderedForm, /id="btn-save-contract"/);
 assert.doesNotMatch(renderedForm, /signature-preview/, 'signature area should not render a separate preview box under the canvas');
 assert.doesNotMatch(renderedForm, /예: 최진혁\(경기\)/, 'owner placeholder example should be removed');
-assert.ok(renderedForm.indexOf('id="contract-months"') < renderedForm.indexOf('PAYMENT'), 'contract months should live in the contract application section');
+assert.match(renderedForm, /id="contract-start"[\s\S]*id="contract-months"[\s\S]*PRODUCT/, 'contract months should sit beside the start date in the contract application section');
 const newContractForm = contractSandbox.renderContractForm({
   id: 'contract_secret_new_123456789012345678901',
   clientId: 'cl_new_secret',
@@ -114,10 +116,10 @@ const saveSandbox = {
         'contract-client-name': { value: 'Client One' },
         'contract-type': { value: 'renewal' },
         'contract-renewal-count': { value: '3' },
-        'contract-product-type': { value: 'regular' },
+        'contract-product-type': { value: 'custom' },
         'contract-product-name': { value: '다각화 플랜' },
         'contract-supply-price': { value: '700000' },
-        'contract-payment-method': { value: 'regular' },
+        'contract-payment-method': { value: 'card' },
         'contract-business-number': { value: '123-45-67890' },
         'contract-contact': { value: '010-0000-0000' },
         'contract-email': { value: 'example@domain.com' },
@@ -126,7 +128,6 @@ const saveSandbox = {
         'contract-fee': { value: '900000' },
         'contract-terms': { value: 'special terms' },
         'contract-special-terms': { value: 'special extra' },
-        'contract-base-terms': { value: 'base terms' },
         'contract-internal-memo': { value: 'private memo' },
         'contract-owner': { value: 'Manager' },
         'contract-signer': { value: 'Signer' },
@@ -180,6 +181,8 @@ assert.doesNotMatch(publicHtml, /id="contract-fee"/, 'public signer link must no
 assert.match(publicHtml, /contract-public-inputs/, 'public signer link should separate the small set of editable signer fields');
 assert.match(publicHtml, /계약 내용을 확인하고 서명해 주세요|계약 내용/, 'public signer link should read like a confirmation and signing page');
 assert.doesNotMatch(publicHtml, /contract-internal-memo/);
+assert.doesNotMatch(publicHtml, /기본 계약 내용|contract-base-terms/, 'public signer link should not show base contract terms for now');
+assert.doesNotMatch(publicHtml, /사진\/달 파운드/, 'public signer link should not show photo product wording');
 assert.doesNotMatch(publicHtml, /signature-preview/, 'public signer link should not show a redundant saved-signature preview box');
 assert.doesNotMatch(publicHtml, /정기결제|선결제 1회차|선결제 6회차|선결제 12회차/, 'public contract should not show old recurring/prepay labels');
 assert.doesNotMatch(saveSandbox.renderPublicContract(Object.assign({}, publicPayload, { contractType: 'new' })), /id="contract-renewal-count"/, 'public new contract must not expose renewal-count editing');
@@ -231,8 +234,10 @@ saveSandbox.saveContractFromForm().then(() => {
   assert.ok(clientWrite, 'saving a new contract must also create the client');
   assert.strictEqual(contractWrite.value.clientId, 'cl_new');
   assert.strictEqual(contractWrite.value.clientName, 'Client One');
+  assert.strictEqual(contractWrite.value.productType, 'custom');
   assert.strictEqual(contractWrite.value.productName, '다각화 플랜');
-  assert.strictEqual(contractWrite.value.baseTerms, 'base terms');
+  assert.strictEqual(contractWrite.value.baseTerms, '');
+  assert.strictEqual(contractWrite.value.paymentMethod, 'card');
   assert.strictEqual(contractWrite.value.renewalCount, 3);
   assert.strictEqual(contractWrite.value.signatureDataUrl, 'data:image/png;base64,signed');
   assert.strictEqual(clientWrite.value.name, 'Client One');
