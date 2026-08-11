@@ -24,6 +24,13 @@ async function main() {
   vm.runInNewContext([
     functionSource('calendarDateOrdinal'),
     functionSource('calendarDayOrdinal'),
+    functionSource('isWeekendDate'),
+    functionSource('workdayOrdinal'),
+    functionSource('cycleDayOrdinal'),
+    functionSource('checklistPeriod'),
+    functionSource('cycleLength'),
+    functionSource('clientPreviousCycleContainsDate'),
+    functionSource('calendarDateState'),
     functionSource('dailyPeriod'),
     functionSource('calendarTasksForDate'),
     functionSource('contractLabel'),
@@ -42,6 +49,21 @@ async function main() {
   assert.strictEqual(helperSandbox.calendarPeriodClass('4'), 'period-4');
   assert.strictEqual(helperSandbox.calendarPeriodClass('closing'), 'period-closing');
   assert.strictEqual(helperSandbox.calendarPeriodClass(''), '');
+
+  const weekendState = helperSandbox.calendarDateState({ startDate: '2026-08-10', excludeWeekends: true }, '2026-08-15');
+  assert.strictEqual(weekendState.isWeekend, true);
+  assert.strictEqual(weekendState.period, null);
+  assert.strictEqual(weekendState.isOutsideCycle, false);
+
+  const outsideState = helperSandbox.calendarDateState({ startDate: '2026-08-10', excludeWeekends: true }, '2026-09-09');
+  assert.strictEqual(outsideState.isOutsideCycle, true);
+
+  const endedState = helperSandbox.calendarDateState({
+    startDate: '2026-09-14',
+    excludeWeekends: true,
+    previousCycles: [{ startDate: '2026-08-10' }]
+  }, '2026-08-11');
+  assert.strictEqual(endedState.isEndedCycle, true);
 
   assert.strictEqual(helperSandbox.calendarDateHasUnfinishedTasks('2026-07-22', '2026-07-22', [
     { id: 'a', day: 1, done: false }
@@ -65,7 +87,13 @@ async function main() {
   vm.runInNewContext([
     functionSource('calendarDateOrdinal'),
     functionSource('calendarDayOrdinal'),
+    functionSource('isWeekendDate'),
+    functionSource('workdayOrdinal'),
+    functionSource('cycleDayOrdinal'),
     functionSource('checklistPeriod'),
+    functionSource('cycleLength'),
+    functionSource('clientPreviousCycleContainsDate'),
+    functionSource('calendarDateState'),
     functionSource('dailyPeriod'),
     functionSource('calendarUnassignedTasks'),
     functionSource('calendarTasksForDate'),
@@ -98,7 +126,27 @@ async function main() {
   rendered = calendarSandbox.calendarPanel(client);
   assert.match(rendered, /class="calendar-day period-4 has-unfinished" data-day="2026-08-12"/);
   assert.match(rendered, /class="calendar-day period-closing has-unfinished" data-day="2026-08-19"/);
-  assert.match(rendered, /class="calendar-day " data-day="2026-08-21"/);
+  assert.match(rendered, /class="calendar-day is-outside-cycle" data-day="2026-08-21"/);
+
+  calendarSandbox.state.calendarMonth = '2026-09';
+  rendered = calendarSandbox.calendarPanel({
+    startDate: '2026-08-10',
+    excludeWeekends: true,
+    dailyNotes: {},
+    checklist: [{ id: 'open-day-1', day: 1, done: false }]
+  });
+  assert.match(rendered, /class="calendar-day is-weekend" data-day="2026-09-05"/);
+  assert.match(rendered, /class="calendar-day is-outside-cycle" data-day="2026-09-09"/);
+
+  calendarSandbox.state.calendarMonth = '2026-08';
+  rendered = calendarSandbox.calendarPanel({
+    startDate: '2026-09-14',
+    excludeWeekends: true,
+    previousCycles: [{ startDate: '2026-08-10' }],
+    dailyNotes: {},
+    checklist: []
+  });
+  assert.match(rendered, /class="calendar-day is-ended-cycle" data-day="2026-08-11"/);
 
   ['period-1', 'period-2', 'period-3', 'period-4', 'period-closing'].forEach((className) => {
     assert.match(html, new RegExp('\\.calendar-day\\.' + className + '\\{[^}]*background:'), className + ' needs a full-cell background');
