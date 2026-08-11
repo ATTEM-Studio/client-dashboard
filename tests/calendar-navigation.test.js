@@ -118,6 +118,18 @@ assert.deepStrictEqual(
   ]
 );
 
+const sixthDayTask = [{ id: 'day-6', text: 'sixth day task', day: 6, done: false }];
+assert.deepStrictEqual(
+  JSON.parse(JSON.stringify(sandbox.calendarTasksForDate({ startDate:'2026-08-10', excludeWeekends:true }, '2026-08-17', sixthDayTask))),
+  sixthDayTask,
+  'a workday-based day 6 task appears on the following Monday'
+);
+assert.deepStrictEqual(
+  JSON.parse(JSON.stringify(sandbox.calendarTasksForDate('2026-08-10', '2026-08-15', sixthDayTask))),
+  sixthDayTask,
+  'legacy cycles continue matching day 6 on Saturday'
+);
+
 assert.match(html, /data-calendar-month="prev"/);
 assert.match(html, /data-calendar-month="next"/);
 assert.match(html, /data-add-task/);

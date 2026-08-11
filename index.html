@@ -761,6 +761,30 @@
     if(start===null || date===null) return null;
     return Math.floor((date-start)/86400000)+1;
   }
+  function isWeekendDate(dateKey){
+    var date=calendarDateOrdinal(dateKey);
+    if(date===null) return false;
+    var day=new Date(date).getUTCDay();
+    return day===0 || day===6;
+  }
+  function workdayOrdinal(startDate,dateKey){
+    var start=calendarDateOrdinal(startDate), date=calendarDateOrdinal(dateKey);
+    if(start===null || date===null || date<start || isWeekendDate(dateKey)) return null;
+    var count=0;
+    for(var current=start; current<=date; current+=86400000){
+      var day=new Date(current).getUTCDay();
+      if(day!==0 && day!==6) count++;
+    }
+    return count;
+  }
+  function cycleDayOrdinal(clientOrStart,dateKey){
+    if(clientOrStart && typeof clientOrStart==="object"){
+      return clientOrStart.excludeWeekends===true
+        ? workdayOrdinal(clientOrStart.startDate,dateKey)
+        : calendarDayOrdinal(clientOrStart.startDate,dateKey);
+    }
+    return calendarDayOrdinal(clientOrStart,dateKey);
+  }
   function thirtyDayProgress(startDate, now){
     if(calendarDateOrdinal(startDate)===null) return { state:"missing", elapsed:0, week:0, percent:0, remaining:30 };
     var today=new Date(now||new Date());
@@ -777,9 +801,13 @@
       remaining:30-elapsed
     };
   }
-  function checklistPeriod(startDate, dateKey){
-    var day=calendarDayOrdinal(startDate,dateKey);
+  function checklistPeriod(clientOrStart, dateKey){
+    var day=cycleDayOrdinal(clientOrStart,dateKey);
     if(day===null) return null;
+    if(clientOrStart && typeof clientOrStart==="object" && clientOrStart.excludeWeekends===true){
+      if(day<1 || day>22) return null;
+      return day>20 ? "closing" : String(Math.ceil(day/5));
+    }
     if(day<1 || day>30) return null;
     return day>28 ? "closing" : String(Math.ceil(day/7));
   }
@@ -824,8 +852,8 @@
       return !task.week && (task.day===undefined || task.day===null || task.day==="");
     });
   }
-  function calendarTasksForDate(startDate,dateKey,tasks){
-    var day=calendarDayOrdinal(startDate,dateKey), period=dailyPeriod(day);
+  function calendarTasksForDate(clientOrStart,dateKey,tasks){
+    var day=cycleDayOrdinal(clientOrStart,dateKey), period=checklistPeriod(clientOrStart,dateKey);
     if(!period) return [];
     return (tasks||[]).filter(function(task){
       var hasDay=task.day!==undefined && task.day!==null && task.day!=="";

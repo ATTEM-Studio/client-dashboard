@@ -26,6 +26,18 @@ assert.strictEqual(sandbox.checklistPeriod('2026-03-07', '2026-04-04'), 'closing
 assert.strictEqual(sandbox.checklistPeriod('2026-03-07', '2026-04-05'), 'closing', 'day 30 is in the closing period');
 assert.strictEqual(sandbox.checklistPeriod('2026-03-07', '2026-04-06'), null, 'day 31 is outside the checklist range');
 
+assert.strictEqual(sandbox.isWeekendDate('2026-08-15'), true);
+assert.strictEqual(sandbox.isWeekendDate('2026-08-17'), false);
+assert.strictEqual(sandbox.workdayOrdinal('2026-08-10', '2026-08-10'), 1);
+assert.strictEqual(sandbox.workdayOrdinal('2026-08-10', '2026-08-14'), 5);
+assert.strictEqual(sandbox.workdayOrdinal('2026-08-10', '2026-08-15'), null);
+assert.strictEqual(sandbox.workdayOrdinal('2026-08-10', '2026-08-17'), 6);
+assert.strictEqual(sandbox.cycleDayOrdinal({ startDate:'2026-08-10', excludeWeekends:true }, '2026-08-17'), 6);
+assert.strictEqual(sandbox.cycleDayOrdinal({ startDate:'2026-08-10' }, '2026-08-17'), 8);
+assert.strictEqual(sandbox.checklistPeriod({ startDate:'2026-08-10', excludeWeekends:true }, '2026-08-14'), '1');
+assert.strictEqual(sandbox.checklistPeriod({ startDate:'2026-08-10', excludeWeekends:true }, '2026-08-17'), '2');
+assert.strictEqual(sandbox.checklistPeriod({ startDate:'2026-08-10', excludeWeekends:true }, '2026-09-09'), null, 'the twenty-third workday is outside the cycle');
+
 assert.strictEqual(sandbox.dailyPeriod(1), '1');
 assert.strictEqual(sandbox.dailyPeriod(7), '1');
 assert.strictEqual(sandbox.dailyPeriod(8), '2');
