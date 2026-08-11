@@ -9,7 +9,9 @@ new Function(script);
 assert.match(html, /id="renewal-modal"/);
 assert.match(html, /id="renewal-start-date"/);
 assert.match(html, /data-renewal-set=/);
-assert.match(html, new RegExp("\\?명듃 \\?놁씠 \\?쒖옉"));
+assert.match(html, /세트 없이 시작/);
+assert.match(html, /재계약 시작일은 월요일만 선택할 수 있습니다\./);
+assert.match(html, /재계약 저장에 실패했습니다/);
 
 assert.match(html, /id="btn-toggle-sets"[^>]*aria-expanded=/, 'checklist view must expose the compact set toggle');
 assert.doesNotMatch(html, /return '<div class="workspace-columns"/, 'ordinary checklist view must not render the old two-column set panel');

@@ -160,7 +160,7 @@ async function main() {
   });
   const savedRenewals = [];
   const renewalSandbox = {
-    state: { checklistSets: [{ id: 'set-1', name: 'Basic' }], clients: [{ id: 'client-1', name: 'Client' }] },
+    state: { month: '2026-09', checklistSets: [{ id: 'set-1', name: 'Basic' }], clients: [{ id: 'client-1', name: 'Client' }] },
     document: { getElementById: (id) => renewalNodes[id] },
     contractEndDate: () => '2026-09-09',
     nextMondayAfter: () => '2026-09-14',
@@ -174,14 +174,14 @@ async function main() {
     showToast: () => {}
   };
   vm.runInNewContext(functionSource('renewalDialog'), renewalSandbox);
-  renewalSandbox.renewalDialog({ id: 'client-1', name: 'Client' });
+  renewalSandbox.renewalDialog({ id: 'client-1', name: 'Client', status: 'ended', renewals: [] });
   assert.strictEqual(renewalNodes['renewal-start-date'].value, '2026-09-14', 'renewal must default to the Monday after the current contract ends');
   assert.strictEqual(renewalNodes['renewal-modal'].classList.shown, true, 'renewal dialog must open before saving');
   renewalNodes['btn-next-renewal'].onclick();
   setButtons[1].onclick();
   await renewalNodes['btn-confirm-renewal'].onclick();
-  assert.deepStrictEqual(savedRenewals, [{ key: 'client:client-1', value: { id: 'client-1', startDate: '2026-09-14', setId: 'set-1' } }]);
-  assert.deepStrictEqual(renewalSandbox.renderedClient, { id: 'client-1', startDate: '2026-09-14', setId: 'set-1' });
+  assert.deepStrictEqual(savedRenewals, [{ key: 'client:client-1', value: { id: 'client-1', startDate: '2026-09-14', setId: 'set-1', renewals: ['2026-09'], status: 'active' } }]);
+  assert.deepStrictEqual(renewalSandbox.renderedClient, { id: 'client-1', startDate: '2026-09-14', setId: 'set-1', renewals: ['2026-09'], status: 'active' });
   renewalSandbox.setS = async () => false;
   renewalSandbox.renewalDialog({ id: 'client-1', name: 'Client' });
   renewalNodes['btn-next-renewal'].onclick();

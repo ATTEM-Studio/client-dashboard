@@ -2323,7 +2323,7 @@
     document.getElementById("renewal-start-date").value=defaultDate;
     dateStep.hidden=false;
     setStep.hidden=true;
-    setOptions.innerHTML='<button type="button" data-renewal-set="" class="active">?명듃 ?놁씠 ?쒖옉</button>'+(state.checklistSets||[]).map(function(set){
+    setOptions.innerHTML='<button type="button" data-renewal-set="" class="active">세트 없이 시작</button>'+(state.checklistSets||[]).map(function(set){
       return '<button type="button" data-renewal-set="'+esc(set.id)+'">'+esc(set.name)+'</button>';
     }).join("");
     modal.classList.add("show");
@@ -2340,14 +2340,17 @@
     document.getElementById("btn-confirm-renewal").onclick=async function(){
       var startDate=document.getElementById("renewal-start-date").value;
       if(!isMondayDate(startDate)){
-        showToast("?ш퀎???쒖옉?쇱? ?붿슂?쇰쭔 ?좏깮?????덉뒿?덈떎.");
+        showToast("재계약 시작일은 월요일만 선택할 수 있습니다.");
         return;
       }
       var selectedSetId=state.renewalSelectedSetId||"";
       var selectedSet=selectedSetId ? state.checklistSets.find(function(set){ return set.id===selectedSetId; }) : null;
       var renewed=buildRenewalClient(client,startDate,selectedSet);
+      renewed.renewals=renewed.renewals||[];
+      if(renewed.renewals.indexOf(state.month)===-1) renewed.renewals.push(state.month);
+      renewed.status="active";
       var saved=await setS("client:"+client.id,renewed);
-      if(!saved){ showToast("?ш퀎????μ뿉 ?ㅽ뙣?덉뒿?덈떎"); return; }
+      if(!saved){ showToast("재계약 저장에 실패했습니다"); return; }
       state.currentClient=renewed;
       state.clients=state.clients.map(function(item){ return item.id===renewed.id?renewed:item; });
       await setP("clients-index",state.clients);
