@@ -1148,6 +1148,43 @@ test('private guide loading never replaces a review after a read error but may i
   assert.strictEqual(reviewCreations, 1, 'invalid stored review data must not become a blank review');
 });
 
+test('guide tab reconnects an existing issuance reservation when the client link is missing', async () => {
+  const selectorMatch = html.match(/(async function selectClientWorkspaceTab[\s\S]*?)(?=\n  function setChecklistCollectionOpen)/);
+  assert.ok(selectorMatch, 'guide tab loader must be independently testable');
+  const client = { id: 'client-one', name: 'linked later' };
+  const guide = { id: 'guide_recovered', clientId: 'client-one', createdAt: 1, updatedAt: 2, submittedAt: null, answers: {} };
+  const state = { currentClient: client, clientTab: 'guide' };
+  const reads = [];
+  const writes = [];
+  const sandbox = {
+    state,
+    setClientWorkspaceTab(tab) { state.clientTab = tab; },
+    renderClientWorkspace() {},
+    newGuideReview() { return { guideId: guide.id, clientId: guide.clientId, status: 'unreviewed', memo: '' }; },
+    async readS(key) {
+      reads.push(key);
+      if (key === 'guide-issue:client-one') return { status: 'found', value: { guide } };
+      if (key === 'guide:guide_recovered') return { status: 'found', value: guide };
+      if (key === 'guide-review:guide_recovered') return { status: 'missing' };
+      throw new Error(`unexpected read ${key}`);
+    },
+    async setS(key, value) {
+      writes.push({ key, value: JSON.parse(JSON.stringify(value)) });
+      return { key };
+    }
+  };
+  vm.runInNewContext(selectorMatch[1], sandbox);
+
+  await sandbox.selectClientWorkspaceTab(client, 'guide');
+
+  assert.deepStrictEqual(reads, ['guide-issue:client-one', 'guide:guide_recovered', 'guide-review:guide_recovered']);
+  assert.strictEqual(client.guideId, 'guide_recovered');
+  assert.strictEqual(state.currentGuide, guide);
+  assert.strictEqual(state.currentGuideLoadState, 'ready');
+  assert.strictEqual(state.currentGuideReviewLoadState, 'missing');
+  assert.deepStrictEqual(writes, [{ key: 'client:client-one', value: { id: 'client-one', name: 'linked later', guideId: 'guide_recovered' } }]);
+});
+
 test('manual issuance trusts the server-persisted guide and stores only private review plus client link', async () => {
   const issuerMatch = html.match(/(async function issueGuideForClient[\s\S]*?)(?=\n  async function saveGuideReview)/);
   assert.ok(issuerMatch, 'issueGuideForClient must be independently testable');

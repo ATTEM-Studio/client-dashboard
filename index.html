@@ -1831,7 +1831,18 @@
     state.currentGuideLoadState="loading";
     state.currentGuideReviewLoadState="idle";
     renderClientWorkspace(client);
-    if(!client.guideId) return;
+    if(!client.guideId){
+      var issueResult=await readS("guide-issue:"+client.id);
+      if(state.currentClient!==client || state.clientTab!=="guide" || client.guideId) return;
+      var reservedGuide=issueResult.status==="found"&&issueResult.value&&issueResult.value.guide&&issueResult.value.guide.clientId===client.id?issueResult.value.guide:null;
+      if(!reservedGuide || !reservedGuide.id){
+        state.currentGuideLoadState="idle";
+        renderClientWorkspace(client);
+        return;
+      }
+      client.guideId=reservedGuide.id;
+      await setS("client:"+client.id,Object.assign({},client,{guideId:reservedGuide.id}));
+    }
     var guideId=client.guideId;
     var guideResult=await readS("guide:"+guideId);
     if(state.currentClient!==client || state.clientTab!=="guide" || client.guideId!==guideId) return;
