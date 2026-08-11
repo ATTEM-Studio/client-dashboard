@@ -177,7 +177,27 @@ test('public draft operation merges only whitelisted answers into the existing s
         async text() { return ''; }
       };
     }
-    return { ok: true, async json() { return { result: 'OK' }; }, async text() { return ''; } };
+    const command = JSON.parse(options.body);
+    assert.strictEqual(command[0], 'EVAL');
+    assert.strictEqual(command[2], 2);
+    assert.deepStrictEqual(command.slice(3, 9), [
+      'rs:guide:guide_abcdefghijklmnopqrstuvwx',
+      'rs:guide-issue:client-issued',
+      'guide_abcdefghijklmnopqrstuvwx',
+      'client-issued',
+      '0',
+      JSON.stringify({ concern: 'changed', goal: 'new goal', review: 'secret', unknown: 'drop me' })
+    ]);
+    const guide = {
+      id: stored.id, clientId: stored.clientId, createdAt: stored.createdAt,
+      updatedAt: 200, submittedAt: null, serviceContext: 'SNS 운영',
+      answers: { concern: 'changed', goal: 'new goal' }
+    };
+    return {
+      ok: true,
+      async json() { return { result: JSON.stringify({ status: 'ok', guide }) }; },
+      async text() { return ''; }
+    };
   };
   const response = responseDouble();
   try {
@@ -200,7 +220,7 @@ test('public draft operation merges only whitelisted answers into the existing s
 
   assert.strictEqual(response.statusCode, 200);
   assert.strictEqual(calls.length, 3);
-  const saved = JSON.parse(calls[2].options.body);
+  const saved = response.body.guide;
   assert.strictEqual(saved.id, stored.id);
   assert.strictEqual(saved.clientId, 'client-issued');
   assert.strictEqual(saved.createdAt, 100);
@@ -218,6 +238,7 @@ test('public submit operation assigns submittedAt server-side and later drafts p
     createdAt: 100, updatedAt: 150, submittedAt: null, answers: { goal: 'old' }
   };
   let stored = JSON.stringify(original);
+  let serverNow = 1700000000000;
   const previousFetch = global.fetch;
   global.fetch = async (url, options = {}) => {
     const path = new URL(url).pathname;
@@ -231,8 +252,20 @@ test('public submit operation assigns submittedAt server-side and later drafts p
         async text() { return ''; }
       };
     }
-    stored = options.body;
-    return { ok: true, async json() { return { result: 'OK' }; }, async text() { return ''; } };
+    const command = JSON.parse(options.body);
+    assert.strictEqual(command[0], 'EVAL');
+    const guide = JSON.parse(stored);
+    const requestedAnswers = JSON.parse(command[8]);
+    serverNow += 10;
+    guide.updatedAt = serverNow;
+    if (command[7] === '1' && guide.submittedAt === null) guide.submittedAt = serverNow;
+    guide.answers = { ...guide.answers, ...requestedAnswers };
+    stored = JSON.stringify(guide);
+    return {
+      ok: true,
+      async json() { return { result: JSON.stringify({ status: 'ok', guide }) }; },
+      async text() { return ''; }
+    };
   };
   try {
     const submitResponse = responseDouble();
@@ -254,6 +287,118 @@ test('public submit operation assigns submittedAt server-side and later drafts p
     assert.strictEqual(draftResponse.statusCode, 200);
     assert.strictEqual(JSON.parse(stored).submittedAt, submittedAt);
   } finally {
+    global.fetch = previousFetch;
+  }
+});
+
+test('a paused stale draft cannot undo a public guide submission that completes first', async () => {
+  const guideId = 'guide_abcdefghijklmnopqrstuvwx';
+  const guideKey = `rs:guide:${guideId}`;
+  const issueKey = 'rs:guide-issue:client-issued';
+  const original = {
+    id: guideId, clientId: 'client-issued', createdAt: 100,
+    updatedAt: 100, submittedAt: null, answers: { concern: 'original', goal: 'original' }
+  };
+  const redisStore = new Map([
+    [guideKey, JSON.stringify(original)],
+    [issueKey, JSON.stringify({ guide: original })]
+  ]);
+  const answerFields = [
+    'concern', 'goal', 'priorityMenu', 'currentCustomers', 'desiredCustomers', 'strengths',
+    'story', 'contentTone', 'avoidExpressions', 'materialStatus', 'approverName',
+    'approverContact', 'operatingNotes'
+  ];
+  const evalCommands = [];
+  let redisMillis = 1700000000000;
+  let issueReads = 0;
+  let releaseStaleIssueRead;
+  let staleIssueReadReached;
+  const staleIssueRead = new Promise((resolve) => { staleIssueReadReached = resolve; });
+  const previousFetch = global.fetch;
+
+  global.fetch = async (url, options = {}) => {
+    if (url === 'https://redis.example.test' && options.method === 'POST') {
+      const command = JSON.parse(options.body);
+      if (command[0] === 'EVAL') {
+        evalCommands.push(command);
+        assert.strictEqual(command[2], 2);
+        const atomicGuideKey = command[3];
+        const atomicIssueKey = command[4];
+        const requestedGuideId = command[5];
+        const requestedClientId = command[6];
+        const submitted = command[7] === '1';
+        const requestedAnswers = JSON.parse(command[8]);
+        const guide = JSON.parse(redisStore.get(atomicGuideKey));
+        const reservation = JSON.parse(redisStore.get(atomicIssueKey));
+        assert.strictEqual(guide.id, requestedGuideId);
+        assert.strictEqual(guide.clientId, requestedClientId);
+        assert.strictEqual(reservation.guide.id, requestedGuideId);
+
+        const mergedAnswers = {};
+        for (const field of answerFields) {
+          if (typeof guide.answers[field] === 'string') mergedAnswers[field] = guide.answers[field];
+          if (typeof requestedAnswers[field] === 'string') mergedAnswers[field] = requestedAnswers[field];
+        }
+        redisMillis += 10;
+        guide.answers = mergedAnswers;
+        guide.updatedAt = redisMillis;
+        if (submitted && guide.submittedAt === null) guide.submittedAt = redisMillis;
+        redisStore.set(atomicGuideKey, JSON.stringify(guide));
+        return {
+          ok: true,
+          async json() { return { result: JSON.stringify({ status: 'ok', guide }) }; },
+          async text() { return ''; }
+        };
+      }
+      if (command[0] === 'SET') {
+        redisStore.set(command[1], command[2]);
+        return { ok: true, async json() { return { result: 'OK' }; }, async text() { return ''; } };
+      }
+      throw new Error(`unexpected Redis command ${command[0]}`);
+    }
+
+    const path = new URL(url).pathname.split('/').filter(Boolean).map(decodeURIComponent);
+    if (path[0] === 'set') {
+      redisStore.set(path[1], options.body);
+      return { ok: true, async json() { return { result: 'OK' }; }, async text() { return ''; } };
+    }
+    assert.strictEqual(path[0], 'get');
+    const storedValue = redisStore.get(path[1]) ?? null;
+    if (path[1] === issueKey && ++issueReads === 1) {
+      staleIssueReadReached();
+      await new Promise((resolve) => { releaseStaleIssueRead = resolve; });
+    }
+    return { ok: true, async json() { return { result: storedValue }; }, async text() { return ''; } };
+  };
+
+  const staleResponse = responseDouble();
+  const submitResponse = responseDouble();
+  try {
+    const staleDraft = dataApi({ method: 'POST', headers: {}, query: {}, body: {
+      operation: 'save-public-guide', guideId,
+      answers: { concern: 'stale draft', unknown: 'must not persist' }
+    } }, staleResponse);
+    await staleIssueRead;
+
+    await dataApi({ method: 'POST', headers: {}, query: {}, body: {
+      operation: 'submit-public-guide', guideId, answers: { goal: 'submitted answer' }
+    } }, submitResponse);
+    assert.strictEqual(submitResponse.statusCode, 200);
+    const submittedAt = JSON.parse(redisStore.get(guideKey)).submittedAt;
+    assert.ok(Number.isFinite(submittedAt), 'the interleaved submit must commit before the stale draft resumes');
+
+    releaseStaleIssueRead();
+    await staleDraft;
+    assert.strictEqual(staleResponse.statusCode, 200);
+
+    const finalGuide = JSON.parse(redisStore.get(guideKey));
+    assert.strictEqual(finalGuide.submittedAt, submittedAt);
+    assert.ok(finalGuide.updatedAt >= finalGuide.submittedAt);
+    assert.deepStrictEqual(finalGuide.answers, { concern: 'stale draft', goal: 'submitted answer' });
+    assert.strictEqual(Object.prototype.hasOwnProperty.call(finalGuide.answers, 'unknown'), false);
+    assert.strictEqual(evalCommands.length, 2, 'both mutations must merge inside Redis');
+  } finally {
+    if (releaseStaleIssueRead) releaseStaleIssueRead();
     global.fetch = previousFetch;
   }
 });

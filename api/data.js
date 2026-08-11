@@ -81,6 +81,64 @@ const PUBLIC_GUIDE_ANSWER_FIELDS = [
   "approverContact", "operatingNotes",
 ];
 
+const PUBLIC_GUIDE_MUTATION_SCRIPT = `
+local storedValue = redis.call("GET", KEYS[1])
+if not storedValue then return cjson.encode({ status = "missing-guide" }) end
+
+local guideOk, guide = pcall(cjson.decode, storedValue)
+if not guideOk or type(guide) ~= "table" or
+   guide.id ~= ARGV[1] or guide.clientId ~= ARGV[2] or
+   type(guide.createdAt) ~= "number" or type(guide.updatedAt) ~= "number" or
+   (guide.submittedAt ~= cjson.null and type(guide.submittedAt) ~= "number") or
+   type(guide.answers) ~= "table" then
+  return cjson.encode({ status = "invalid-guide" })
+end
+
+local issueValue = redis.call("GET", KEYS[2])
+if not issueValue then return cjson.encode({ status = "missing-issue" }) end
+local issueOk, reservation = pcall(cjson.decode, issueValue)
+if not issueOk or type(reservation) ~= "table" or type(reservation.guide) ~= "table" or
+   reservation.guide.id ~= ARGV[1] or reservation.guide.clientId ~= ARGV[2] then
+  return cjson.encode({ status = "invalid-issue" })
+end
+
+local answersOk, requestedAnswers = pcall(cjson.decode, ARGV[4])
+if not answersOk or type(requestedAnswers) ~= "table" then
+  return cjson.encode({ status = "invalid-answers" })
+end
+local answerFields = cjson.decode('${JSON.stringify(PUBLIC_GUIDE_ANSWER_FIELDS)}')
+local mergedAnswers = {}
+for _, field in ipairs(answerFields) do
+  if type(guide.answers[field]) == "string" then mergedAnswers[field] = guide.answers[field] end
+  if type(requestedAnswers[field]) == "string" then mergedAnswers[field] = requestedAnswers[field] end
+end
+
+local serverTime = redis.call("TIME")
+local now = (tonumber(serverTime[1]) * 1000) + math.floor(tonumber(serverTime[2]) / 1000)
+local updatedAt = now
+if guide.updatedAt > updatedAt then updatedAt = guide.updatedAt end
+if type(guide.submittedAt) == "number" and guide.submittedAt > updatedAt then updatedAt = guide.submittedAt end
+local submittedAt = guide.submittedAt
+if submittedAt == cjson.null and ARGV[3] == "1" then submittedAt = now end
+
+local mergedGuide = {
+  id = guide.id,
+  clientId = guide.clientId,
+  createdAt = guide.createdAt,
+  updatedAt = updatedAt,
+  submittedAt = submittedAt,
+  answers = mergedAnswers
+}
+if type(guide.serviceContext) == "string" then
+  local serviceContext = string.match(guide.serviceContext, "^%s*(.-)%s*$")
+  if serviceContext ~= "" then mergedGuide.serviceContext = serviceContext end
+end
+local mergedValue = cjson.encode(mergedGuide)
+if string.len(mergedValue) > 2000000 then return cjson.encode({ status = "too-large" }) end
+redis.call("SET", KEYS[1], mergedValue)
+return cjson.encode({ status = "ok", guide = mergedGuide })
+`;
+
 function newGuideIssueReservation(clientId, serviceContext) {
   const now = Date.now();
   const answers = {};
@@ -148,33 +206,6 @@ function parseStoredGuide(value, guideId) {
   }
 }
 
-function mergePublicGuideAnswers(guide, answers, submitted) {
-  const mergedAnswers = {};
-  const storedAnswers = guide.answers && typeof guide.answers === "object" && !Array.isArray(guide.answers)
-    ? guide.answers
-    : {};
-  const requestedAnswers = answers && typeof answers === "object" && !Array.isArray(answers)
-    ? answers
-    : {};
-  for (const field of PUBLIC_GUIDE_ANSWER_FIELDS) {
-    if (typeof storedAnswers[field] === "string") mergedAnswers[field] = storedAnswers[field];
-    if (typeof requestedAnswers[field] === "string") mergedAnswers[field] = requestedAnswers[field];
-  }
-  const now = Date.now();
-  const mergedGuide = {
-    id: guide.id,
-    clientId: guide.clientId,
-    createdAt: guide.createdAt,
-    updatedAt: now,
-    submittedAt: submitted ? now : guide.submittedAt,
-    answers: mergedAnswers,
-  };
-  if (typeof guide.serviceContext === "string" && guide.serviceContext.trim()) {
-    mergedGuide.serviceContext = guide.serviceContext.trim();
-  }
-  return mergedGuide;
-}
-
 module.exports = async (req, res) => {
   res.setHeader("Cache-Control", "no-store");
 
@@ -238,16 +269,40 @@ module.exports = async (req, res) => {
         ) {
           return res.status(500).json({ error: "안내문 발급 정보가 올바르지 않습니다" });
         }
-        const guide = mergePublicGuideAnswers(
-          existingGuide,
-          body.answers,
-          body.operation === "submit-public-guide"
-        );
-        const storedValue = JSON.stringify(guide);
-        if (storedValue.length > 2_000_000) {
+        const requestedAnswers = body.answers && typeof body.answers === "object" && !Array.isArray(body.answers)
+          ? body.answers
+          : {};
+        const mutationResult = await redisCommand([
+          "EVAL",
+          PUBLIC_GUIDE_MUTATION_SCRIPT,
+          2,
+          PREFIX + key,
+          PREFIX + "guide-issue:" + existingGuide.clientId,
+          guideId,
+          existingGuide.clientId,
+          body.operation === "submit-public-guide" ? "1" : "0",
+          JSON.stringify(requestedAnswers),
+        ]);
+        let mutation = null;
+        try { mutation = JSON.parse(mutationResult.result); } catch {}
+        if (!mutation || typeof mutation !== "object" || Array.isArray(mutation)) {
+          throw new Error("PUBLIC_GUIDE_MUTATION_INVALID_RESULT");
+        }
+        if (mutation.status === "missing-guide") {
+          return res.status(404).json({ error: "해당 안내문을 찾을 수 없습니다" });
+        }
+        if (mutation.status === "missing-issue") {
+          return res.status(404).json({ error: "발급된 안내문을 찾을 수 없습니다" });
+        }
+        if (mutation.status === "too-large") {
           return res.status(413).json({ error: "저장할 데이터가 너무 큽니다" });
         }
-        await redis("set", [PREFIX + key], storedValue);
+        const guide = mutation.status === "ok"
+          ? parseStoredGuide(JSON.stringify(mutation.guide), guideId)
+          : null;
+        if (!guide || guide.clientId !== existingGuide.clientId) {
+          throw new Error(`PUBLIC_GUIDE_MUTATION_${String(mutation.status || "INVALID").toUpperCase()}`);
+        }
         return res.status(200).json({ guide });
       }
       if (body && body.operation === "reserve-guide-issue") {
