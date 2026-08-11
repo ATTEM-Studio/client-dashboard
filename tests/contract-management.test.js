@@ -82,12 +82,20 @@ assert.match(renderedForm, /\?contract=contract_secret_123456789012345678901234/
 assert.match(renderedForm, /btn-copy-contract-link/);
 assert.match(renderedForm, /id="contract-type"/);
 assert.match(renderedForm, /id="contract-renewal-count"/);
+assert.doesNotMatch(renderedForm, /id="contract-renewal-count-field" style="display:none"/, 'renewal contract form must show renewal count');
 assert.match(renderedForm, /id="contract-product-name"/);
 assert.match(renderedForm, /id="contract-payment-method"/);
 assert.match(renderedForm, /id="contract-base-terms"/);
 assert.match(renderedForm, /id="contract-signature"/);
 assert.match(renderedForm, /id="btn-save-contract"/);
 assert.match(renderedForm, /data:image\/png;base64,abc/);
+const newContractForm = contractSandbox.renderContractForm({
+  id: 'contract_secret_new_123456789012345678901',
+  clientId: 'cl_new_secret',
+  clientName: 'New Client',
+  contractType: 'new'
+});
+assert.match(newContractForm, /id="contract-renewal-count-field" style="display:none"/, 'new contract form must hide renewal count');
 
 const saveSandbox = {
   Date: { now: () => 12345 },
@@ -160,6 +168,8 @@ const publicHtml = saveSandbox.renderPublicContract(publicPayload);
 assert.match(publicHtml, /public-contract/);
 assert.match(publicHtml, /contract-client-name/);
 assert.doesNotMatch(publicHtml, /contract-internal-memo/);
+assert.match(saveSandbox.renderPublicContract(Object.assign({}, publicPayload, { contractType: 'new' })), /id="contract-renewal-count-field" style="display:none"/, 'public new contract must hide renewal count');
+assert.doesNotMatch(saveSandbox.renderPublicContract(Object.assign({}, publicPayload, { contractType: 'renewal' })), /id="contract-renewal-count-field" style="display:none"/, 'public renewal contract must show renewal count');
 
 saveSandbox.saveContractFromForm().then(() => {
   const contractWrite = saveSandbox.secureWrites.find((write) => write.key === 'contract:ct_new');

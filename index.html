@@ -1909,7 +1909,7 @@
           '<div class="guide-link-box"><code>'+esc(publicLink)+'</code><div class="guide-link-actions"><button type="button" class="btn btn-plain btn-sm" id="btn-copy-contract-link">링크 복사</button></div></div>'+
           '<div class="two-col"><div class="field"><label>업체명 *</label><input id="contract-client-name" type="text" value="'+esc(contract.clientName||"")+'" placeholder="예: 꿈카페 하단지점" /></div>'+
           '<div class="field"><label>계약 구분</label><select id="contract-type"><option value="new" '+(contract.contractType==="new"?"selected":"")+'>신규</option><option value="renewal" '+(contract.contractType==="renewal"?"selected":"")+'>재계약</option></select></div></div>'+
-          '<div class="two-col"><div class="field"><label>재계약 회차</label><input type="number" min="1" step="1" id="contract-renewal-count" value="'+esc(contract.renewalCount||1)+'" /></div>'+
+          '<div class="two-col"><div class="field" id="contract-renewal-count-field" style="'+(contract.contractType==="renewal"?"":"display:none")+'"><label>재계약 회차</label><input type="number" min="1" step="1" id="contract-renewal-count" value="'+esc(contract.renewalCount||1)+'" /></div>'+
           '<div class="field"><label>업체 시작일</label><input type="date" id="contract-start" value="'+esc(contract.startDate||"")+'" /></div></div>'+
         '</div>'+
         '<div class="fsection"><div class="fsec-num">PRODUCT</div><h3 class="fsec-title">상품 명세</h3>'+
@@ -1951,7 +1951,7 @@
         '<section class="guide-section"><div class="guide-section-label">01</div><h2>계약 정보</h2>'+
           '<div class="guide-question"><label>업체명</label><input id="contract-client-name" type="text" value="'+esc(contract.clientName||"")+'" /></div>'+
           '<div class="guide-question"><label>계약 구분</label><select id="contract-type"><option value="new" '+(contract.contractType==="new"?"selected":"")+'>신규</option><option value="renewal" '+(contract.contractType==="renewal"?"selected":"")+'>재계약</option></select></div>'+
-          '<div class="guide-question"><label>재계약 회차</label><input id="contract-renewal-count" type="number" min="1" step="1" value="'+esc(contract.renewalCount||1)+'" /></div>'+
+          '<div class="guide-question" id="contract-renewal-count-field" style="'+(contract.contractType==="renewal"?"":"display:none")+'"><label>재계약 회차</label><input id="contract-renewal-count" type="number" min="1" step="1" value="'+esc(contract.renewalCount||1)+'" /></div>'+
           '<div class="guide-question"><label>계약 시작일</label><input id="contract-start" type="date" value="'+esc(contract.startDate||"")+'" /></div>'+
         '</section>'+
         '<section class="guide-section"><div class="guide-section-label">02</div><h2>상품 및 결제</h2>'+
@@ -1985,6 +1985,7 @@
     if(!contract){ app.innerHTML='<div class="empty-state" style="margin-top:60px;"><div class="es-title">계약서를 찾을 수 없습니다</div></div>'; return; }
     state.currentContract=contract;
     app.innerHTML=renderPublicContract(contract);
+    bindContractTypeToggle();
     bindSignaturePad(document.getElementById("contract-signature"));
     var submit=document.getElementById("btn-submit-public-contract");
     if(submit) submit.onclick=async function(){
@@ -2001,6 +2002,7 @@
     app.innerHTML=renderContractForm(state.currentContract);
     document.getElementById("btn-back").onclick=function(){ state.view=state.currentClient?"clientDetail":"dashboard"; render(); };
     document.getElementById("btn-cancel").onclick=function(){ state.view=state.currentClient?"clientDetail":"dashboard"; render(); };
+    bindContractTypeToggle();
     bindSignaturePad(document.getElementById("contract-signature"));
     document.getElementById("btn-clear-signature").onclick=function(){ var canvas=document.getElementById("contract-signature"), ctx=canvas.getContext("2d"); ctx.clearRect(0,0,canvas.width,canvas.height); };
     var copyLink=document.getElementById("btn-copy-contract-link");
@@ -2017,6 +2019,14 @@
       copyText(location.origin+"/?contract="+encodeURIComponent(state.currentContract.id));
     };
     document.getElementById("btn-save-contract").onclick=saveContractFromForm;
+  }
+  function bindContractTypeToggle(){
+    var type=document.getElementById("contract-type");
+    var field=document.getElementById("contract-renewal-count-field");
+    if(!type||!field) return;
+    var sync=function(){ field.style.display=type.value==="renewal"?"":"none"; };
+    type.addEventListener("change",sync);
+    sync();
   }
   function bindSignaturePad(canvas){
     if(!canvas || !canvas.getContext) return;
