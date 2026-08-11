@@ -1412,6 +1412,7 @@
     checklistSetDraft:null,
     checklistSetPeriod:"1",
     renewalSelectedSetId:"",
+    contractBaseTermsTemplate:"",
     summaryMode:false,
     readOnly:false
   };
@@ -1459,6 +1460,7 @@
     var c = await getP("clients-index"); state.clients = Array.isArray(c) ? c : [];
     var r = await getP("reports-index"); state.reports = Array.isArray(r) ? r : [];
     var contracts = await getP("contracts-index"); state.contracts = Array.isArray(contracts) ? contracts : [];
+    var baseTermsTemplate = await getS("contract-base-terms-template"); state.contractBaseTermsTemplate = typeof baseTermsTemplate === "string" ? baseTermsTemplate : "";
     var sets = await getP("checklist-sets");
     state.checklistSets = Array.isArray(sets) ? sets : defaultChecklistSets();
     if (!Array.isArray(sets)) await setP("checklist-sets", state.checklistSets);
@@ -1907,6 +1909,7 @@
   function renderContractForm(base){
     var contract=Object.assign(blankContract(),base||{});
     if(!contract.id || !/^contract_/.test(contract.id)) contract=Object.assign(newContractDraft(),contract);
+    if(!contract.baseTerms && state.contractBaseTermsTemplate) contract.baseTerms=state.contractBaseTermsTemplate;
     var origin=(typeof location!=="undefined"&&location.origin)?location.origin:"";
     var publicLink=origin+"/?contract="+encodeURIComponent(contract.id);
     return '<div class="topbar"><div class="brand"><span class="brand-mark"></span>업체 등록</div><button class="btn btn-text" id="btn-back">← 돌아가기</button></div>'+
@@ -1934,6 +1937,7 @@
         '</div>'+
         '<div class="fsection"><div class="fsec-num">TERMS</div><h3 class="fsec-title">특약 및 내부 메모</h3>'+
           '<div class="field"><label>특약 사항</label><textarea id="contract-special-terms" rows="3" placeholder="별도 특약이 있으면 적어주세요.">'+esc(contract.specialTerms||"")+'</textarea></div>'+
+          '<div class="field"><label>기본 계약 내용</label><textarea id="contract-base-terms" rows="10" placeholder="기본 계약 내용을 입력해두면 저장 후 다음 계약서에도 자동으로 불러옵니다.">'+esc(contract.baseTerms||"")+'</textarea><div style="margin-top:8px"><button type="button" class="btn btn-plain btn-sm" id="btn-save-base-terms-template">기본 계약 내용 저장</button></div></div>'+
           '<div class="field"><label>내부 메모</label><textarea id="contract-internal-memo" rows="3" placeholder="내부 참고용 메모입니다. 고객에게 공유되는 계약서에는 표시하지 않습니다.">'+esc(contract.internalMemo||"")+'</textarea></div>'+
           '<div class="field"><label>업무 담당자</label><input id="contract-owner" type="text" value="'+esc(contract.owner||"")+'" /></div>'+
         '</div>'+
@@ -2015,6 +2019,15 @@
     bindContractTypeToggle();
     bindSignaturePad(document.getElementById("contract-signature"));
     document.getElementById("btn-clear-signature").onclick=function(){ var canvas=document.getElementById("contract-signature"), ctx=canvas.getContext("2d"); ctx.clearRect(0,0,canvas.width,canvas.height); };
+    var saveBaseTerms=document.getElementById("btn-save-base-terms-template");
+    if(saveBaseTerms) saveBaseTerms.onclick=async function(){
+      var value=formValue("contract-base-terms");
+      var saved=await setS("contract-base-terms-template",value);
+      if(!saved){ showToast("기본 계약 내용 저장에 실패했습니다"); return; }
+      state.contractBaseTermsTemplate=value;
+      state.currentContract=collectContractFromForm(state.currentContract);
+      showToast("기본 계약 내용을 저장했습니다");
+    };
     var copyLink=document.getElementById("btn-copy-contract-link");
     if(copyLink) copyLink.onclick=async function(){
       state.currentContract=collectContractFromForm(state.currentContract);
