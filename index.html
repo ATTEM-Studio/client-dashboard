@@ -599,6 +599,23 @@
       var data = await res.json();
       return data.guide || null;
     },
+    async mutatePublicContract(contractId, contract, submitted){
+      var res = await fetch("/api/data", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          operation: submitted ? "submit-public-contract" : "save-public-contract",
+          contractId: contractId,
+          contract: contract
+        })
+      });
+      if (!res.ok) {
+        var e = await res.json().catch(function(){ return {}; });
+        throw new Error(e.error || ("public contract save failed " + res.status));
+      }
+      var data = await res.json();
+      return data.contract || null;
+    },
     async delete(key){
       var res = await fetch("/api/data?key=" + encodeURIComponent(key), {
         method: "DELETE", headers: authHeaders()
@@ -1121,6 +1138,7 @@
   async function delS(k){ try{ return await storageBackend.delete(k,true); }catch(e){ return null; } }
   async function reserveGuideIssue(clientId){ try{ return await storageBackend.reserveGuideIssue(clientId); }catch(e){ console.error(e); return null; } }
   async function mutatePublicGuide(guideId,answers,submitted){ try{ return await storageBackend.mutatePublicGuide(guideId,answers,submitted); }catch(e){ console.error(e); return null; } }
+  async function mutatePublicContract(contractId,contract,submitted){ try{ return await storageBackend.mutatePublicContract(contractId,contract,submitted); }catch(e){ console.error(e); return null; } }
 
   /* ============ public client information guide ============ */
   var publicGuideSaveChain=Promise.resolve(true);
@@ -1401,8 +1419,14 @@
       await loadPublicGuidePage(publicGuideId);
       return;
     }
+    var publicContractId=params.get("contract");
+    if(params.has("contract")){
+      await loadPublicContractPage(publicContractId);
+      return;
+    }
 
     // 공유 링크(?report=ID)로 접속한 경우 — 로그인 없이 열람만
+    var sharedId = params.get("report");
     var sharedId = params.get("report");
     if (sharedId) {
       state.readOnly = true;
@@ -1704,7 +1728,7 @@
   /* ============ CLIENT FORM ============ */
   function renderClientForm(base){
     var isEdit=!!(base&&base.id);
-    if(!isEdit) return renderContractBuilder(Object.assign(blankContract(),state.currentContract||{}));
+    if(!isEdit) return renderContractBuilder(Object.assign(newContractDraft(),state.currentContract||{}));
     var c=base||blankClient();
     app.innerHTML=
       '<div class="topbar">'+
@@ -1851,15 +1875,38 @@
   function blankContract(){
     return { id:"", clientId:"", clientName:"", contractType:"new", renewalCount:1, productType:"regular", productName:"", supplyPrice:"", paymentMethod:"regular", businessNumber:"", contact:"", email:"", startDate:"", contractMonths:"3", fee:"", terms:"", baseTerms:"28일 단위 정기 결제형 마케팅 서비스 계약서\n\n제1조(목적)\n본 계약은 온라인 마케팅 실행·관리 용역의 내용, 기간, 비용, 결제 및 운영 기준을 정하는 것을 목적으로 합니다.", internalMemo:"", owner:"", signerName:"", signatureDataUrl:"", createdAt:null, updatedAt:null };
   }
+  function newContractDraft(){
+    var bytes=new Uint8Array(24);
+    if(typeof crypto!=="undefined"&&crypto.getRandomValues) crypto.getRandomValues(bytes);
+    else for(var i=0;i<bytes.length;i++) bytes[i]=Math.floor(Math.random()*256);
+    var token=Array.prototype.map.call(bytes,function(byte){return byte.toString(16).padStart(2,"0");}).join("");
+    var contract=blankContract();
+    contract.id="contract_"+token;
+    contract.clientId=uid("cl");
+    contract.createdAt=Date.now();
+    contract.updatedAt=contract.createdAt;
+    return contract;
+  }
+  function publicContractPayload(contract){
+    var source=Object.assign(blankContract(),contract||{});
+    var allowed=["id","clientId","clientName","contractType","renewalCount","productType","productName","supplyPrice","paymentMethod","businessNumber","contact","email","startDate","contractMonths","fee","terms","specialTerms","baseTerms","signerName","signatureDataUrl","createdAt","updatedAt","submittedAt"];
+    var out={};
+    allowed.forEach(function(key){ if(source[key]!==undefined) out[key]=source[key]; });
+    return out;
+  }
   function clientContracts(clientId){
     return (state.contracts||[]).filter(function(contract){ return contract.clientId===clientId; }).sort(function(a,b){ return (b.updatedAt||0)-(a.updatedAt||0); });
   }
   function renderContractForm(base){
     var contract=Object.assign(blankContract(),base||{});
+    if(!contract.id || !/^contract_/.test(contract.id)) contract=Object.assign(newContractDraft(),contract);
     var preview=contract.signatureDataUrl ? '<img class="signature-preview" src="'+esc(contract.signatureDataUrl)+'" alt="저장된 서명" />' : "";
+    var origin=(typeof location!=="undefined"&&location.origin)?location.origin:"";
+    var publicLink=origin+"/?contract="+encodeURIComponent(contract.id);
     return '<div class="topbar"><div class="brand"><span class="brand-mark"></span>업체 등록</div><button class="btn btn-text" id="btn-back">← 돌아가기</button></div>'+
       '<div class="form-card fade-in">'+
         '<div class="fsection"><div class="fsec-num">CONTRACT</div><h3 class="fsec-title">계약 신청서</h3><p class="fsec-hint">계약서를 먼저 작성하면 계약서와 업체 정보가 함께 저장됩니다.</p>'+
+          '<div class="guide-link-box"><code>'+esc(publicLink)+'</code><div class="guide-link-actions"><button type="button" class="btn btn-plain btn-sm" id="btn-copy-contract-link">링크 복사</button></div></div>'+
           '<div class="two-col"><div class="field"><label>업체명 *</label><input id="contract-client-name" type="text" value="'+esc(contract.clientName||"")+'" placeholder="예: 꿈카페 하단지점" /></div>'+
           '<div class="field"><label>계약 구분</label><select id="contract-type"><option value="new" '+(contract.contractType==="new"?"selected":"")+'>신규</option><option value="renewal" '+(contract.contractType==="renewal"?"selected":"")+'>재계약</option></select></div></div>'+
           '<div class="two-col"><div class="field"><label>재계약 회차</label><input type="number" min="1" step="1" id="contract-renewal-count" value="'+esc(contract.renewalCount||1)+'" /></div>'+
@@ -1892,12 +1939,83 @@
         '<div class="form-actions"><button class="btn btn-plain" id="btn-cancel">취소</button><button class="btn btn-primary" id="btn-save-contract">계약서 저장</button></div>'+
       '</div>';
   }
+  function renderPublicContract(contract){
+    contract=publicContractPayload(contract||{});
+    var submitted=contract.submittedAt!==null&&contract.submittedAt!==undefined;
+    var preview=contract.signatureDataUrl ? '<img class="signature-preview" src="'+esc(contract.signatureDataUrl)+'" alt="저장된 서명" />' : "";
+    if(submitted){
+      return '<div class="public-guide public-contract"><div class="guide-complete"><div class="guide-complete-icon">✓</div><h1>계약서 제출이 완료되었습니다</h1><p class="guide-complete-copy">계약 정보와 서명이 저장되었습니다. 담당자가 확인 후 진행하겠습니다.</p></div></div>';
+    }
+    return '<div class="public-guide public-contract"><div class="public-guide-head"><div class="public-guide-brand"><span class="brand-mark"></span>계약 신청서</div><p class="public-guide-kicker">CONTRACT</p><h1>계약 정보를 작성해 주세요</h1><p class="public-guide-intro">아래 내용을 확인하고 필요한 정보를 입력한 뒤 서명해 주세요.</p></div>'+
+      '<div class="guide-form">'+
+        '<section class="guide-section"><div class="guide-section-label">01</div><h2>계약 정보</h2>'+
+          '<div class="guide-question"><label>업체명</label><input id="contract-client-name" type="text" value="'+esc(contract.clientName||"")+'" /></div>'+
+          '<div class="guide-question"><label>계약 구분</label><select id="contract-type"><option value="new" '+(contract.contractType==="new"?"selected":"")+'>신규</option><option value="renewal" '+(contract.contractType==="renewal"?"selected":"")+'>재계약</option></select></div>'+
+          '<div class="guide-question"><label>재계약 회차</label><input id="contract-renewal-count" type="number" min="1" step="1" value="'+esc(contract.renewalCount||1)+'" /></div>'+
+          '<div class="guide-question"><label>계약 시작일</label><input id="contract-start" type="date" value="'+esc(contract.startDate||"")+'" /></div>'+
+        '</section>'+
+        '<section class="guide-section"><div class="guide-section-label">02</div><h2>상품 및 결제</h2>'+
+          '<div class="guide-question"><label>상품</label><select id="contract-product-type"><option value="regular" '+(contract.productType==="regular"?"selected":"")+'>광고비용</option><option value="photo" '+(contract.productType==="photo"?"selected":"")+'>사진/달 파운드</option></select></div>'+
+          '<div class="guide-question"><label>상품명</label><input id="contract-product-name" type="text" value="'+esc(contract.productName||"")+'" /></div>'+
+          '<div class="guide-question"><label>공급가</label><input id="contract-supply-price" type="text" value="'+esc(contract.supplyPrice||"")+'" /></div>'+
+          '<div class="guide-question"><label>최종 금액</label><input id="contract-fee" type="text" value="'+esc(contract.fee||"")+'" /></div>'+
+          '<div class="guide-question"><label>결제 방식</label><select id="contract-payment-method"><option value="regular" '+(contract.paymentMethod==="regular"?"selected":"")+'>정기결제</option><option value="first" '+(contract.paymentMethod==="first"?"selected":"")+'>선결제 1회차</option><option value="sixth" '+(contract.paymentMethod==="sixth"?"selected":"")+'>선결제 6회차</option><option value="twelfth" '+(contract.paymentMethod==="twelfth"?"selected":"")+'>선결제 12회차</option></select></div>'+
+          '<div class="guide-question"><label>설명 / 주요 조건</label><textarea id="contract-terms">'+esc(contract.terms||"")+'</textarea></div>'+
+        '</section>'+
+        '<section class="guide-section"><div class="guide-section-label">03</div><h2>기재 사항 및 서명</h2>'+
+          '<div class="guide-question"><label>사업자등록번호</label><input id="contract-business-number" type="text" value="'+esc(contract.businessNumber||"")+'" /></div>'+
+          '<div class="guide-question"><label>연락처</label><input id="contract-contact" type="text" value="'+esc(contract.contact||"")+'" /></div>'+
+          '<div class="guide-question"><label>이메일</label><input id="contract-email" type="text" value="'+esc(contract.email||"")+'" /></div>'+
+          '<div class="guide-question"><label>계약 기간 (개월)</label><input id="contract-months" type="text" value="'+esc(contract.contractMonths||"3")+'" /></div>'+
+          '<div class="guide-question"><label>특약 사항</label><textarea id="contract-special-terms">'+esc(contract.specialTerms||"")+'</textarea></div>'+
+          '<div class="guide-question"><label>기본 계약 내용</label><textarea id="contract-base-terms">'+esc(contract.baseTerms||"")+'</textarea></div>'+
+          '<div class="guide-question"><label>서명자</label><input id="contract-signer" type="text" value="'+esc(contract.signerName||"")+'" /></div>'+
+          '<div class="signature-box"><canvas id="contract-signature" class="signature-canvas" width="720" height="220"></canvas>'+preview+'</div>'+
+        '</section>'+
+        '<div class="guide-actions"><button class="btn btn-primary" id="btn-submit-public-contract">계약서 제출</button></div>'+
+      '</div></div>';
+  }
+  async function loadPublicContractPage(contractId){
+    app.innerHTML='<div style="padding:60px;text-align:center;color:#8B95A1;">계약서를 불러오는 중…</div>';
+    if(!/^contract_[A-Za-z0-9_-]{24,}$/.test(String(contractId||""))){
+      app.innerHTML='<div class="empty-state" style="margin-top:60px;"><div class="es-title">계약서 링크가 올바르지 않습니다</div></div>';
+      return;
+    }
+    var contract=await getP("contract:"+contractId);
+    if(!contract){ app.innerHTML='<div class="empty-state" style="margin-top:60px;"><div class="es-title">계약서를 찾을 수 없습니다</div></div>'; return; }
+    state.currentContract=contract;
+    app.innerHTML=renderPublicContract(contract);
+    bindSignaturePad(document.getElementById("contract-signature"));
+    var submit=document.getElementById("btn-submit-public-contract");
+    if(submit) submit.onclick=async function(){
+      submit.disabled=true; submit.textContent="제출 중…";
+      var payload=collectContractFromForm(contract);
+      var saved=await mutatePublicContract(contract.id,payload,true);
+      if(!saved){ submit.disabled=false; submit.textContent="계약서 제출"; showToast("계약서 제출에 실패했습니다"); return; }
+      state.currentContract=saved;
+      app.innerHTML=renderPublicContract(saved);
+    };
+  }
   function renderContractBuilder(base){
-    app.innerHTML=renderContractForm(base);
+    state.currentContract=Object.assign(newContractDraft(),base||state.currentContract||{});
+    app.innerHTML=renderContractForm(state.currentContract);
     document.getElementById("btn-back").onclick=function(){ state.view=state.currentClient?"clientDetail":"dashboard"; render(); };
     document.getElementById("btn-cancel").onclick=function(){ state.view=state.currentClient?"clientDetail":"dashboard"; render(); };
     bindSignaturePad(document.getElementById("contract-signature"));
     document.getElementById("btn-clear-signature").onclick=function(){ var canvas=document.getElementById("contract-signature"), ctx=canvas.getContext("2d"); ctx.clearRect(0,0,canvas.width,canvas.height); };
+    var copyLink=document.getElementById("btn-copy-contract-link");
+    if(copyLink) copyLink.onclick=async function(){
+      state.currentContract=collectContractFromForm(state.currentContract);
+      state.currentContract.updatedAt=Date.now();
+      state.currentContract.createdAt=state.currentContract.createdAt||state.currentContract.updatedAt;
+      var saved=await setS("contract:"+state.currentContract.id,state.currentContract);
+      if(!saved){ showToast("계약서 링크 저장에 실패했습니다"); return; }
+      var index=(state.contracts||[]).filter(function(c){ return c.id!==state.currentContract.id; });
+      index.push({ id:state.currentContract.id, clientId:state.currentContract.clientId, clientName:state.currentContract.clientName||"계약서 작성 대기", contractType:state.currentContract.contractType, renewalCount:state.currentContract.renewalCount, productName:state.currentContract.productName, startDate:state.currentContract.startDate, contractMonths:state.currentContract.contractMonths, fee:state.currentContract.fee, signerName:state.currentContract.signerName, updatedAt:state.currentContract.updatedAt });
+      state.contracts=index;
+      await setP("contracts-index",index);
+      copyText(location.origin+"/?contract="+encodeURIComponent(state.currentContract.id));
+    };
     document.getElementById("btn-save-contract").onclick=saveContractFromForm;
   }
   function bindSignaturePad(canvas){
@@ -1911,37 +2029,45 @@
     canvas.addEventListener("mousedown",start); canvas.addEventListener("mousemove",move); window.addEventListener("mouseup",end);
     canvas.addEventListener("touchstart",start,{passive:false}); canvas.addEventListener("touchmove",move,{passive:false}); canvas.addEventListener("touchend",end);
   }
+  function formValue(id){
+    var el=document.getElementById(id);
+    return el&&typeof el.value==="string" ? el.value.trim() : "";
+  }
+  function collectContractFromForm(base){
+    var contract=Object.assign(blankContract(),base||state.currentContract||{});
+    contract.clientName=formValue("contract-client-name");
+    contract.contractType=formValue("contract-type")==="renewal"?"renewal":"new";
+    var count=Number(formValue("contract-renewal-count"));
+    contract.renewalCount=contract.contractType==="renewal"&&Number.isInteger(count)&&count>0 ? count : 1;
+    contract.productType=formValue("contract-product-type")||"regular";
+    contract.productName=formValue("contract-product-name");
+    contract.supplyPrice=formValue("contract-supply-price");
+    contract.paymentMethod=formValue("contract-payment-method")||"regular";
+    contract.businessNumber=formValue("contract-business-number");
+    contract.contact=formValue("contract-contact");
+    contract.email=formValue("contract-email");
+    contract.startDate=formValue("contract-start");
+    contract.contractMonths=formValue("contract-months")||"3";
+    contract.fee=formValue("contract-fee");
+    contract.terms=formValue("contract-terms");
+    contract.specialTerms=formValue("contract-special-terms");
+    contract.baseTerms=formValue("contract-base-terms");
+    contract.internalMemo=formValue("contract-internal-memo")||contract.internalMemo||"";
+    contract.owner=formValue("contract-owner")||contract.owner||"";
+    contract.signerName=formValue("contract-signer");
+    var canvas=document.getElementById("contract-signature");
+    contract.signatureDataUrl=canvas&&canvas.toDataURL ? canvas.toDataURL("image/png") : (contract.signatureDataUrl||"");
+    return contract;
+  }
   async function saveContractFromForm(){
-    var clientName=document.getElementById("contract-client-name").value.trim();
+    var contract=collectContractFromForm(state.currentContract);
+    var clientName=contract.clientName;
     if(!clientName){ showToast("업체명을 입력하세요"); return; }
-    var type=document.getElementById("contract-type").value==="renewal"?"renewal":"new";
-    var count=Number(document.getElementById("contract-renewal-count").value);
     var now=Date.now();
-    var contract=Object.assign(blankContract(),state.currentContract||{});
     contract.id=contract.id||uid("ct");
     var clientId=contract.clientId||uid("cl");
     contract.clientId=clientId;
     contract.clientName=clientName;
-    contract.contractType=type;
-    contract.renewalCount=type==="renewal"&&Number.isInteger(count)&&count>0 ? count : 1;
-    contract.productType=document.getElementById("contract-product-type").value;
-    contract.productName=document.getElementById("contract-product-name").value.trim();
-    contract.supplyPrice=document.getElementById("contract-supply-price").value.trim();
-    contract.paymentMethod=document.getElementById("contract-payment-method").value;
-    contract.businessNumber=document.getElementById("contract-business-number").value.trim();
-    contract.contact=document.getElementById("contract-contact").value.trim();
-    contract.email=document.getElementById("contract-email").value.trim();
-    contract.startDate=document.getElementById("contract-start").value;
-    contract.contractMonths=document.getElementById("contract-months").value.trim()||"3";
-    contract.fee=document.getElementById("contract-fee").value.trim();
-    contract.terms=document.getElementById("contract-terms").value.trim();
-    contract.specialTerms=document.getElementById("contract-special-terms").value.trim();
-    contract.baseTerms=document.getElementById("contract-base-terms").value.trim();
-    contract.internalMemo=document.getElementById("contract-internal-memo").value.trim();
-    contract.owner=document.getElementById("contract-owner").value.trim();
-    contract.signerName=document.getElementById("contract-signer").value.trim();
-    var canvas=document.getElementById("contract-signature");
-    contract.signatureDataUrl=canvas&&canvas.toDataURL ? canvas.toDataURL("image/png") : (contract.signatureDataUrl||"");
     contract.createdAt=contract.createdAt||now;
     contract.updatedAt=now;
     var client=blankClient();

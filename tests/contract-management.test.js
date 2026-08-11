@@ -22,6 +22,9 @@ assert.match(html, /id="contract-client-name"/, 'contract form must use direct c
 assert.match(html, /id="contract-product-name"/, 'contract form must include product detail fields');
 assert.match(html, /id="contract-payment-method"/, 'contract form must include payment method');
 assert.match(html, /id="contract-business-number"/, 'contract form must include business details');
+assert.match(html, /\?contract=/, 'contract form must expose a shareable public contract link');
+assert.match(html, /renderPublicContract/, 'public contract route renderer must exist');
+assert.match(html, /mutatePublicContract/, 'browser transport must support public contract saves');
 
 const contractSandbox = {
   state: {
@@ -61,6 +64,8 @@ assert.doesNotMatch(panel, /Client Two/);
 assert.match(panel, /data-new-client-contract="cl_1"/);
 
 const renderedForm = contractSandbox.renderContractForm({
+  id: 'contract_secret_123456789012345678901234',
+  clientId: 'cl_secret',
   clientName: 'Client One',
   contractType: 'renewal',
   renewalCount: 2,
@@ -73,6 +78,8 @@ const renderedForm = contractSandbox.renderContractForm({
 });
 assert.match(renderedForm, /id="contract-client-name"/);
 assert.doesNotMatch(renderedForm, /id="contract-client"/);
+assert.match(renderedForm, /\?contract=contract_secret_123456789012345678901234/);
+assert.match(renderedForm, /btn-copy-contract-link/);
 assert.match(renderedForm, /id="contract-type"/);
 assert.match(renderedForm, /id="contract-renewal-count"/);
 assert.match(renderedForm, /id="contract-product-name"/);
@@ -116,6 +123,7 @@ const saveSandbox = {
     }
   },
   uid(prefix) { return prefix + '_new'; },
+  esc(value) { return String(value == null ? '' : value); },
   showToast(message) { saveSandbox.toast = message; },
   render() { saveSandbox.rendered = true; },
   async setS(key, value) { saveSandbox.secureWrites = saveSandbox.secureWrites || []; saveSandbox.secureWrites.push({ key, value }); return true; },
@@ -124,9 +132,34 @@ const saveSandbox = {
 
 vm.runInNewContext([
   functionSource('blankContract'),
+  functionSource('newContractDraft'),
+  functionSource('publicContractPayload'),
+  functionSource('renderPublicContract'),
   functionSource('blankClient'),
+  functionSource('formValue'),
+  functionSource('collectContractFromForm'),
   functionSource('saveContractFromForm')
 ].join('\n'), saveSandbox);
+
+const draft = saveSandbox.newContractDraft();
+assert.match(draft.id, /^contract_/);
+assert.match(draft.clientId, /^cl_/);
+const publicPayload = saveSandbox.publicContractPayload({
+  id: 'contract_public',
+  clientId: 'cl_public',
+  clientName: 'Visible Client',
+  internalMemo: 'secret',
+  owner: 'internal owner',
+  terms: 'visible terms',
+  submittedAt: null
+});
+assert.strictEqual(publicPayload.internalMemo, undefined, 'public contract payload must redact internal memo');
+assert.strictEqual(publicPayload.owner, undefined, 'public contract payload must redact internal owner');
+assert.strictEqual(publicPayload.clientName, 'Visible Client');
+const publicHtml = saveSandbox.renderPublicContract(publicPayload);
+assert.match(publicHtml, /public-contract/);
+assert.match(publicHtml, /contract-client-name/);
+assert.doesNotMatch(publicHtml, /contract-internal-memo/);
 
 saveSandbox.saveContractFromForm().then(() => {
   const contractWrite = saveSandbox.secureWrites.find((write) => write.key === 'contract:ct_new');

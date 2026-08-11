@@ -68,10 +68,13 @@ function isAuthed(req) {
 function isPublicGuideKey(key) {
   return typeof key === "string" && /^guide:guide_[A-Za-z0-9_-]{24,}$/.test(key);
 }
+function isPublicContractKey(key) {
+  return typeof key === "string" && /^contract:contract_[A-Za-z0-9_-]{24,}$/.test(key);
+}
 
 // 리포트와 고엔트로피 안내문 링크는 인증 없이 읽기 허용
 function isPublicReadable(key) {
-  return typeof key === "string" && (key.startsWith("report:") || isPublicGuideKey(key));
+  return typeof key === "string" && (key.startsWith("report:") || isPublicGuideKey(key) || isPublicContractKey(key));
 }
 
 const PUBLIC_GUIDE_FIELDS = ["id", "clientId", "createdAt", "updatedAt", "submittedAt", "serviceContext", "answers"];
@@ -138,6 +141,39 @@ if string.len(mergedValue) > 2000000 then return cjson.encode({ status = "too-la
 redis.call("SET", KEYS[1], mergedValue)
 return cjson.encode({ status = "ok", guide = mergedGuide })
 `;
+
+const PUBLIC_CONTRACT_FIELDS = [
+  "id", "clientId", "clientName", "contractType", "renewalCount", "productType", "productName",
+  "supplyPrice", "paymentMethod", "businessNumber", "contact", "email", "startDate",
+  "contractMonths", "fee", "terms", "specialTerms", "baseTerms", "signerName",
+  "signatureDataUrl", "createdAt", "updatedAt", "submittedAt",
+];
+
+function sanitizePublicContractObject(source) {
+  if (!source || typeof source !== "object" || Array.isArray(source)) return null;
+  if (typeof source.id !== "string" || !/^contract_[A-Za-z0-9_-]{24,}$/.test(source.id)) return null;
+  const out = {};
+  for (const field of PUBLIC_CONTRACT_FIELDS) {
+    if (Object.prototype.hasOwnProperty.call(source, field)) out[field] = source[field];
+  }
+  if (typeof out.clientId !== "string" || !out.clientId) out.clientId = `cl_${source.id.slice("contract_".length, 18)}`;
+  if (out.contractType !== "renewal") out.contractType = "new";
+  const count = Number(out.renewalCount);
+  out.renewalCount = Number.isInteger(count) && count > 0 ? count : 1;
+  out.updatedAt = Number.isFinite(Number(out.updatedAt)) ? Number(out.updatedAt) : Date.now();
+  out.createdAt = Number.isFinite(Number(out.createdAt)) ? Number(out.createdAt) : out.updatedAt;
+  if (out.submittedAt !== null && out.submittedAt !== undefined && !Number.isFinite(Number(out.submittedAt))) delete out.submittedAt;
+  return out;
+}
+
+function sanitizePublicContractValue(value) {
+  try {
+    const sanitized = sanitizePublicContractObject(JSON.parse(value));
+    return sanitized ? JSON.stringify(sanitized) : null;
+  } catch {
+    return null;
+  }
+}
 
 function newGuideIssueReservation(clientId, serviceContext) {
   const now = Date.now();
@@ -269,6 +305,11 @@ module.exports = async (req, res) => {
         if (value === null) return res.status(500).json({ error: "안내문 데이터 형식이 올바르지 않습니다" });
         return res.status(200).json({ key, value });
       }
+      if (isPublicContractKey(key)) {
+        const value = sanitizePublicContractValue(out.result);
+        if (value === null) return res.status(500).json({ error: "계약서 데이터 형식이 올바르지 않습니다" });
+        return res.status(200).json({ key, value });
+      }
       return res.status(200).json({ key, value: out.result });
     }
 
@@ -276,6 +317,70 @@ module.exports = async (req, res) => {
       let body = req.body;
       if (typeof body === "string") {
         try { body = JSON.parse(body); } catch { body = {}; }
+      }
+      if (body && (body.operation === "save-public-contract" || body.operation === "submit-public-contract")) {
+        const contractId = body.contractId;
+        const key = "contract:" + contractId;
+        if (!isPublicContractKey(key)) {
+          return res.status(400).json({ error: "올바른 계약서 ID가 필요합니다" });
+        }
+        const existingResult = await redis("get", [PREFIX + key]);
+        if (existingResult.result === null || existingResult.result === undefined) {
+          return res.status(404).json({ error: "계약서를 찾을 수 없습니다" });
+        }
+        let existing = null;
+        try { existing = JSON.parse(existingResult.result); } catch {}
+        existing = sanitizePublicContractObject(existing);
+        if (!existing || existing.id !== contractId) {
+          return res.status(500).json({ error: "계약서 데이터 형식이 올바르지 않습니다" });
+        }
+        const requested = sanitizePublicContractObject(Object.assign({}, existing, body.contract || {}, {
+          id: contractId,
+          clientId: existing.clientId,
+          createdAt: existing.createdAt,
+        }));
+        if (!requested) return res.status(400).json({ error: "계약서 입력값이 올바르지 않습니다" });
+        requested.updatedAt = Date.now();
+        if (body.operation === "submit-public-contract") requested.submittedAt = requested.submittedAt || requested.updatedAt;
+        const fullContract = Object.assign({}, existing, requested);
+        await redis("set", [PREFIX + key], JSON.stringify(fullContract));
+        if (body.operation === "submit-public-contract") {
+          const client = {
+            id: fullContract.clientId,
+            name: fullContract.clientName || "",
+            industry: fullContract.productName || "",
+            manager: fullContract.owner || "",
+            contractType: fullContract.contractType === "renewal" ? "renewal" : "new",
+            renewalCount: fullContract.contractType === "renewal" ? fullContract.renewalCount : undefined,
+            startDate: fullContract.startDate || "",
+            contractMonths: fullContract.contractMonths || "3",
+            fee: fullContract.fee || fullContract.supplyPrice || "",
+            status: "active",
+            memo: fullContract.internalMemo || "",
+            excludeWeekends: true,
+            checklist: [],
+            progress: {},
+            renewals: [],
+            createdAt: fullContract.createdAt,
+            updatedAt: fullContract.updatedAt,
+          };
+          await redis("set", [PREFIX + "client:" + client.id], JSON.stringify(client));
+          const clientsIndexResult = await redis("get", [PREFIX + "clients-index"]).catch(() => ({ result: null }));
+          let clientsIndex = [];
+          try { clientsIndex = JSON.parse(clientsIndexResult.result); } catch {}
+          if (!Array.isArray(clientsIndex)) clientsIndex = [];
+          clientsIndex = clientsIndex.filter((item) => item && item.id !== client.id);
+          clientsIndex.push({ id: client.id, name: client.name, contractType: client.contractType, renewalCount: client.renewalCount, startDate: client.startDate, status: client.status, updatedAt: client.updatedAt });
+          await redis("set", [PREFIX + "clients-index"], JSON.stringify(clientsIndex));
+        }
+        const contractsIndexResult = await redis("get", [PREFIX + "contracts-index"]).catch(() => ({ result: null }));
+        let contractsIndex = [];
+        try { contractsIndex = JSON.parse(contractsIndexResult.result); } catch {}
+        if (!Array.isArray(contractsIndex)) contractsIndex = [];
+        contractsIndex = contractsIndex.filter((item) => item && item.id !== fullContract.id);
+        contractsIndex.push({ id: fullContract.id, clientId: fullContract.clientId, clientName: fullContract.clientName || "계약서 작성 대기", contractType: fullContract.contractType, renewalCount: fullContract.renewalCount, productName: fullContract.productName, startDate: fullContract.startDate, contractMonths: fullContract.contractMonths, fee: fullContract.fee, signerName: fullContract.signerName, updatedAt: fullContract.updatedAt });
+        await redis("set", [PREFIX + "contracts-index"], JSON.stringify(contractsIndex));
+        return res.status(200).json({ contract: sanitizePublicContractObject(fullContract) });
       }
       if (body && (body.operation === "save-public-guide" || body.operation === "submit-public-guide")) {
         const guideId = body.guideId;
