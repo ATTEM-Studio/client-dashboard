@@ -62,6 +62,9 @@ assert.match(panel, /contract-card/);
 assert.match(panel, /Client One/);
 assert.doesNotMatch(panel, /Client Two/);
 assert.match(panel, /data-new-client-contract="cl_1"/);
+assert.match(panel, /data-open-contract="ct_1"/, 'saved contract card should open the original contract');
+assert.match(panel, /data-open-contract-link="ct_1"/, 'saved contract card should open the public contract link');
+assert.match(panel, /data-copy-contract-link="ct_1"/, 'saved contract card should copy the public contract link');
 
 const renderedForm = contractSandbox.renderContractForm({
   id: 'contract_secret_123456789012345678901234',
