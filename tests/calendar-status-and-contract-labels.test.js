@@ -159,6 +159,7 @@ async function main() {
     renewalNodes[id] = renewalNode();
   });
   const savedRenewals = [];
+  const savedIndexes = [];
   const renewalSandbox = {
     state: { month: '2026-09', checklistSets: [{ id: 'set-1', name: 'Basic' }], clients: [{ id: 'client-1', name: 'Client' }] },
     document: { getElementById: (id) => renewalNodes[id] },
@@ -167,9 +168,16 @@ async function main() {
     isoDate: () => 'unused',
     esc: (value) => String(value),
     isMondayDate: (value) => value === '2026-09-14',
-    buildRenewalClient: (client, startDate, set) => ({ id: client.id, startDate, setId: set && set.id }),
+    buildRenewalClient: (client, startDate, set) => ({
+      id: client.id,
+      name: client.name,
+      contractType: 'renewal',
+      startDate,
+      updatedAt: 123,
+      setId: set && set.id
+    }),
     setS: async (key, value) => { savedRenewals.push({ key, value: json(value) }); return true; },
-    setP: async () => true,
+    setP: async (key, value) => { savedIndexes.push({ key, value: json(value) }); return true; },
     renderClientWorkspace: (client) => { renewalSandbox.renderedClient = json(client); },
     showToast: () => {}
   };
@@ -180,13 +188,32 @@ async function main() {
   renewalNodes['btn-next-renewal'].onclick();
   setButtons[1].onclick();
   await renewalNodes['btn-confirm-renewal'].onclick();
-  assert.deepStrictEqual(savedRenewals, [{ key: 'client:client-1', value: { id: 'client-1', startDate: '2026-09-14', setId: 'set-1', renewals: ['2026-09'], status: 'active' } }]);
-  assert.deepStrictEqual(renewalSandbox.renderedClient, { id: 'client-1', startDate: '2026-09-14', setId: 'set-1', renewals: ['2026-09'], status: 'active' });
+  assert.deepStrictEqual(savedRenewals, [{ key: 'client:client-1', value: { id: 'client-1', name: 'Client', contractType: 'renewal', startDate: '2026-09-14', updatedAt: 123, setId: 'set-1', renewals: ['2026-09'], status: 'active' } }]);
+  assert.deepStrictEqual(savedIndexes, [{ key: 'clients-index', value: [{ id: 'client-1', name: 'Client', contractType: 'renewal', startDate: '2026-09-14', status: 'active', updatedAt: 123 }] }],
+    'renewal must preserve the lightweight client-index shape');
+  assert.deepStrictEqual(renewalSandbox.renderedClient, { id: 'client-1', name: 'Client', contractType: 'renewal', startDate: '2026-09-14', updatedAt: 123, setId: 'set-1', renewals: ['2026-09'], status: 'active' });
+  const priorCurrentClient = { id: 'client-1', name: 'Prior client' };
+  const priorClients = [{ id: 'client-1', name: 'Prior client' }];
+  renewalSandbox.state.currentClient = priorCurrentClient;
+  renewalSandbox.state.clients = priorClients;
+  renewalSandbox.renderedClient = undefined;
   renewalSandbox.setS = async () => false;
   renewalSandbox.renewalDialog({ id: 'client-1', name: 'Client' });
   renewalNodes['btn-next-renewal'].onclick();
   await renewalNodes['btn-confirm-renewal'].onclick();
   assert.strictEqual(renewalNodes['renewal-modal'].classList.shown, true, 'a failed renewal save must keep the dialog open');
+  renewalSandbox.setS = async () => true;
+  renewalSandbox.setP = async () => false;
+  renewalSandbox.renewalDialog({ id: 'client-1', name: 'Client' });
+  renewalNodes['btn-next-renewal'].onclick();
+  await renewalNodes['btn-confirm-renewal'].onclick();
+  assert.strictEqual(renewalNodes['renewal-modal'].classList.shown, true, 'an index write failure must keep the dialog open');
+  assert.strictEqual(renewalSandbox.state.currentClient, priorCurrentClient,
+    'an index write failure must not replace the current client in memory');
+  assert.strictEqual(renewalSandbox.state.clients, priorClients,
+    'an index write failure must not replace the client index in memory');
+  assert.strictEqual(renewalSandbox.renderedClient, undefined,
+    'an index write failure must not render the renewed client');
 
   const renewalTransformationSandbox = {};
   vm.runInNewContext([
@@ -195,7 +222,8 @@ async function main() {
     functionSource('checklistTasksFromSet'),
     functionSource('uid'),
     functionSource('parseIsoDateParts'),
-    functionSource('isoFromUtcDate')
+    functionSource('isoFromUtcDate'),
+    functionSource('nextMondayAfter')
   ].join('\n'), renewalTransformationSandbox);
 
   const renewalClient = {
@@ -222,6 +250,16 @@ async function main() {
     '2026-09-09',
     'non-numeric contract months must default to one month'
   );
+  assert.strictEqual(
+    renewalTransformationSandbox.contractEndDate({ startDate: '2022-01-31', contractMonths: '1' }),
+    '2022-02-27',
+    'month-end starts must end on the day before the clamped monthly anniversary'
+  );
+  assert.strictEqual(
+    renewalTransformationSandbox.nextMondayAfter('2022-02-27'),
+    '2022-02-28',
+    'renewal defaults must use the Monday immediately after a month-end contract'
+  );
   assert.strictEqual(transformed.contractType, 'renewal');
   assert.strictEqual(transformed.renewalCount, 1);
   assert.strictEqual(transformed.startDate, '2026-09-14');
@@ -238,6 +276,14 @@ async function main() {
     json(renewalTransformationSandbox.buildRenewalClient(renewalClient, '2026-09-14', null).checklist),
     []
   );
+  ['abc', '2.5'].forEach((renewalCount) => {
+    const legacyRenewal = Object.assign({}, renewalClient, { contractType: 'renewal', renewalCount });
+    const normalized = renewalTransformationSandbox.buildRenewalClient(legacyRenewal, '2026-09-14', null);
+    assert.strictEqual(normalized.renewalCount, 1,
+      'invalid renewal counts must restart at the first positive integer renewal');
+    assert.strictEqual(normalized.previousCycles[0].cycleNumber, 1,
+      'archived cycle numbers must remain positive integers');
+  });
 
   console.log('calendar status and contract labels: ok');
 }

@@ -696,8 +696,9 @@
     if(!Number.isFinite(months) || months<1) months=1;
     var parts=parseIsoDateParts(client.startDate);
     if(!parts) return "";
-    var date=new Date(Date.UTC(parts.y,parts.m-1,parts.d));
-    date.setUTCMonth(date.getUTCMonth()+months);
+    var date=new Date(Date.UTC(parts.y,parts.m-1+months,1));
+    var daysInTargetMonth=new Date(Date.UTC(date.getUTCFullYear(),date.getUTCMonth()+1,0)).getUTCDate();
+    date.setUTCDate(Math.min(parts.d,daysInTargetMonth));
     date.setUTCDate(date.getUTCDate()-1);
     return isoFromUtcDate(date);
   }
@@ -714,7 +715,8 @@
     }).filter(function(task){ return task.text.trim(); });
   }
   function buildRenewalClient(client,startDate,checklistSet){
-    var currentCount=client&&client.contractType==="renewal"?Math.max(1,Number(client.renewalCount||1)):0;
+    var savedCount=Number(client&&client.renewalCount);
+    var currentCount=client&&client.contractType==="renewal"&&Number.isInteger(savedCount)&&savedCount>0 ? savedCount : 0;
     var archived=(client.previousCycles||[]).slice();
     archived.push({
       cycleNumber:currentCount+1,
@@ -2351,9 +2353,12 @@
       renewed.status="active";
       var saved=await setS("client:"+client.id,renewed);
       if(!saved){ showToast("재계약 저장에 실패했습니다"); return; }
+      var index=state.clients.filter(function(item){ return item.id!==renewed.id; });
+      index.push({ id:renewed.id, name:renewed.name, contractType:renewed.contractType, startDate:renewed.startDate, status:renewed.status, updatedAt:renewed.updatedAt });
+      var indexSaved=await setP("clients-index",index);
+      if(!indexSaved){ showToast("\uC7AC\uACC4\uC57D \uC800\uC7A5\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4"); return; }
       state.currentClient=renewed;
-      state.clients=state.clients.map(function(item){ return item.id===renewed.id?renewed:item; });
-      await setP("clients-index",state.clients);
+      state.clients=index;
       close();
       renderClientWorkspace(renewed);
     };

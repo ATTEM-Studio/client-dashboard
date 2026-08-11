@@ -377,4 +377,3 @@ Only commit if Step 2 changed files.
 - Scope intentionally excludes weekend exclusion, contract generation/signature, and full revenue-history redesign.
 - The plan uses existing single-file architecture and existing Node test style.
 - No new external dependencies are introduced.
-

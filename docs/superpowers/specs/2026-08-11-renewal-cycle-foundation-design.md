@@ -141,4 +141,3 @@ After deployment, verify:
 - A new client with a non-Monday start date is blocked.
 - A renewal can be processed with default Monday date and a checklist set.
 - The client detail page shows the new cycle as current.
-
