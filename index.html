@@ -1544,7 +1544,7 @@
     app.innerHTML=
       '<div class="topbar">'+
         '<div class="brand"><span class="brand-mark"></span>업체 관리 대시보드</div>'+
-        '<div class="top-actions"><button class="btn btn-ghost" id="btn-new-contract">계약서 생성</button><button class="btn btn-primary" id="btn-new-client">+ 업체 등록</button></div>'+
+        '<div class="top-actions"><button class="btn btn-primary" id="btn-new-client">+ 업체 등록</button></div>'+
       '</div>'+
       '<div class="hero">'+
         '<p class="eyebrow">'+esc(monthLabel(state.month))+' 기준</p>'+
@@ -1560,9 +1560,6 @@
 
     document.getElementById("btn-new-client").addEventListener("click", function(){
       state.editingClient=null; state.view="clientForm"; render();
-    });
-    document.getElementById("btn-new-contract").addEventListener("click", function(){
-      state.currentContract=null; state.view="contractForm"; render();
     });
     document.getElementById("btn-this-month").addEventListener("click", function(){
       state.month=monthKey(new Date()); render();
@@ -1707,6 +1704,7 @@
   /* ============ CLIENT FORM ============ */
   function renderClientForm(base){
     var isEdit=!!(base&&base.id);
+    if(!isEdit) return renderContractBuilder(Object.assign(blankContract(),state.currentContract||{}));
     var c=base||blankClient();
     app.innerHTML=
       '<div class="topbar">'+
@@ -1851,31 +1849,41 @@
 
   /* ============ CONTRACTS ============ */
   function blankContract(){
-    return { id:"", clientId:"", clientName:"", contractType:"new", renewalCount:1, startDate:"", contractMonths:"3", fee:"", terms:"", signerName:"", signatureDataUrl:"", createdAt:null, updatedAt:null };
-  }
-  function contractClientOptions(clients){
-    return (clients||[]).slice().sort(function(a,b){ return (a.name||"").localeCompare(b.name||""); }).map(function(c){
-      return '<option value="'+esc(c.id)+'">'+esc(c.name||"이름 없는 업체")+'</option>';
-    }).join("");
+    return { id:"", clientId:"", clientName:"", contractType:"new", renewalCount:1, productType:"regular", productName:"", supplyPrice:"", paymentMethod:"regular", businessNumber:"", contact:"", email:"", startDate:"", contractMonths:"3", fee:"", terms:"", baseTerms:"28일 단위 정기 결제형 마케팅 서비스 계약서\n\n제1조(목적)\n본 계약은 온라인 마케팅 실행·관리 용역의 내용, 기간, 비용, 결제 및 운영 기준을 정하는 것을 목적으로 합니다.", internalMemo:"", owner:"", signerName:"", signatureDataUrl:"", createdAt:null, updatedAt:null };
   }
   function clientContracts(clientId){
     return (state.contracts||[]).filter(function(contract){ return contract.clientId===clientId; }).sort(function(a,b){ return (b.updatedAt||0)-(a.updatedAt||0); });
   }
   function renderContractForm(base){
     var contract=Object.assign(blankContract(),base||{});
-    var selectedClient=(state.clients||[]).filter(function(c){ return c.id===contract.clientId; })[0]||{};
-    if(!contract.clientId && selectedClient.id) contract.clientId=selectedClient.id;
     var preview=contract.signatureDataUrl ? '<img class="signature-preview" src="'+esc(contract.signatureDataUrl)+'" alt="저장된 서명" />' : "";
-    return '<div class="topbar"><div class="brand"><span class="brand-mark"></span>계약서 생성</div><button class="btn btn-text" id="btn-back">← 돌아가기</button></div>'+
+    return '<div class="topbar"><div class="brand"><span class="brand-mark"></span>업체 등록</div><button class="btn btn-text" id="btn-back">← 돌아가기</button></div>'+
       '<div class="form-card fade-in">'+
-        '<div class="fsection"><div class="fsec-num">CONTRACT</div><h3 class="fsec-title">계약 정보</h3><p class="fsec-hint">업체를 선택하면 계약서와 업체 상세 계약서 탭에 함께 저장됩니다.</p>'+
-          '<div class="two-col"><div class="field"><label>업체 선택 *</label><select id="contract-client"><option value="">업체를 선택하세요</option>'+contractClientOptions(state.clients).replace('value="'+esc(contract.clientId)+'"','value="'+esc(contract.clientId)+'" selected')+'</select></div>'+
+        '<div class="fsection"><div class="fsec-num">CONTRACT</div><h3 class="fsec-title">계약 신청서</h3><p class="fsec-hint">계약서를 먼저 작성하면 계약서와 업체 정보가 함께 저장됩니다.</p>'+
+          '<div class="two-col"><div class="field"><label>업체명 *</label><input id="contract-client-name" type="text" value="'+esc(contract.clientName||"")+'" placeholder="예: 꿈카페 하단지점" /></div>'+
           '<div class="field"><label>계약 구분</label><select id="contract-type"><option value="new" '+(contract.contractType==="new"?"selected":"")+'>신규</option><option value="renewal" '+(contract.contractType==="renewal"?"selected":"")+'>재계약</option></select></div></div>'+
-          '<div class="two-col"><div class="field"><label>재계약 회차</label><input type="number" min="1" step="1" id="contract-renewal-count" value="'+esc(contract.renewalCount||selectedClient.renewalCount||1)+'" /></div>'+
-          '<div class="field"><label>계약 시작일</label><input type="date" id="contract-start" value="'+esc(contract.startDate||selectedClient.startDate||"")+'" /></div></div>'+
-          '<div class="two-col"><div class="field"><label>계약 기간 (개월)</label><input type="text" id="contract-months" value="'+esc(contract.contractMonths||selectedClient.contractMonths||"3")+'" /></div>'+
-          '<div class="field"><label>월 금액</label><input type="text" id="contract-fee" value="'+esc(contract.fee||selectedClient.fee||"")+'" placeholder="예: 800000" /></div></div>'+
-          '<div class="field"><label>주요 조건</label><textarea id="contract-terms" rows="5" placeholder="계약 범위, 포함 서비스, 특이 조건을 적어주세요.">'+esc(contract.terms||"")+'</textarea></div>'+
+          '<div class="two-col"><div class="field"><label>재계약 회차</label><input type="number" min="1" step="1" id="contract-renewal-count" value="'+esc(contract.renewalCount||1)+'" /></div>'+
+          '<div class="field"><label>업체 시작일</label><input type="date" id="contract-start" value="'+esc(contract.startDate||"")+'" /></div></div>'+
+        '</div>'+
+        '<div class="fsection"><div class="fsec-num">PRODUCT</div><h3 class="fsec-title">상품 명세</h3>'+
+          '<div class="two-col"><div class="field"><label>상품</label><select id="contract-product-type"><option value="regular" '+(contract.productType==="regular"?"selected":"")+'>광고비용</option><option value="photo" '+(contract.productType==="photo"?"selected":"")+'>사진/달 파운드</option></select></div>'+
+          '<div class="field"><label>상품명</label><input id="contract-product-name" type="text" value="'+esc(contract.productName||"")+'" placeholder="예: 다각화 플랜" /></div></div>'+
+          '<div class="two-col"><div class="field"><label>공급가</label><input id="contract-supply-price" type="text" value="'+esc(contract.supplyPrice||"")+'" placeholder="예: 700000" /></div>'+
+          '<div class="field"><label>최종 금액</label><input type="text" id="contract-fee" value="'+esc(contract.fee||"")+'" placeholder="예: 770000" /></div></div>'+
+          '<div class="field"><label>설명 / 주요 조건</label><textarea id="contract-terms" rows="8" placeholder="상품 범위, 포함 서비스, 특이 조건을 적어주세요.">'+esc(contract.terms||"")+'</textarea></div>'+
+        '</div>'+
+        '<div class="fsection"><div class="fsec-num">PAYMENT</div><h3 class="fsec-title">결제 및 기재 사항</h3>'+
+          '<div class="field"><label>결제 방식</label><select id="contract-payment-method"><option value="regular" '+(contract.paymentMethod==="regular"?"selected":"")+'>정기결제</option><option value="first" '+(contract.paymentMethod==="first"?"selected":"")+'>선결제 1회차</option><option value="sixth" '+(contract.paymentMethod==="sixth"?"selected":"")+'>선결제 6회차</option><option value="twelfth" '+(contract.paymentMethod==="twelfth"?"selected":"")+'>선결제 12회차</option></select></div>'+
+          '<div class="two-col"><div class="field"><label>사업자등록번호</label><input id="contract-business-number" type="text" value="'+esc(contract.businessNumber||"")+'" placeholder="123-45-67890" /></div>'+
+          '<div class="field"><label>연락처</label><input id="contract-contact" type="text" value="'+esc(contract.contact||"")+'" placeholder="010-0000-0000" /></div></div>'+
+          '<div class="two-col"><div class="field"><label>이메일</label><input id="contract-email" type="text" value="'+esc(contract.email||"")+'" placeholder="example@domain.com" /></div>'+
+          '<div class="field"><label>계약 기간 (개월)</label><input type="text" id="contract-months" value="'+esc(contract.contractMonths||"3")+'" /></div></div>'+
+        '</div>'+
+        '<div class="fsection"><div class="fsec-num">TERMS</div><h3 class="fsec-title">기본 계약 내용</h3>'+
+          '<div class="field"><label>특약 사항</label><textarea id="contract-special-terms" rows="3" placeholder="별도 특약이 있으면 적어주세요.">'+esc(contract.specialTerms||"")+'</textarea></div>'+
+          '<div class="field"><label>기본 계약 내용</label><textarea id="contract-base-terms" rows="10">'+esc(contract.baseTerms||"")+'</textarea></div>'+
+          '<div class="field"><label>내부 메모</label><textarea id="contract-internal-memo" rows="3" placeholder="내부 참고용 메모입니다. 고객에게 공유되는 계약서에는 표시하지 않습니다.">'+esc(contract.internalMemo||"")+'</textarea></div>'+
+          '<div class="field"><label>업무 담당자</label><input id="contract-owner" type="text" value="'+esc(contract.owner||"")+'" placeholder="예: 최진혁(경기)" /></div>'+
         '</div>'+
         '<div class="fsection"><div class="fsec-num">SIGN</div><h3 class="fsec-title">서명</h3><p class="fsec-hint">마우스 또는 터치로 서명할 수 있습니다.</p>'+
           '<div class="field"><label>서명자</label><input type="text" id="contract-signer" value="'+esc(contract.signerName||"")+'" placeholder="예: 홍길동" /></div>'+
@@ -1904,38 +1912,70 @@
     canvas.addEventListener("touchstart",start,{passive:false}); canvas.addEventListener("touchmove",move,{passive:false}); canvas.addEventListener("touchend",end);
   }
   async function saveContractFromForm(){
-    var clientId=document.getElementById("contract-client").value;
-    var client=(state.clients||[]).filter(function(c){ return c.id===clientId; })[0];
-    if(!client){ showToast("계약서를 연결할 업체를 선택하세요"); return; }
+    var clientName=document.getElementById("contract-client-name").value.trim();
+    if(!clientName){ showToast("업체명을 입력하세요"); return; }
     var type=document.getElementById("contract-type").value==="renewal"?"renewal":"new";
     var count=Number(document.getElementById("contract-renewal-count").value);
     var now=Date.now();
     var contract=Object.assign(blankContract(),state.currentContract||{});
     contract.id=contract.id||uid("ct");
-    contract.clientId=client.id;
-    contract.clientName=client.name||"";
+    var clientId=contract.clientId||uid("cl");
+    contract.clientId=clientId;
+    contract.clientName=clientName;
     contract.contractType=type;
     contract.renewalCount=type==="renewal"&&Number.isInteger(count)&&count>0 ? count : 1;
+    contract.productType=document.getElementById("contract-product-type").value;
+    contract.productName=document.getElementById("contract-product-name").value.trim();
+    contract.supplyPrice=document.getElementById("contract-supply-price").value.trim();
+    contract.paymentMethod=document.getElementById("contract-payment-method").value;
+    contract.businessNumber=document.getElementById("contract-business-number").value.trim();
+    contract.contact=document.getElementById("contract-contact").value.trim();
+    contract.email=document.getElementById("contract-email").value.trim();
     contract.startDate=document.getElementById("contract-start").value;
     contract.contractMonths=document.getElementById("contract-months").value.trim()||"3";
     contract.fee=document.getElementById("contract-fee").value.trim();
     contract.terms=document.getElementById("contract-terms").value.trim();
+    contract.specialTerms=document.getElementById("contract-special-terms").value.trim();
+    contract.baseTerms=document.getElementById("contract-base-terms").value.trim();
+    contract.internalMemo=document.getElementById("contract-internal-memo").value.trim();
+    contract.owner=document.getElementById("contract-owner").value.trim();
     contract.signerName=document.getElementById("contract-signer").value.trim();
     var canvas=document.getElementById("contract-signature");
     contract.signatureDataUrl=canvas&&canvas.toDataURL ? canvas.toDataURL("image/png") : (contract.signatureDataUrl||"");
     contract.createdAt=contract.createdAt||now;
     contract.updatedAt=now;
+    var client=blankClient();
+    client.id=clientId;
+    client.name=clientName;
+    client.industry=contract.productName||"";
+    client.manager=contract.owner||"";
+    client.contractType=contract.contractType;
+    if(client.contractType==="renewal") client.renewalCount=contract.renewalCount;
+    client.startDate=contract.startDate;
+    client.contractMonths=contract.contractMonths;
+    client.fee=contract.fee||contract.supplyPrice;
+    client.memo=contract.internalMemo||"";
+    client.status="active";
+    client.createdAt=contract.createdAt;
+    client.updatedAt=now;
+    var clientSaved=await setS("client:"+client.id,client);
+    if(!clientSaved){ showToast("업체 저장에 실패했습니다"); return; }
     var saved=await setS("contract:"+contract.id,contract);
     if(!saved){ showToast("계약서 저장에 실패했습니다"); return; }
+    var clientIndex=(state.clients||[]).filter(function(c){ return c.id!==client.id; });
+    clientIndex.push({ id:client.id, name:client.name, contractType:client.contractType, renewalCount:client.renewalCount, startDate:client.startDate, status:client.status, updatedAt:client.updatedAt });
+    state.clients=clientIndex;
+    var clientIndexSaved=await setP("clients-index",clientIndex);
+    if(!clientIndexSaved){ showToast("업체 목록 저장에 실패했습니다"); return; }
     var index=(state.contracts||[]).filter(function(c){ return c.id!==contract.id; });
-    index.push({ id:contract.id, clientId:contract.clientId, clientName:contract.clientName, contractType:contract.contractType, renewalCount:contract.renewalCount, startDate:contract.startDate, contractMonths:contract.contractMonths, fee:contract.fee, signerName:contract.signerName, updatedAt:contract.updatedAt });
+    index.push({ id:contract.id, clientId:contract.clientId, clientName:contract.clientName, contractType:contract.contractType, renewalCount:contract.renewalCount, productName:contract.productName, startDate:contract.startDate, contractMonths:contract.contractMonths, fee:contract.fee, signerName:contract.signerName, updatedAt:contract.updatedAt });
     state.contracts=index;
     var indexSaved=await setP("contracts-index",index);
     if(!indexSaved){ showToast("계약서 목록 저장에 실패했습니다"); return; }
     state.currentContract=contract;
-    state.currentClient=state.currentClient&&state.currentClient.id===client.id ? state.currentClient : (typeof getS==="function" ? await getS("client:"+client.id) : null);
-    state.view=state.currentClient?"clientDetail":"dashboard";
-    showToast("계약서가 저장되었습니다");
+    state.currentClient=client;
+    state.view="clientDetail";
+    showToast("계약서와 업체가 저장되었습니다");
     render();
   }
   function contractsPanel(client){

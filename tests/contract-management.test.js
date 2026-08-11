@@ -14,17 +14,18 @@ function functionSource(name) {
 }
 
 assert.match(html, /id="btn-new-client"/, 'dashboard must keep the client registration button');
-assert.match(html, /id="btn-new-contract"/, 'dashboard must expose a contract creation button');
+assert.doesNotMatch(html, /id="btn-new-contract"/, 'dashboard must not expose a separate contract creation button');
 assert.match(html, /data-client-tab="contracts"/, 'client detail must include a contracts tab');
 assert.match(html, /id="c-renewal-count"/, 'client form must expose a renewal-count input');
 assert.match(html, /id="contract-signature"/, 'contract form must include a signature canvas');
+assert.match(html, /id="contract-client-name"/, 'contract form must use direct client-name entry');
+assert.match(html, /id="contract-product-name"/, 'contract form must include product detail fields');
+assert.match(html, /id="contract-payment-method"/, 'contract form must include payment method');
+assert.match(html, /id="contract-business-number"/, 'contract form must include business details');
 
 const contractSandbox = {
   state: {
-    clients: [
-      { id: 'cl_1', name: 'Client One', contractType: 'renewal', renewalCount: 2, startDate: '2026-08-17', status: 'active' },
-      { id: 'cl_2', name: 'Client Two', contractType: 'new', startDate: '2026-08-24', status: 'active' }
-    ],
+    clients: [],
     contracts: [
       { id: 'ct_1', clientId: 'cl_1', clientName: 'Client One', contractType: 'renewal', renewalCount: 2, updatedAt: 10 },
       { id: 'ct_2', clientId: 'cl_2', clientName: 'Client Two', contractType: 'new', updatedAt: 20 }
@@ -40,7 +41,6 @@ const contractSandbox = {
 
 vm.runInNewContext([
   functionSource('blankContract'),
-  functionSource('contractClientOptions'),
   functionSource('clientContracts'),
   functionSource('contractsPanel'),
   functionSource('renderContractForm')
@@ -49,10 +49,6 @@ vm.runInNewContext([
 const blank = contractSandbox.blankContract();
 assert.strictEqual(blank.contractType, 'new');
 assert.strictEqual(blank.signatureDataUrl, '');
-
-const options = contractSandbox.contractClientOptions(contractSandbox.state.clients);
-assert.match(options, /value="cl_1"/);
-assert.match(options, /Client One/);
 
 const filtered = contractSandbox.clientContracts('cl_1');
 assert.strictEqual(filtered.length, 1);
@@ -65,7 +61,6 @@ assert.doesNotMatch(panel, /Client Two/);
 assert.match(panel, /data-new-client-contract="cl_1"/);
 
 const renderedForm = contractSandbox.renderContractForm({
-  clientId: 'cl_1',
   clientName: 'Client One',
   contractType: 'renewal',
   renewalCount: 2,
@@ -76,9 +71,13 @@ const renderedForm = contractSandbox.renderContractForm({
   signerName: 'Signer',
   signatureDataUrl: 'data:image/png;base64,abc'
 });
-assert.match(renderedForm, /id="contract-client"/);
+assert.match(renderedForm, /id="contract-client-name"/);
+assert.doesNotMatch(renderedForm, /id="contract-client"/);
 assert.match(renderedForm, /id="contract-type"/);
 assert.match(renderedForm, /id="contract-renewal-count"/);
+assert.match(renderedForm, /id="contract-product-name"/);
+assert.match(renderedForm, /id="contract-payment-method"/);
+assert.match(renderedForm, /id="contract-base-terms"/);
 assert.match(renderedForm, /id="contract-signature"/);
 assert.match(renderedForm, /id="btn-save-contract"/);
 assert.match(renderedForm, /data:image\/png;base64,abc/);
@@ -86,19 +85,30 @@ assert.match(renderedForm, /data:image\/png;base64,abc/);
 const saveSandbox = {
   Date: { now: () => 12345 },
   state: {
-    clients: [{ id: 'cl_1', name: 'Client One', contractType: 'renewal', renewalCount: 3, startDate: '2026-08-17' }],
+    clients: [],
     contracts: []
   },
   document: {
     getElementById(id) {
       const values = {
-        'contract-client': { value: 'cl_1' },
+        'contract-client-name': { value: 'Client One' },
         'contract-type': { value: 'renewal' },
         'contract-renewal-count': { value: '3' },
+        'contract-product-type': { value: 'regular' },
+        'contract-product-name': { value: '다각화 플랜' },
+        'contract-supply-price': { value: '700000' },
+        'contract-payment-method': { value: 'regular' },
+        'contract-business-number': { value: '123-45-67890' },
+        'contract-contact': { value: '010-0000-0000' },
+        'contract-email': { value: 'example@domain.com' },
         'contract-start': { value: '2026-08-17' },
         'contract-months': { value: '6' },
         'contract-fee': { value: '900000' },
         'contract-terms': { value: 'special terms' },
+        'contract-special-terms': { value: 'special extra' },
+        'contract-base-terms': { value: 'base terms' },
+        'contract-internal-memo': { value: 'private memo' },
+        'contract-owner': { value: 'Manager' },
         'contract-signer': { value: 'Signer' },
         'contract-signature': { toDataURL: () => 'data:image/png;base64,signed' }
       };
@@ -108,22 +118,33 @@ const saveSandbox = {
   uid(prefix) { return prefix + '_new'; },
   showToast(message) { saveSandbox.toast = message; },
   render() { saveSandbox.rendered = true; },
-  async setS(key, value) { saveSandbox.secureWrite = { key, value }; return true; },
+  async setS(key, value) { saveSandbox.secureWrites = saveSandbox.secureWrites || []; saveSandbox.secureWrites.push({ key, value }); return true; },
   async setP(key, value) { saveSandbox.publicWrite = { key, value }; return true; }
 };
 
 vm.runInNewContext([
   functionSource('blankContract'),
+  functionSource('blankClient'),
   functionSource('saveContractFromForm')
 ].join('\n'), saveSandbox);
 
 saveSandbox.saveContractFromForm().then(() => {
-  assert.strictEqual(saveSandbox.secureWrite.key, 'contract:ct_new');
-  assert.strictEqual(saveSandbox.secureWrite.value.renewalCount, 3);
-  assert.strictEqual(saveSandbox.secureWrite.value.signatureDataUrl, 'data:image/png;base64,signed');
+  const contractWrite = saveSandbox.secureWrites.find((write) => write.key === 'contract:ct_new');
+  const clientWrite = saveSandbox.secureWrites.find((write) => write.key === 'client:cl_new');
+  assert.ok(contractWrite, 'saving a new contract must write the contract document');
+  assert.ok(clientWrite, 'saving a new contract must also create the client');
+  assert.strictEqual(contractWrite.value.clientId, 'cl_new');
+  assert.strictEqual(contractWrite.value.clientName, 'Client One');
+  assert.strictEqual(contractWrite.value.productName, '다각화 플랜');
+  assert.strictEqual(contractWrite.value.baseTerms, 'base terms');
+  assert.strictEqual(contractWrite.value.renewalCount, 3);
+  assert.strictEqual(contractWrite.value.signatureDataUrl, 'data:image/png;base64,signed');
+  assert.strictEqual(clientWrite.value.name, 'Client One');
+  assert.strictEqual(clientWrite.value.contractType, 'renewal');
   assert.strictEqual(saveSandbox.publicWrite.key, 'contracts-index');
   assert.strictEqual(saveSandbox.publicWrite.value[0].id, 'ct_new');
   assert.strictEqual(saveSandbox.state.contracts[0].clientName, 'Client One');
+  assert.strictEqual(saveSandbox.state.clients[0].id, 'cl_new');
   console.log('contract management: ok');
 }).catch((error) => {
   console.error(error);
