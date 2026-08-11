@@ -136,6 +136,11 @@
   /* modal */
   #modal-layer{ position:fixed; inset:0; background:rgba(15,23,42,.42); display:none; align-items:center; justify-content:center; padding:20px; z-index:100; }
   #modal-layer.show{ display:flex; }
+  #renewal-modal{ position:fixed; inset:0; background:rgba(15,23,42,.42); display:none; align-items:center; justify-content:center; padding:20px; z-index:105; }
+  #renewal-modal.show{ display:flex; }
+  #renewal-set-options{ display:grid; gap:8px; margin:0 0 18px; }
+  #renewal-set-options button{ border:1px solid var(--line); background:#fff; border-radius:10px; padding:11px 12px; text-align:left; font-weight:700; }
+  #renewal-set-options button.active{ border-color:var(--brand); background:var(--brand-light); color:var(--brand-dark); }
   .modal{ background:#fff; border-radius:18px; padding:24px 22px 18px; max-width:360px; width:100%; box-shadow:var(--shadow-pop); }
   .modal h3{ margin:0 0 8px; font-size:16.5px; }
   .modal p{ margin:0 0 20px; font-size:13.5px; color:var(--ink-600); line-height:1.6; }
@@ -488,6 +493,22 @@
     <button class="btn btn-danger" id="modal-confirm">삭제</button>
   </div>
 </div></div>
+<div id="renewal-modal">
+  <div class="modal">
+    <div id="renewal-date-step">
+      <h3>재계약 시작일</h3>
+      <p>새 계약은 월요일에 시작합니다.</p>
+      <div class="field"><label for="renewal-start-date">시작일</label><input id="renewal-start-date" type="date" /></div>
+      <div class="modal-actions"><button class="btn btn-plain" id="btn-cancel-renewal">취소</button><button class="btn btn-primary" id="btn-next-renewal">다음</button></div>
+    </div>
+    <div id="renewal-set-step" hidden>
+      <h3>체크리스트 세트</h3>
+      <p>새 계약에 적용할 체크리스트를 선택하세요.</p>
+      <div id="renewal-set-options"></div>
+      <div class="modal-actions"><button class="btn btn-plain" id="btn-back-renewal">이전</button><button class="btn btn-primary" id="btn-confirm-renewal">재계약 시작</button></div>
+    </div>
+  </div>
+</div>
 
 <script>
 (function(){
@@ -1284,6 +1305,7 @@
     setCollectionOpen:false,
     checklistSetDraft:null,
     checklistSetPeriod:"1",
+    renewalSelectedSetId:"",
     summaryMode:false,
     readOnly:false
   };
@@ -1986,7 +2008,7 @@
       '<div class="detail-tabs"><button class="detail-tab '+(activeTab==="calendar"?"active":"")+'" data-client-tab="calendar">일정 달력</button><button class="detail-tab '+(activeTab==="checklist"?"active":"")+'" data-client-tab="checklist">업무 체크리스트 <small>'+done+'/'+tasks.length+'</small></button><button class="detail-tab '+(activeTab==="reports"?"active":"")+'" data-client-tab="reports">리포트</button><button class="detail-tab '+(activeTab==="guide"?"active":"")+'" data-client-tab="guide">정보 안내문</button></div>'+content;
     document.getElementById("btn-back").onclick=function(){ state.view="dashboard"; render(); };
     document.getElementById("btn-edit-client").onclick=function(){ state.editingClient=cl; state.view="clientForm"; render(); };
-    document.getElementById("btn-renew").onclick=function(){ confirmDialog("재계약으로 처리할까요?", "현재 월의 재계약 건으로 기록합니다.", "처리", function(){ markRenewal(cl.id); }); };
+    document.getElementById("btn-renew").onclick=function(){ markRenewal(cl.id); };
     app.querySelectorAll("[data-client-tab]").forEach(function(b){ b.onclick=function(){ selectClientWorkspaceTab(cl,b.getAttribute("data-client-tab")); }; });
     bindCalendarPanel(cl); bindChecklistPanel(cl); bindReportPanel(cl);
     if(activeTab==="guide") bindGuidePanel(cl,state.currentGuide,state.currentGuideReview,state.currentGuideLoadState,state.currentGuideReviewLoadState);
@@ -2234,10 +2256,7 @@
     document.getElementById("btn-edit-client").addEventListener("click", function(){
       state.editingClient=cl; state.view="clientForm"; render();
     });
-    document.getElementById("btn-renew").addEventListener("click", function(){
-      confirmDialog("재계약으로 처리할까요?", esc(monthLabel(mk))+" 재계약 건으로 기록되며, 대시보드 재계약 현황에 반영됩니다.", "처리", function(){ markRenewal(cl.id); });
-    });
-
+    document.getElementById("btn-renew").onclick=function(){ markRenewal(cl.id); };
     app.querySelectorAll(".week-cell").forEach(function(el){
       el.addEventListener("click", function(){ cycleWeek(cl.id, parseInt(el.getAttribute("data-week"),10)); });
     });
@@ -2294,17 +2313,53 @@
     if(state.view==="clientDetail") render();
   }
 
+  function renewalDialog(client){
+    var modal=document.getElementById("renewal-modal");
+    var defaultDate=nextMondayAfter(contractEndDate(client)||isoDate(new Date()));
+    var dateStep=document.getElementById("renewal-date-step");
+    var setStep=document.getElementById("renewal-set-step");
+    var setOptions=document.getElementById("renewal-set-options");
+    state.renewalSelectedSetId="";
+    document.getElementById("renewal-start-date").value=defaultDate;
+    dateStep.hidden=false;
+    setStep.hidden=true;
+    setOptions.innerHTML='<button type="button" data-renewal-set="" class="active">?명듃 ?놁씠 ?쒖옉</button>'+(state.checklistSets||[]).map(function(set){
+      return '<button type="button" data-renewal-set="'+esc(set.id)+'">'+esc(set.name)+'</button>';
+    }).join("");
+    modal.classList.add("show");
+    function close(){ modal.classList.remove("show"); }
+    document.getElementById("btn-cancel-renewal").onclick=close;
+    document.getElementById("btn-next-renewal").onclick=function(){ dateStep.hidden=true; setStep.hidden=false; };
+    document.getElementById("btn-back-renewal").onclick=function(){ setStep.hidden=true; dateStep.hidden=false; };
+    setOptions.querySelectorAll("[data-renewal-set]").forEach(function(button){
+      button.onclick=function(){
+        state.renewalSelectedSetId=button.getAttribute("data-renewal-set")||"";
+        setOptions.querySelectorAll("[data-renewal-set]").forEach(function(option){ option.classList.toggle("active",option===button); });
+      };
+    });
+    document.getElementById("btn-confirm-renewal").onclick=async function(){
+      var startDate=document.getElementById("renewal-start-date").value;
+      if(!isMondayDate(startDate)){
+        showToast("?ш퀎???쒖옉?쇱? ?붿슂?쇰쭔 ?좏깮?????덉뒿?덈떎.");
+        return;
+      }
+      var selectedSetId=state.renewalSelectedSetId||"";
+      var selectedSet=selectedSetId ? state.checklistSets.find(function(set){ return set.id===selectedSetId; }) : null;
+      var renewed=buildRenewalClient(client,startDate,selectedSet);
+      var saved=await setS("client:"+client.id,renewed);
+      if(!saved){ showToast("?ш퀎????μ뿉 ?ㅽ뙣?덉뒿?덈떎"); return; }
+      state.currentClient=renewed;
+      state.clients=state.clients.map(function(item){ return item.id===renewed.id?renewed:item; });
+      await setP("clients-index",state.clients);
+      close();
+      renderClientWorkspace(renewed);
+    };
+  }
+
   async function markRenewal(id){
     var cl=await getS("client:"+id);
     if(!cl) return;
-    var renewalCount=Number(cl.renewalCount);
-    cl.renewalCount=Number.isInteger(renewalCount)&&renewalCount>0 ? renewalCount+1 : 1;
-    cl.renewals=cl.renewals||[];
-    if(cl.renewals.indexOf(state.month)===-1) cl.renewals.push(state.month);
-    cl.contractType="renewal";
-    cl.status="active";
-    await saveClientAndRefresh(cl);
-    showToast("재계약으로 기록되었습니다");
+    renewalDialog(cl);
   }
 
   /* ============ REPORT FORM ============ */

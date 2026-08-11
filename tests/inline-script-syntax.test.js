@@ -6,6 +6,11 @@ const html = fs.readFileSync('index.html', 'utf8');
 const script = html.slice(html.indexOf('<script>') + 8, html.lastIndexOf('</script>'));
 new Function(script);
 
+assert.match(html, /id="renewal-modal"/);
+assert.match(html, /id="renewal-start-date"/);
+assert.match(html, /data-renewal-set=/);
+assert.match(html, new RegExp("\\?명듃 \\?놁씠 \\?쒖옉"));
+
 assert.match(html, /id="btn-toggle-sets"[^>]*aria-expanded=/, 'checklist view must expose the compact set toggle');
 assert.doesNotMatch(html, /return '<div class="workspace-columns"/, 'ordinary checklist view must not render the old two-column set panel');
 assert.match(html, /data-set-period="1"/, 'set editor must navigate to week 1');

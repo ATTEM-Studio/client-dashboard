@@ -133,19 +133,60 @@ async function main() {
   assert.match(body.innerHTML, /Legacy Co<span class="tag tag-renew">재계약 1회차<\/span>/);
   assert.match(body.innerHTML, /Third Co<span class="tag tag-renew">재계약 3회차<\/span>/);
 
-  const renewed = { id: 'client-1', contractType: 'new' };
-  const saved = [];
+  // Break caught: removing the renewal dialog's selected-set save flow would leave the current client unchanged.
+  const renewalNodes = {};
+  function renewalNode(attributes = {}) {
+    return Object.assign({
+      hidden: false,
+      value: '',
+      onclick: null,
+      classList: { shown: false, add(){ this.shown = true; }, remove(){ this.shown = false; }, toggle(){} }
+    }, attributes);
+  }
+  const setButtons = [
+    renewalNode({ getAttribute: () => '', classList: { toggle(){} } }),
+    renewalNode({ getAttribute: () => 'set-1', classList: { toggle(){} } })
+  ];
+  renewalNodes['renewal-modal'] = renewalNode();
+  renewalNodes['renewal-date-step'] = renewalNode();
+  renewalNodes['renewal-set-step'] = renewalNode();
+  renewalNodes['renewal-start-date'] = renewalNode();
+  renewalNodes['renewal-set-options'] = renewalNode({
+    querySelectorAll: () => setButtons,
+    set innerHTML(value){ this.rendered = value; }
+  });
+  ['btn-cancel-renewal', 'btn-next-renewal', 'btn-back-renewal', 'btn-confirm-renewal'].forEach((id) => {
+    renewalNodes[id] = renewalNode();
+  });
+  const savedRenewals = [];
   const renewalSandbox = {
-    state: { month: '2026-07' },
-    getS: async () => renewed,
-    saveClientAndRefresh: async (clientValue) => saved.push(json(clientValue)),
+    state: { checklistSets: [{ id: 'set-1', name: 'Basic' }], clients: [{ id: 'client-1', name: 'Client' }] },
+    document: { getElementById: (id) => renewalNodes[id] },
+    contractEndDate: () => '2026-09-09',
+    nextMondayAfter: () => '2026-09-14',
+    isoDate: () => 'unused',
+    esc: (value) => String(value),
+    isMondayDate: (value) => value === '2026-09-14',
+    buildRenewalClient: (client, startDate, set) => ({ id: client.id, startDate, setId: set && set.id }),
+    setS: async (key, value) => { savedRenewals.push({ key, value: json(value) }); return true; },
+    setP: async () => true,
+    renderClientWorkspace: (client) => { renewalSandbox.renderedClient = json(client); },
     showToast: () => {}
   };
-  vm.runInNewContext(functionSource('markRenewal'), renewalSandbox);
-  await renewalSandbox.markRenewal('client-1');
-  assert.strictEqual(saved[0].renewalCount, 1, 'the first renewal action must persist renewalCount 1');
-  await renewalSandbox.markRenewal('client-1');
-  assert.strictEqual(saved[1].renewalCount, 2, 'later renewal actions must increment and persist renewalCount');
+  vm.runInNewContext(functionSource('renewalDialog'), renewalSandbox);
+  renewalSandbox.renewalDialog({ id: 'client-1', name: 'Client' });
+  assert.strictEqual(renewalNodes['renewal-start-date'].value, '2026-09-14', 'renewal must default to the Monday after the current contract ends');
+  assert.strictEqual(renewalNodes['renewal-modal'].classList.shown, true, 'renewal dialog must open before saving');
+  renewalNodes['btn-next-renewal'].onclick();
+  setButtons[1].onclick();
+  await renewalNodes['btn-confirm-renewal'].onclick();
+  assert.deepStrictEqual(savedRenewals, [{ key: 'client:client-1', value: { id: 'client-1', startDate: '2026-09-14', setId: 'set-1' } }]);
+  assert.deepStrictEqual(renewalSandbox.renderedClient, { id: 'client-1', startDate: '2026-09-14', setId: 'set-1' });
+  renewalSandbox.setS = async () => false;
+  renewalSandbox.renewalDialog({ id: 'client-1', name: 'Client' });
+  renewalNodes['btn-next-renewal'].onclick();
+  await renewalNodes['btn-confirm-renewal'].onclick();
+  assert.strictEqual(renewalNodes['renewal-modal'].classList.shown, true, 'a failed renewal save must keep the dialog open');
 
   const renewalTransformationSandbox = {};
   vm.runInNewContext([
