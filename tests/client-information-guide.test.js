@@ -232,6 +232,63 @@ test('public draft operation merges only whitelisted answers into the existing s
   assert.deepStrictEqual(response.body.guide, saved);
 });
 
+test('public guide mutation accepts Redis JSON empty answer objects as guide objects', async () => {
+  const stored = {
+    id: 'guide_abcdefghijklmnopqrstuvwx',
+    clientId: 'client-issued',
+    createdAt: 100,
+    updatedAt: 150,
+    submittedAt: null,
+    answers: {}
+  };
+  const previousFetch = global.fetch;
+  global.fetch = async (url, options = {}) => {
+    const path = new URL(url).pathname;
+    if (path.includes('/get/rs%3Aguide%3A')) {
+      return { ok: true, async json() { return { result: JSON.stringify(stored) }; }, async text() { return ''; } };
+    }
+    if (path.includes('/get/rs%3Aguide-issue%3A')) {
+      return {
+        ok: true,
+        async json() { return { result: JSON.stringify({ guide: stored }) }; },
+        async text() { return ''; }
+      };
+    }
+    const command = JSON.parse(options.body);
+    assert.strictEqual(command[0], 'EVAL');
+    return {
+      ok: true,
+      async json() {
+        return {
+          result: JSON.stringify({
+            status: 'ok',
+            guide: {
+              id: stored.id,
+              clientId: stored.clientId,
+              createdAt: stored.createdAt,
+              updatedAt: 200,
+              submittedAt: null,
+              answers: []
+            }
+          })
+        };
+      },
+      async text() { return ''; }
+    };
+  };
+  const response = responseDouble();
+  try {
+    await dataApi({ method: 'POST', headers: {}, query: {}, body: {
+      operation: 'save-public-guide', guideId: stored.id, answers: {}
+    } }, response);
+  } finally {
+    global.fetch = previousFetch;
+  }
+
+  assert.strictEqual(response.statusCode, 200);
+  assert.deepStrictEqual(response.body.guide.answers, {});
+});
+
 test('public submit operation assigns submittedAt server-side and later drafts preserve it', async () => {
   const original = {
     id: 'guide_abcdefghijklmnopqrstuvwx', clientId: 'client-issued',

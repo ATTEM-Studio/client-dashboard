@@ -206,6 +206,36 @@ function parseStoredGuide(value, guideId) {
   }
 }
 
+function normalizeMutatedGuide(value, guideId) {
+  if (
+    !value || typeof value !== "object" || Array.isArray(value) ||
+    value.id !== guideId || typeof value.clientId !== "string" ||
+    !Number.isFinite(value.createdAt) || !Number.isFinite(value.updatedAt) ||
+    (value.submittedAt !== null && !Number.isFinite(value.submittedAt))
+  ) {
+    return null;
+  }
+  const sourceAnswers = value.answers && typeof value.answers === "object" && !Array.isArray(value.answers)
+    ? value.answers
+    : {};
+  const answers = {};
+  for (const field of PUBLIC_GUIDE_ANSWER_FIELDS) {
+    if (typeof sourceAnswers[field] === "string") answers[field] = sourceAnswers[field];
+  }
+  const guide = {
+    id: value.id,
+    clientId: value.clientId,
+    createdAt: value.createdAt,
+    updatedAt: value.updatedAt,
+    submittedAt: value.submittedAt,
+    answers,
+  };
+  if (typeof value.serviceContext === "string" && value.serviceContext.trim()) {
+    guide.serviceContext = value.serviceContext.trim();
+  }
+  return guide;
+}
+
 module.exports = async (req, res) => {
   res.setHeader("Cache-Control", "no-store");
 
@@ -298,7 +328,7 @@ module.exports = async (req, res) => {
           return res.status(413).json({ error: "저장할 데이터가 너무 큽니다" });
         }
         const guide = mutation.status === "ok"
-          ? parseStoredGuide(JSON.stringify(mutation.guide), guideId)
+          ? normalizeMutatedGuide(mutation.guide, guideId)
           : null;
         if (!guide || guide.clientId !== existingGuide.clientId) {
           throw new Error(`PUBLIC_GUIDE_MUTATION_${String(mutation.status || "INVALID").toUpperCase()}`);
