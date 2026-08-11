@@ -669,6 +669,49 @@
     }
     return "";
   }
+  function contractEndDate(client){
+    if(!client || !client.startDate) return "";
+    var months=Math.max(1,Number(client.contractMonths||1));
+    var parts=parseIsoDateParts(client.startDate);
+    if(!parts) return "";
+    var date=new Date(Date.UTC(parts.y,parts.m-1,parts.d));
+    date.setUTCMonth(date.getUTCMonth()+months);
+    date.setUTCDate(date.getUTCDate()-1);
+    return isoFromUtcDate(date);
+  }
+  function checklistTasksFromSet(set){
+    var items=set&&Array.isArray(set.items)?set.items:[];
+    return items.map(function(item){
+      return {
+        id:uid("task"),
+        text:String(item.text||""),
+        done:false,
+        day:item.day ? Number(item.day) : undefined,
+        week:item.week ? String(item.week) : ""
+      };
+    }).filter(function(task){ return task.text.trim(); });
+  }
+  function buildRenewalClient(client,startDate,checklistSet){
+    var currentCount=client&&client.contractType==="renewal"?Math.max(1,Number(client.renewalCount||1)):0;
+    var archived=(client.previousCycles||[]).slice();
+    archived.push({
+      cycleNumber:currentCount+1,
+      contractType:client.contractType||"new",
+      startDate:client.startDate||"",
+      contractMonths:client.contractMonths||"",
+      checklist:JSON.parse(JSON.stringify(client.checklist||[])),
+      progress:JSON.parse(JSON.stringify(client.progress||{})),
+      archivedAt:Date.now()
+    });
+    var next=Object.assign({},client);
+    next.contractType="renewal";
+    next.renewalCount=currentCount+1;
+    next.startDate=startDate;
+    next.previousCycles=archived;
+    next.checklist=checklistSet ? checklistTasksFromSet(checklistSet) : [];
+    next.progress={};
+    return next;
+  }
   function monthKey(d){ return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"); }
   function monthLabel(key){ var p=key.split("-"); return p[0]+"년 "+parseInt(p[1],10)+"월"; }
   function weeksInMonth(key){

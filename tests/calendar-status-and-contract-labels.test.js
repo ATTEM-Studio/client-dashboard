@@ -147,6 +147,52 @@ async function main() {
   await renewalSandbox.markRenewal('client-1');
   assert.strictEqual(saved[1].renewalCount, 2, 'later renewal actions must increment and persist renewalCount');
 
+  const renewalTransformationSandbox = {};
+  vm.runInNewContext([
+    functionSource('buildRenewalClient'),
+    functionSource('contractEndDate'),
+    functionSource('checklistTasksFromSet'),
+    functionSource('uid'),
+    functionSource('parseIsoDateParts'),
+    functionSource('isoFromUtcDate')
+  ].join('\n'), renewalTransformationSandbox);
+
+  const renewalClient = {
+    id: 'client-1',
+    contractType: 'new',
+    renewalCount: 0,
+    startDate: '2026-08-10',
+    contractMonths: '1',
+    checklist: [{ id: 'old-task', text: 'old', done: true }],
+    progress: { '1': 'done' },
+    dailyNotes: { '2026-08-11': 'note' },
+    guideId: 'guide_keep',
+    revenue: { weekly: 1000 }
+  };
+  const set = {
+    id: 'set-1',
+    name: 'Basic',
+    items: [{ day: 1, text: 'new task' }, { week: '2', text: 'legacy week task' }]
+  };
+  const transformed = renewalTransformationSandbox.buildRenewalClient(renewalClient, '2026-09-14', set);
+  assert.strictEqual(renewalTransformationSandbox.contractEndDate(renewalClient), '2026-09-09');
+  assert.strictEqual(transformed.contractType, 'renewal');
+  assert.strictEqual(transformed.renewalCount, 1);
+  assert.strictEqual(transformed.startDate, '2026-09-14');
+  assert.deepStrictEqual(json(transformed.progress), {});
+  assert.strictEqual(transformed.dailyNotes['2026-08-11'], 'note');
+  assert.strictEqual(transformed.guideId, 'guide_keep');
+  assert.deepStrictEqual(json(transformed.revenue), { weekly: 1000 });
+  assert.strictEqual(transformed.previousCycles.length, 1);
+  assert.deepStrictEqual(json(transformed.previousCycles[0].checklist), [{ id: 'old-task', text: 'old', done: true }]);
+  assert.strictEqual(transformed.checklist.length, 2);
+  assert.strictEqual(transformed.checklist.every((task) => task.done === false), true);
+  assert.notStrictEqual(transformed.checklist[0].id, 'old-task');
+  assert.deepStrictEqual(
+    json(renewalTransformationSandbox.buildRenewalClient(renewalClient, '2026-09-14', null).checklist),
+    []
+  );
+
   console.log('calendar status and contract labels: ok');
 }
 
