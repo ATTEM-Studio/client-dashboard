@@ -57,7 +57,7 @@ async function main() {
   assert.strictEqual(weekendState.isOutsideCycle, false);
 
   const outsideState = helperSandbox.calendarDateState({ startDate: '2026-08-10', excludeWeekends: true }, '2026-09-09');
-  assert.strictEqual(outsideState.isOutsideCycle, true);
+  assert.strictEqual(outsideState.isOutsideCycle, false, 'dates after the current cycle without archived management history stay neutral');
 
   const endedState = helperSandbox.calendarDateState({
     startDate: '2026-09-14',
@@ -128,7 +128,8 @@ async function main() {
   rendered = calendarSandbox.calendarPanel(client);
   assert.match(rendered, /class="calendar-day period-4 has-unfinished" data-day="2026-08-12"/);
   assert.match(rendered, /class="calendar-day period-closing has-unfinished" data-day="2026-08-19"/);
-  assert.match(rendered, /class="calendar-day is-outside-cycle" data-day="2026-08-21"/);
+  assert.match(rendered, /class="calendar-day" data-day="2026-08-21"/);
+  assert.doesNotMatch(rendered, /class="calendar-day is-outside-cycle" data-day="2026-08-21"/);
 
   calendarSandbox.state.calendarMonth = '2026-09';
   rendered = calendarSandbox.calendarPanel({
@@ -138,7 +139,8 @@ async function main() {
     checklist: [{ id: 'open-day-1', day: 1, done: false }]
   });
   assert.match(rendered, /class="calendar-day is-weekend" data-day="2026-09-05"/);
-  assert.match(rendered, /class="calendar-day is-outside-cycle" data-day="2026-09-09"/);
+  assert.match(rendered, /class="calendar-day" data-day="2026-09-09"/);
+  assert.doesNotMatch(rendered, /class="calendar-day is-outside-cycle" data-day="2026-09-09"/);
 
   calendarSandbox.state.calendarMonth = '2026-08';
   rendered = calendarSandbox.calendarPanel({

@@ -840,8 +840,8 @@
   function calendarDateState(client,dateKey){
     var period=checklistPeriod(client,dateKey);
     var isWeekend=client&&client.excludeWeekends===true&&isWeekendDate(dateKey);
-    var isOutsideCycle=calendarDateOrdinal(client&&client.startDate)!==null && calendarDateOrdinal(dateKey)!==null && !cycleContainsDate(client,dateKey);
     var isEndedCycle=clientPreviousCycleContainsDate(client,dateKey);
+    var isOutsideCycle=false;
     return { period:period, isWeekend:isWeekend, isOutsideCycle:isOutsideCycle, isEndedCycle:isEndedCycle };
   }
   function dailyPeriod(day){

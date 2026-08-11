@@ -67,16 +67,21 @@ dayModalSandbox.openDayModal(workdayClient, '2026-08-17');
 assert.match(dayModalNodes.layer.innerHTML, /sixth workday task/,
   'the following Monday must show the sixth workday task in the day modal');
 
-// Break caught: dates outside the calendar span, including weekends and dates before start, must be muted.
+// Break caught: dates with no recorded management cycle must stay visually neutral.
 assert.strictEqual(
   calendarSandbox.calendarDateState(workdayClient, '2026-08-09').isOutsideCycle,
-  true,
-  'a date before the active cycle must be outside the cycle'
+  false,
+  'a date before the active cycle without archived management history must not be muted'
 );
 assert.strictEqual(
   calendarSandbox.calendarDateState(workdayClient, '2026-09-12').isOutsideCycle,
-  true,
-  'a weekend after the active workday cycle must be outside the cycle'
+  false,
+  'a future date with no recorded management cycle must not be muted as managed history'
+);
+assert.strictEqual(
+  calendarSandbox.calendarDateState(workdayClient, '2026-09-14').isOutsideCycle,
+  false,
+  'dates after the active cycle without archived management history must stay visually neutral'
 );
 
 // Break caught: archived workday cycles must include their intervening weekends visually.
