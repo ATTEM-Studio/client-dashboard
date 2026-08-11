@@ -350,6 +350,33 @@
   .day-task.done{ color:var(--ink-400); text-decoration:line-through; }
   .day-note{ width:100%; min-height:104px; box-sizing:border-box; border:1px solid var(--line); border-radius:10px; padding:10px; font:inherit; resize:vertical; }
   @media(max-width:640px){ .calendar-day{ min-height:60px; padding:7px; } .detail-tab{ padding:10px 7px; font-size:12px; } .set-editor-meta{ grid-template-columns:1fr; } .set-day-grid{ grid-template-columns:1fr; } }
+  .guide-issue-card{ padding:38px 24px; border:1.5px dashed #CFE0FB; border-radius:16px; background:#F7FBFF; text-align:center; }
+  .guide-issue-card h3{ margin:0 0 8px; font-size:18px; }
+  .guide-issue-card p{ max-width:520px; margin:0 auto 18px; color:var(--ink-500); font-size:13.5px; line-height:1.7; }
+  .guide-manage-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:18px; }
+  .guide-status-line{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:7px; }
+  .guide-status-pill{ display:inline-flex; padding:4px 9px; border-radius:99px; background:var(--brand-light); color:var(--brand-dark); font-size:11.5px; font-weight:800; }
+  .guide-link-box{ display:flex; align-items:center; gap:8px; padding:10px 12px; margin-bottom:18px; border-radius:11px; background:#F2F4F6; }
+  .guide-link-box code{ min-width:0; flex:1; overflow-x:auto; color:var(--ink-600); font-size:12px; white-space:nowrap; }
+  .guide-link-actions{ display:flex; gap:7px; flex:none; }
+  .guide-dashboard-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px; }
+  .guide-dashboard-card{ min-width:0; padding:16px; border:1px solid var(--line); border-radius:14px; background:#FAFBFC; }
+  .guide-dashboard-card h4{ margin:0 0 11px; font-size:13.5px; }
+  .guide-summary-row,.guide-answer-row{ padding:8px 0; border-bottom:1px solid var(--line); }
+  .guide-summary-row:last-child,.guide-answer-row:last-child{ border-bottom:0; }
+  .guide-summary-row strong,.guide-answer-row strong{ display:block; margin-bottom:2px; color:var(--ink-500); font-size:11.5px; }
+  .guide-summary-row span,.guide-answer-row span{ display:block; color:var(--ink-900); font-size:13px; white-space:pre-wrap; }
+  .guide-followups{ margin:0; padding-left:19px; color:#7A5300; font-size:13px; }
+  .guide-followups li{ margin:5px 0; }
+  .guide-source{ margin-bottom:16px; border:1px solid var(--line); border-radius:14px; background:#fff; }
+  .guide-source summary{ padding:14px 16px; color:var(--ink-700); font-size:13px; font-weight:800; cursor:pointer; }
+  .guide-source-body{ padding:0 16px 12px; }
+  .guide-review-fields{ display:grid; grid-template-columns:180px 1fr; gap:12px; align-items:end; }
+  .guide-review-fields label{ color:var(--ink-600); font-size:12px; font-weight:800; }
+  .guide-review-fields select,.guide-review-fields textarea{ width:100%; margin-top:6px; border:1px solid var(--line); border-radius:10px; padding:10px 11px; background:#fff; color:var(--ink-900); font:inherit; font-size:13px; }
+  .guide-review-fields textarea{ min-height:78px; resize:vertical; }
+  .guide-review-actions{ display:flex; justify-content:flex-end; margin-top:12px; }
+  @media(max-width:640px){ .detail-tabs{ overflow-x:auto; } .detail-tab{ flex:none; } .guide-manage-head{ flex-direction:column; } .guide-link-box{ align-items:stretch; flex-direction:column; } .guide-link-actions{ width:100%; } .guide-link-actions .btn{ flex:1; } .guide-dashboard-grid,.guide-review-fields{ grid-template-columns:1fr; } }
   .check-ico{ flex:none; width:18px; height:18px; border-radius:6px; background:var(--brand-light); color:var(--brand-dark); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:800; margin-top:1px; }
 
   .fact-interp{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
@@ -1087,6 +1114,7 @@
     reports:[],            // index: {id,clientId,clientName,period,type,updatedAt,revenue?}
     checklistSets:[],
     currentClient:null,
+    currentGuide:null,
     currentReport:null,
     editingClient:null,
     editingBase:null,
@@ -1562,7 +1590,7 @@
   async function openClient(id){
     var cl=await getS("client:"+id);
     if(!cl){ showToast("업체 정보를 찾을 수 없습니다"); return; }
-    state.currentClient=cl; state.clientTab=null; state.calendarMonth=null; state.setCollectionOpen=false; state.view="clientDetail"; render();
+    state.currentClient=cl; state.currentGuide=null; state.clientTab=null; state.calendarMonth=null; state.setCollectionOpen=false; state.view="clientDetail"; render();
   }
 
   /* ============ CLIENT DETAIL ============ */
@@ -1575,6 +1603,120 @@
   function reportRows(cl){
     var reports=state.reports.filter(function(r){ return r.clientId===cl.id; }).sort(function(a,b){ return (b.updatedAt||0)-(a.updatedAt||0); });
     return reports.length ? reports.map(function(r){ return '<div class="report-row"><div class="rr-main" data-open-report="'+esc(r.id)+'"><div class="rr-title">'+esc(r.period||"")+'</div><div class="rr-date">'+fmtDate(r.updatedAt)+' 저장</div></div><button class="btn btn-danger btn-sm" data-del-report="'+esc(r.id)+'">삭제</button></div>'; }).join("") : '<div class="muted">작성된 리포트가 없습니다.</div>';
+  }
+  function fmtGuideTimestamp(timestamp){
+    if(!timestamp) return "기록 없음";
+    var date=new Date(timestamp);
+    if(isNaN(date.getTime())) return "기록 없음";
+    return date.getFullYear()+"."+String(date.getMonth()+1).padStart(2,"0")+"."+String(date.getDate()).padStart(2,"0")+" "+String(date.getHours()).padStart(2,"0")+":"+String(date.getMinutes()).padStart(2,"0");
+  }
+  function informationGuidePanel(client,guide){
+    if(!client.guideId){
+      return '<div class="panel fade-in"><div class="guide-issue-card"><h3>업체 정보 안내문</h3><p>업체가 운영 방향과 홍보에 필요한 정보를 직접 작성할 수 있는 전용 안내문입니다. 링크는 한 번만 발급되며 같은 주소로 계속 수정할 수 있습니다.</p><button class="btn btn-primary" id="btn-issue-guide">설문 링크 발급</button></div></div>';
+    }
+    if(guide===null){
+      return '<div class="panel fade-in"><div class="muted" style="padding:26px;text-align:center">안내문을 불러오는 중…</div></div>';
+    }
+    if(!guide || guide.id!==client.guideId){
+      return '<div class="panel fade-in"><div class="empty-state"><div class="es-title">안내문을 불러오지 못했습니다</div><div class="es-sub">저장된 링크 정보는 유지됩니다. 잠시 후 다시 불러와 주세요.</div><button class="btn btn-ghost btn-sm" id="btn-retry-guide">다시 불러오기</button></div></div>';
+    }
+    var answers=guide.answers&&typeof guide.answers==="object"?guide.answers:{};
+    var status=guideStatus(guide);
+    var statusLabels={not_started:"미작성",draft:"작성 중",submitted:"제출 완료"};
+    var stamp=status==="submitted"?guide.submittedAt:(status==="draft"?guide.updatedAt:guide.createdAt);
+    var stampLabel=status==="submitted"?"제출":(status==="draft"?"최근 저장":"발급");
+    var link=location.origin+"/?guide="+encodeURIComponent(guide.id);
+    var summary=guideSummary(answers);
+    var summaryHtml=summary.length?summary.map(function(item){return '<div class="guide-summary-row"><strong>'+esc(item.label)+'</strong><span>'+esc(item.value)+'</span></div>';}).join(""):'<div class="muted">아직 요약할 정보가 없습니다.</div>';
+    var answerFields=[
+      ["concern","현재 매장의 가장 큰 고민"],["goal","최우선 마케팅 목표"],["priorityMenu","우선 홍보 메뉴"],
+      ["currentCustomers","현재 주요 고객"],["desiredCustomers","유치하고 싶은 고객"],["strengths","매장 핵심 강점"],
+      ["story","꼭 알리고 싶은 이야기"],["contentTone","원하는 콘텐츠 분위기"],["avoidExpressions","피하고 싶은 표현"],
+      ["materialStatus","보유 사진·영상 자료 상태"],["approverName","검수 및 승인 담당자 이름"],
+      ["approverContact","검수 및 승인 담당자 연락 수단"],["operatingNotes","운영 시 주의사항"]
+    ];
+    var answersHtml=answerFields.map(function(field){
+      var value=String(answers[field[0]]==null?"":answers[field[0]]).trim();
+      return '<div class="guide-answer-row"><strong>'+esc(field[1])+'</strong><span>'+(value?esc(value):'<span class="muted">답변 없음</span>')+'</span></div>';
+    }).join("");
+    var followUps=guideFollowUps(answers);
+    var followUpHtml=followUps.length?'<ul class="guide-followups">'+followUps.map(function(item){return '<li>'+esc(item)+'</li>';}).join("")+'</ul>':'<div class="muted">추가로 확인할 내용이 없습니다.</div>';
+    var review=guide.review&&typeof guide.review==="object"?guide.review:{};
+    var reviewStatus=["unreviewed","reviewing","reviewed"].indexOf(review.status)>=0?review.status:"unreviewed";
+    return '<div class="panel fade-in">'+
+      '<div class="guide-manage-head"><div><h3 class="panel-title">정보 안내문</h3><div class="guide-status-line"><span class="guide-status-pill">'+statusLabels[status]+'</span><span class="muted">'+stampLabel+' '+fmtGuideTimestamp(stamp)+'</span></div></div></div>'+
+      '<div class="guide-link-box"><code>'+esc(link)+'</code><div class="guide-link-actions"><button class="btn btn-plain btn-sm" id="btn-copy-guide">링크 복사</button><button class="btn btn-ghost btn-sm" id="btn-preview-guide">미리보기</button></div></div>'+
+      '<div class="guide-dashboard-grid"><section class="guide-dashboard-card"><h4>핵심 정보 요약</h4>'+summaryHtml+'</section><section class="guide-dashboard-card"><h4>추가 확인 필요</h4>'+followUpHtml+'</section></div>'+
+      '<details class="guide-source"><summary>원문 답변 보기</summary><div class="guide-source-body">'+answersHtml+'</div></details>'+
+      '<section class="guide-dashboard-card"><h4>내부 검토</h4><div class="guide-review-fields"><label>검토 상태<select id="guide-review-status"><option value="unreviewed"'+(reviewStatus==="unreviewed"?' selected':'')+'>미확인</option><option value="reviewing"'+(reviewStatus==="reviewing"?' selected':'')+'>확인 중</option><option value="reviewed"'+(reviewStatus==="reviewed"?' selected':'')+'>확인 완료</option></select></label><label>내부 메모<textarea id="guide-review-memo" placeholder="팀 내부에서만 볼 메모를 남겨주세요.">'+esc(review.memo||"")+'</textarea></label></div><div class="guide-review-actions"><button class="btn btn-primary btn-sm" id="btn-save-guide-review">검토 내용 저장</button></div></section>'+
+      '</div>';
+  }
+  async function issueGuideForClient(client){
+    if(!client || !client.id) return null;
+    if(client.guideId) return await getS("guide:"+client.guideId);
+    var guide=newGuide(client.id);
+    var guideSaved=await setS("guide:"+guide.id,guide);
+    if(!guideSaved) return null;
+    var linkedClient=Object.assign({},client,{guideId:guide.id});
+    var clientSaved=await setS("client:"+client.id,linkedClient);
+    if(!clientSaved) return null;
+    client.guideId=guide.id;
+    return guide;
+  }
+  async function saveGuideReview(guide){
+    if(!guide || !guide.id) return false;
+    var statusControl=document.getElementById("guide-review-status");
+    var memoControl=document.getElementById("guide-review-memo");
+    if(!statusControl || !memoControl) return false;
+    var allowedStatuses=["unreviewed","reviewing","reviewed"];
+    var status=allowedStatuses.indexOf(statusControl.value)>=0?statusControl.value:"unreviewed";
+    var review={status:status,memo:memoControl.value.trim()};
+    var latestGuide=await getS("guide:"+guide.id);
+    if(!latestGuide || latestGuide.id!==guide.id) return false;
+    var savedGuide=Object.assign({},latestGuide,{review:review});
+    var saved=await setS("guide:"+guide.id,savedGuide);
+    if(!saved) return false;
+    Object.assign(guide,savedGuide);
+    return true;
+  }
+  function bindGuidePanel(client,guide){
+    var issue=document.getElementById("btn-issue-guide");
+    if(issue) issue.onclick=async function(){
+      issue.disabled=true; issue.textContent="발급 중…";
+      var issued=await issueGuideForClient(client);
+      if(!issued){ issue.disabled=false; issue.textContent="설문 링크 발급"; showToast("안내문 발급에 실패했습니다"); return; }
+      state.currentGuide=issued;
+      renderClientWorkspace(client);
+      showToast("설문 링크를 발급했습니다");
+    };
+    var retry=document.getElementById("btn-retry-guide");
+    if(retry) retry.onclick=function(){ selectClientWorkspaceTab(client,"guide"); };
+    if(!guide || !guide.id) return;
+    var link=location.origin+"/?guide="+encodeURIComponent(guide.id);
+    var copy=document.getElementById("btn-copy-guide");
+    if(copy) copy.onclick=function(){ copyText(link); };
+    var preview=document.getElementById("btn-preview-guide");
+    if(preview) preview.onclick=function(){ window.open(link,"_blank","noopener,noreferrer"); };
+    var saveReview=document.getElementById("btn-save-guide-review");
+    if(saveReview) saveReview.onclick=async function(){
+      saveReview.disabled=true; saveReview.textContent="저장 중…";
+      var saved=await saveGuideReview(guide);
+      if(!saved){ saveReview.disabled=false; saveReview.textContent="검토 내용 저장"; showToast("검토 내용 저장에 실패했습니다"); return; }
+      renderClientWorkspace(client);
+      showToast("검토 내용을 저장했습니다");
+    };
+  }
+  async function selectClientWorkspaceTab(client,tab){
+    setClientWorkspaceTab(tab);
+    if(tab!=="guide"){ renderClientWorkspace(client); return; }
+    state.currentGuide=null;
+    renderClientWorkspace(client);
+    if(!client.guideId) return;
+    var guideId=client.guideId;
+    var guide=await getS("guide:"+guideId);
+    if(state.currentClient!==client || state.clientTab!=="guide" || client.guideId!==guideId) return;
+    state.currentGuide=guide&&guide.id===guideId?guide:false;
+    renderClientWorkspace(client);
   }
   function setChecklistCollectionOpen(open){
     if(!open) syncChecklistSetEditor();
@@ -1594,14 +1736,16 @@
     if(activeTab==="calendar") content=calendarPanel(cl);
     if(activeTab==="checklist") content=checklistPanel(cl, tasks, done);
     if(activeTab==="reports") content='<div class="panel fade-in"><div class="panel-head"><h3 class="panel-title">리포트</h3><span class="count muted">'+state.reports.filter(function(r){return r.clientId===cl.id;}).length+'건</span></div><div class="report-actions" style="margin-bottom:16px"><button class="btn btn-primary btn-sm" id="btn-new-weekly">+ 주간 리포트</button><button class="btn btn-ghost btn-sm" id="btn-new-monthly">+ 월간 리포트</button></div>'+reportRows(cl)+revenueTrendPanel(cl.id,state.reports,state.month)+"</div>";
+    if(activeTab==="guide") content=informationGuidePanel(cl,state.currentGuide);
     app.innerHTML='<div class="report-top"><button class="back-btn" id="btn-back">←</button><div class="report-actions"><button class="btn btn-plain btn-sm" id="btn-renew">재계약 처리</button><button class="btn btn-plain btn-sm" id="btn-edit-client">정보 수정</button></div></div>'+
       '<div class="detail-head fade-in"><div class="dh-tagrow"><span class="status-pill">'+(cl.contractType==="renewal"?"재계약":"신규")+'</span></div><h2 class="dh-name">'+esc(cl.name)+'</h2><div class="dh-meta"><span>'+esc(cl.industry||"")+'</span><span>시작 '+esc(cl.startDate||"미등록")+'</span></div></div>'+
-      '<div class="detail-tabs"><button class="detail-tab '+(activeTab==="calendar"?"active":"")+'" data-client-tab="calendar">일정 달력</button><button class="detail-tab '+(activeTab==="checklist"?"active":"")+'" data-client-tab="checklist">업무 체크리스트 <small>'+done+'/'+tasks.length+'</small></button><button class="detail-tab '+(activeTab==="reports"?"active":"")+'" data-client-tab="reports">리포트</button></div>'+content;
+      '<div class="detail-tabs"><button class="detail-tab '+(activeTab==="calendar"?"active":"")+'" data-client-tab="calendar">일정 달력</button><button class="detail-tab '+(activeTab==="checklist"?"active":"")+'" data-client-tab="checklist">업무 체크리스트 <small>'+done+'/'+tasks.length+'</small></button><button class="detail-tab '+(activeTab==="reports"?"active":"")+'" data-client-tab="reports">리포트</button><button class="detail-tab '+(activeTab==="guide"?"active":"")+'" data-client-tab="guide">정보 안내문</button></div>'+content;
     document.getElementById("btn-back").onclick=function(){ state.view="dashboard"; render(); };
     document.getElementById("btn-edit-client").onclick=function(){ state.editingClient=cl; state.view="clientForm"; render(); };
     document.getElementById("btn-renew").onclick=function(){ confirmDialog("재계약으로 처리할까요?", "현재 월의 재계약 건으로 기록합니다.", "처리", function(){ markRenewal(cl.id); }); };
-    app.querySelectorAll("[data-client-tab]").forEach(function(b){ b.onclick=function(){ setClientWorkspaceTab(b.getAttribute("data-client-tab")); renderClientWorkspace(cl); }; });
+    app.querySelectorAll("[data-client-tab]").forEach(function(b){ b.onclick=function(){ selectClientWorkspaceTab(cl,b.getAttribute("data-client-tab")); }; });
     bindCalendarPanel(cl); bindChecklistPanel(cl); bindReportPanel(cl);
+    if(activeTab==="guide") bindGuidePanel(cl,state.currentGuide);
   }
   function calendarPanel(cl){
     var anchor=cl.startDate ? new Date(cl.startDate+"T12:00:00") : new Date();
