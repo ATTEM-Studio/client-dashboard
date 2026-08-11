@@ -29,6 +29,7 @@ async function main() {
     functionSource('cycleDayOrdinal'),
     functionSource('checklistPeriod'),
     functionSource('cycleLength'),
+    functionSource('cycleContainsDate'),
     functionSource('clientPreviousCycleContainsDate'),
     functionSource('calendarDateState'),
     functionSource('dailyPeriod'),
@@ -92,6 +93,7 @@ async function main() {
     functionSource('cycleDayOrdinal'),
     functionSource('checklistPeriod'),
     functionSource('cycleLength'),
+    functionSource('cycleContainsDate'),
     functionSource('clientPreviousCycleContainsDate'),
     functionSource('calendarDateState'),
     functionSource('dailyPeriod'),
@@ -146,7 +148,8 @@ async function main() {
     dailyNotes: {},
     checklist: []
   });
-  assert.match(rendered, /class="calendar-day is-ended-cycle" data-day="2026-08-11"/);
+  assert.match(rendered, /class="calendar-day [^"]*is-ended-cycle" data-day="2026-08-11"/,
+    'archived dates remain ended-cycle even when they are also outside the active cycle');
 
   ['period-1', 'period-2', 'period-3', 'period-4', 'period-closing'].forEach((className) => {
     assert.match(html, new RegExp('\\.calendar-day\\.' + className + '\\{[^}]*background:'), className + ' needs a full-cell background');
