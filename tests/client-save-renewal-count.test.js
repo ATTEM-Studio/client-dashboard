@@ -16,6 +16,8 @@ assert.strictEqual(helperSandbox.nextMondayAfter('2026-08-10'), '2026-08-17');
 assert.strictEqual(helperSandbox.nextMondayAfter('2026-08-11'), '2026-08-17');
 assert.strictEqual(helperSandbox.validateClientStartDate({ contractType: 'new', startDate: '2026-08-11' }), '?좉퇋 怨꾩빟 ?쒖옉?쇱? ?붿슂?쇰쭔 ?좏깮?????덉뒿?덈떎.');
 assert.strictEqual(helperSandbox.validateClientStartDate({ contractType: 'new', startDate: '2026-08-10' }), '');
+assert.notStrictEqual(helperSandbox.validateClientStartDate({ contractType: 'new', startDate: '' }), '',
+  'a new contract without a start date must be rejected');
 
 const start = html.indexOf('  function renderClientForm(base){');
 const end = html.indexOf('\n  async function deleteClient', start);
@@ -25,12 +27,13 @@ const source = html.slice(start, end);
 function saveRenewalClient(options) {
   const stored = [];
   const saveButton = eventTarget({ disabled: false, textContent: '' });
+  const startDate = Object.hasOwn(options, 'startDate') ? options.startDate : '2026-08-10';
   const elements = {
     'c-name': { value: options.name || 'Renewal Co' },
     'c-industry': { value: '' },
     'c-manager': { value: '' },
     'c-fee': { value: '' },
-    'c-start': eventTarget({ value: options.startDate || '2026-08-10', customValidity: '' }),
+    'c-start': eventTarget({ value: startDate, customValidity: '' }),
     'c-months': { value: '3' },
     'c-memo': { value: '' },
     'btn-save-client': saveButton,
@@ -93,6 +96,10 @@ function eventTarget(target) {
   const invalidNewClient = await saveRenewalClient({ startDate: '2026-08-11' });
   assert.deepStrictEqual(invalidNewClient, [],
     'saving a new client with a non-Monday start date must not persist the client');
+
+  const missingStartDateClient = await saveRenewalClient({ startDate: '' });
+  assert.deepStrictEqual(missingStartDateClient, [],
+    'saving a new client without a start date must not persist the client');
 
   console.log('client renewal save persistence: ok');
 })().catch((error) => {

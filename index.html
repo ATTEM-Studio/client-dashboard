@@ -664,7 +664,7 @@
     return isoFromUtcDate(date);
   }
   function validateClientStartDate(client){
-    if(client && client.contractType==="new" && client.startDate && !isMondayDate(client.startDate)){
+    if(client && client.contractType==="new" && !isMondayDate(client.startDate)){
       return "?좉퇋 怨꾩빟 ?쒖옉?쇱? ?붿슂?쇰쭔 ?좏깮?????덉뒿?덈떎.";
     }
     return "";
