@@ -3,6 +3,20 @@ const fs = require('fs');
 const vm = require('vm');
 
 const html = fs.readFileSync('index.html', 'utf8');
+const helperStart = html.indexOf('  function parseIsoDateParts(value){');
+const helperEnd = html.indexOf('\n  function showToast', helperStart);
+assert.ok(helperStart >= 0 && helperEnd > helperStart, 'Monday date helpers must exist in index.html');
+const helperSource = html.slice(helperStart, helperEnd);
+const helperSandbox = {};
+vm.runInNewContext(helperSource, helperSandbox);
+
+assert.strictEqual(helperSandbox.isMondayDate('2026-08-10'), true);
+assert.strictEqual(helperSandbox.isMondayDate('2026-08-11'), false);
+assert.strictEqual(helperSandbox.nextMondayAfter('2026-08-10'), '2026-08-17');
+assert.strictEqual(helperSandbox.nextMondayAfter('2026-08-11'), '2026-08-17');
+assert.strictEqual(helperSandbox.validateClientStartDate({ contractType: 'new', startDate: '2026-08-11' }), '?좉퇋 怨꾩빟 ?쒖옉?쇱? ?붿슂?쇰쭔 ?좏깮?????덉뒿?덈떎.');
+assert.strictEqual(helperSandbox.validateClientStartDate({ contractType: 'new', startDate: '2026-08-10' }), '');
+
 const start = html.indexOf('  function renderClientForm(base){');
 const end = html.indexOf('\n  async function deleteClient', start);
 assert.ok(start >= 0 && end > start, 'renderClientForm must exist in index.html');
@@ -16,13 +30,15 @@ function saveRenewalClient(options) {
     'c-industry': { value: '' },
     'c-manager': { value: '' },
     'c-fee': { value: '' },
-    'c-start': { value: '2026-08-01' },
+    'c-start': eventTarget({ value: options.startDate || '2026-08-10', customValidity: '' }),
     'c-months': { value: '3' },
     'c-memo': { value: '' },
     'btn-save-client': saveButton,
     'btn-back': eventTarget({}),
     'btn-cancel': eventTarget({})
   };
+  elements['c-start'].setCustomValidity = function(message) { this.customValidity = message; };
+  elements['c-start'].focus = function() { this.focused = true; };
   const context = {
     app: { innerHTML: '' },
     state: { clients: [] },
@@ -40,6 +56,7 @@ function saveRenewalClient(options) {
     uid() { return 'new-client'; },
     async setS(key, value) { stored.push({ key, value }); return true; },
     async setP() { return true; },
+    validateClientStartDate: helperSandbox.validateClientStartDate,
     showToast() {},
     render() {},
     console
@@ -72,6 +89,10 @@ function eventTarget(target) {
   });
   assert.strictEqual(Object.hasOwn(newClient[0].value, 'renewalCount'), false,
     'saving a non-renewal client must keep the existing data shape');
+
+  const invalidNewClient = await saveRenewalClient({ startDate: '2026-08-11' });
+  assert.deepStrictEqual(invalidNewClient, [],
+    'saving a new client with a non-Monday start date must not persist the client');
 
   console.log('client renewal save persistence: ok');
 })().catch((error) => {

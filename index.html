@@ -640,6 +640,35 @@
   function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
   function toNum(v){ if(v==null) return NaN; return parseFloat(String(v).replace(/,/g,"").trim()); }
   function fmtDate(ts){ if(!ts) return ""; var d=new Date(ts); return d.getFullYear()+"."+String(d.getMonth()+1).padStart(2,"0")+"."+String(d.getDate()).padStart(2,"0"); }
+  function parseIsoDateParts(value){
+    var match=/^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value||""));
+    if(!match) return null;
+    var y=Number(match[1]), m=Number(match[2]), d=Number(match[3]);
+    var date=new Date(Date.UTC(y,m-1,d));
+    if(date.getUTCFullYear()!==y || date.getUTCMonth()!==m-1 || date.getUTCDate()!==d) return null;
+    return { y:y, m:m, d:d, date:date };
+  }
+  function isMondayDate(value){
+    var parts=parseIsoDateParts(value);
+    return !!parts && parts.date.getUTCDay()===1;
+  }
+  function isoFromUtcDate(date){
+    return date.getUTCFullYear()+"-"+String(date.getUTCMonth()+1).padStart(2,"0")+"-"+String(date.getUTCDate()).padStart(2,"0");
+  }
+  function nextMondayAfter(value){
+    var parts=parseIsoDateParts(value);
+    var base=parts ? parts.date : new Date();
+    var date=new Date(Date.UTC(base.getUTCFullYear(),base.getUTCMonth(),base.getUTCDate()));
+    date.setUTCDate(date.getUTCDate()+1);
+    while(date.getUTCDay()!==1) date.setUTCDate(date.getUTCDate()+1);
+    return isoFromUtcDate(date);
+  }
+  function validateClientStartDate(client){
+    if(client && client.contractType==="new" && client.startDate && !isMondayDate(client.startDate)){
+      return "?좉퇋 怨꾩빟 ?쒖옉?쇱? ?붿슂?쇰쭔 ?좏깮?????덉뒿?덈떎.";
+    }
+    return "";
+  }
   function monthKey(d){ return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"); }
   function monthLabel(key){ var p=key.split("-"); return p[0]+"년 "+parseInt(p[1],10)+"월"; }
   function weeksInMonth(key){
@@ -1629,6 +1658,16 @@
         obj.renewals=obj.renewals||[];
         obj.createdAt=obj.createdAt||Date.now();
         obj.updatedAt=Date.now();
+
+        var startDateError=validateClientStartDate(obj);
+        if(startDateError){
+          var startInput=document.getElementById("c-start");
+          showToast(startDateError);
+          startInput.setCustomValidity(startDateError);
+          startInput.focus();
+          btn.disabled=false;
+          return;
+        }
 
         var ok=await setS("client:"+obj.id, obj);
         if(!ok) throw new Error("save failed");
