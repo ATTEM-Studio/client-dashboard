@@ -483,9 +483,13 @@ module.exports = async (req, res) => {
           const storedGuideResult = await redis("get", [guideKey]);
           const storedGuide = parseStoredGuide(storedGuideResult.result, reservation.guide.id);
           if (!storedGuide || storedGuide.clientId !== clientId) {
-            throw new Error("GUIDE_ISSUE_DOCUMENT_INVALID");
+            // A previous interrupted issuance may have left a malformed document
+            // under the permanent reservation. Keep the same ID and repair only
+            // that invalid document so the link remains stable.
+            await redis("set", [guideKey], JSON.stringify(reservation.guide));
+          } else {
+            reservation = { guide: storedGuide };
           }
-          reservation = { guide: storedGuide };
         }
         return res.status(200).json({ reservation, created: created.result === "OK" });
       }
