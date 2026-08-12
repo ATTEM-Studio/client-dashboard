@@ -1765,9 +1765,9 @@
       document.getElementById("modal-title").textContent="관리 업체";
       var today=new Date();
       bodyEl.innerHTML='<div class="client-status-table"><div class="client-status-row client-status-head"><span>업체명</span><span>시작일</span><span>종료일</span><span>상태</span></div>'+activeClients.map(function(item){
-        var end=contractEndKey(item), diff=end?Math.ceil((end-today)/86400000):null;
-        var season=item.contractType!=="renewal"&&diff!==null&&diff<=14&&diff>=0;
-        var overdue=item.contractType!=="renewal"&&diff!==null&&diff<0;
+        var end=contractEndKey(item), diff=end?Math.ceil((end-today)/86400000):null, cycle=thirtyDayProgress(item.startDate);
+        var season=item.contractType!=="renewal"&&cycle.state==="active"&&cycle.elapsed>=22;
+        var overdue=item.contractType!=="renewal"&&((cycle.state==="complete")||(diff!==null&&diff<0));
         var complete=item.contractType==="renewal";
         var cls=complete?"complete":(overdue?"overdue":(season?"season":""));
         var label=complete?"재계약 완료":(overdue?"갱신 미진행":(season?"재계약 시즌":"진행 중"));
