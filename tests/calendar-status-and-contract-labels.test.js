@@ -6,6 +6,9 @@ const vm = require('vm');
 
 const html = fs.readFileSync('index.html', 'utf8');
 
+assert.match(html, /data-day-toggle-work/, 'day popup must expose checklist completion controls');
+assert.match(html, /task\.done=!task\.done/, 'day popup controls must toggle task completion');
+
 function functionSource(name) {
   const match = html.match(new RegExp(
     '(^  (?:async )?function ' + name + '\\([\\s\\S]*?)(?=\\n  (?:async )?function |\\n  /\\*)',
@@ -163,7 +166,7 @@ async function main() {
   const body = { innerHTML: '', querySelectorAll: () => [] };
   const dashboardSandbox = {
     state: { month: '2026-07' },
-    document: { getElementById: (id) => id === 'dash-body' ? body : null },
+    document: { getElementById: (id) => id === 'dash-body' ? body : null, querySelector: () => null },
     loadAllClients: async () => [
       { id: 'new', name: 'New Co', contractType: 'new', status: 'active' },
       { id: 'legacy', name: 'Legacy Co', contractType: 'renewal', status: 'active' },

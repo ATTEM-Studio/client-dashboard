@@ -230,6 +230,9 @@
   .check-row:last-child{ border-bottom:none; }
   .check-box{ flex:none; width:20px; height:20px; border-radius:7px; border:1.5px solid var(--ink-300); background:#fff; color:transparent; font-size:11px; font-weight:800; display:flex; align-items:center; justify-content:center; padding:0; }
   .check-box.on{ background:var(--brand); border-color:var(--brand); color:#fff; }
+  .check-box.checked{ background:var(--brand); border-color:var(--brand); color:#fff; }
+  .day-task{ display:flex; align-items:center; gap:9px; }
+  .day-task span{ flex:1; }
   .check-text{ flex:1; font-size:14px; color:var(--ink-700); }
   .check-row.done .check-text{ color:var(--ink-300); text-decoration:line-through; }
   .check-week{ font-size:10.5px; font-weight:800; color:var(--ink-400); background:#F2F4F6; padding:2px 7px; border-radius:6px; flex:none; }
@@ -2730,9 +2733,12 @@
   function openDayModal(cl,key){
     var period=checklistPeriod(cl,key), tasks=calendarTasksForDate(cl,key,cl.checklist), unassigned=calendarUnassignedTasks(cl.checklist);
     var existing=(cl.dailyNotes||{})[key]||"";
+    var taskRow=function(t){return '<div class="day-task '+(t.done?"done":"")+'" data-day-task-id="'+esc(t.id||"")+'"><button type="button" class="check-box '+(t.done?"checked":"")+'" data-day-toggle-work="'+esc(t.id||"")+'" aria-label="업무 완료 전환">'+(t.done?"✓":"")+'</button><span>'+esc(t.text)+'</span></div>';};
     var layer=document.createElement("div"); layer.id="day-modal-layer"; layer.className="modal-layer"; layer.style.cssText="position:fixed;inset:0;background:rgba(15,23,42,.42);display:flex;align-items:center;justify-content:center;padding:20px;z-index:110";
-    layer.innerHTML='<div class="modal day-modal"><h3>'+esc(key)+' '+(period?"· "+periodLabel(period):"")+'</h3><p>이 날짜에 확인할 업체 업무입니다. 완료 상태는 체크리스트 화면에서 관리합니다.</p><div>'+ (tasks.length?tasks.map(function(t){return '<div class="day-task '+(t.done?"done":"")+'">'+(t.done?"✓ ":"○ ")+esc(t.text)+'</div>';}).join(""):'<div class="muted">배정된 업무가 없습니다.</div>') +(unassigned.length?'<div class="day-task"><b>일정 미배정 업무</b></div>'+unassigned.map(function(t){return '<div class="day-task '+(t.done?"done":"")+'">'+(t.done?"✓ ":"○ ")+esc(t.text)+'</div>';}).join(""):"")+'</div><label style="display:block;margin:18px 0 7px;font-size:13px;font-weight:800">특이사항 메모</label><textarea id="daily-note" class="day-note" placeholder="그날의 특이사항을 남겨주세요.">'+esc(existing)+'</textarea><div class="modal-actions" style="margin-top:12px"><button class="btn btn-plain" id="day-close">닫기</button><button class="btn btn-primary" id="day-save">메모 저장</button></div></div>';
-    document.body.appendChild(layer); document.getElementById("day-close").onclick=function(){layer.remove();}; document.getElementById("day-save").onclick=async function(){cl.dailyNotes=cl.dailyNotes||{}; var note=document.getElementById("daily-note").value.trim(); if(note)cl.dailyNotes[key]=note; else delete cl.dailyNotes[key]; await saveClientAndRefresh(cl); layer.remove();};
+    layer.innerHTML='<div class="modal day-modal"><h3>'+esc(key)+' '+(period?"· "+periodLabel(period):"")+'</h3><p>이 날짜에 진행된 업무를 확인하고 완료 처리할 수 있습니다.</p><div>'+ (tasks.length?tasks.map(taskRow).join(""):'<div class="muted">배정된 업무가 없습니다.</div>') +(unassigned.length?'<div class="day-task"><b>일정 미배정 업무</b></div>'+unassigned.map(taskRow).join(""):"")+'</div><label style="display:block;margin:18px 0 7px;font-size:13px;font-weight:800">특이사항 메모</label><textarea id="daily-note" class="day-note" placeholder="그날의 특이사항을 남겨주세요.">'+esc(existing)+'</textarea><div class="modal-actions" style="margin-top:12px"><button class="btn btn-plain" id="day-close">닫기</button><button class="btn btn-primary" id="day-save">메모 저장</button></div></div>';
+    document.body.appendChild(layer);
+    if(layer.querySelectorAll)layer.querySelectorAll('[data-day-toggle-work]').forEach(function(button){button.onclick=async function(){var id=button.getAttribute('data-day-toggle-work'); var task=(cl.checklist||[]).filter(function(item){return String(item.id||"")===String(id);})[0]; if(!task)return; task.done=!task.done; var row=button.closest('[data-day-task-id]'); button.classList.toggle('checked',task.done); button.textContent=task.done?'✓':''; if(row)row.classList.toggle('done',task.done); await saveClientAndRefresh(cl);};});
+    document.getElementById("day-close").onclick=function(){layer.remove();}; document.getElementById("day-save").onclick=async function(){cl.dailyNotes=cl.dailyNotes||{}; var note=document.getElementById("daily-note").value.trim(); if(note)cl.dailyNotes[key]=note; else delete cl.dailyNotes[key]; await saveClientAndRefresh(cl); layer.remove();};
   }
   function openChecklistSetEditor(id){
     var set=id ? state.checklistSets.filter(function(s){return s.id===id;})[0] : null;
