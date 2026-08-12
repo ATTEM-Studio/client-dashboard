@@ -1287,6 +1287,7 @@
   }
   async function savePublicGuide(guide, submitted){
     var answers=JSON.parse(JSON.stringify(guide&&guide.answers&&typeof guide.answers==="object"?guide.answers:{}));
+    try{ localStorage.setItem("guide-draft:"+guide.id,JSON.stringify(guide)); }catch(e){}
     var write=publicGuideSaveChain.catch(function(){ return false; }).then(async function(){
       try{
         var result=await mutatePublicGuide(guide.id,answers,submitted);
@@ -1294,7 +1295,7 @@
         guide.updatedAt=result.updatedAt;
         guide.submittedAt=result.submittedAt;
         if(typeof result.serviceContext==="string") guide.serviceContext=result.serviceContext;
-        try{ sessionStorage.setItem("guide-draft:"+guide.id,JSON.stringify(guide)); }catch(e){}
+        try{ sessionStorage.setItem("guide-draft:"+guide.id,JSON.stringify(guide)); localStorage.setItem("guide-draft:"+guide.id,JSON.stringify(guide)); }catch(e){}
         return true;
       }catch(e){
         return false;
@@ -1438,10 +1439,11 @@
     try{ result=(typeof storageBackend!=="undefined"&&storageBackend.getPublicGuide) ? {status:"found",value:await storageBackend.getPublicGuide(publicGuideId)} : await readS("guide:"+publicGuideId); }
     catch(e){ result={status:e&&e.code==="not_found"?"missing":"error",error:e}; }
     var guide=result.status==="found"?result.value:null;
+    if(guide){ try{ var cachedGuide=JSON.parse(localStorage.getItem("guide-draft:"+publicGuideId)||"null"); if(cachedGuide&&Number(cachedGuide.updatedAt||0)>Number(guide.updatedAt||0)) guide=cachedGuide; }catch(e){} }
     if(result.status!=="found"||!guide||typeof guide!=="object"||guide.id!==publicGuideId||!guide.answers||typeof guide.answers!=="object"){
       if(result.status==="error"){
         try{
-          var cached=JSON.parse(sessionStorage.getItem("guide-draft:"+publicGuideId)||"null");
+            var cached=JSON.parse(sessionStorage.getItem("guide-draft:"+publicGuideId)||localStorage.getItem("guide-draft:"+publicGuideId)||"null");
           if(cached&&cached.id===publicGuideId&&cached.answers&&typeof cached.answers==="object"){
             mountPublicGuide(cached);
             setGuideSaveStatus("failed","연결이 복구되면 서버에 동기화됩니다",function(){ loadPublicGuidePage(publicGuideId); });

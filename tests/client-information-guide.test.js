@@ -4,6 +4,8 @@ const vm = require('vm');
 const { after, test } = require('node:test');
 
 const html = fs.readFileSync('index.html', 'utf8');
+assert.match(html, /localStorage\.setItem\("guide-draft:/, 'guide drafts should survive reopening after a failed save');
+assert.match(html, /localStorage\.getItem\("guide-draft:/, 'guide should restore a newer local draft');
 const dataApi = require('../api/data.js');
 const validGuideKey = 'guide:guide_abcdefghijklmnopqrstuvwx';
 const validReviewKey = 'guide-review:guide_abcdefghijklmnopqrstuvwx';
