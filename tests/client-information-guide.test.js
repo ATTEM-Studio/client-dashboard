@@ -4,6 +4,9 @@ const vm = require('vm');
 const { after, test } = require('node:test');
 
 const html = fs.readFileSync('index.html', 'utf8');
+const guideHtml = fs.readFileSync('guide.html', 'utf8');
+assert.match(guideHtml, /location\.replace\("\/\?guide=/, 'customer guide links should use a dedicated page');
+assert.match(html, /location\.origin\+"\/guide\.html\?id="/, 'dashboard should issue dedicated customer guide links');
 assert.match(html, /localStorage\.setItem\("guide-draft:/, 'guide drafts should survive reopening after a failed save');
 assert.match(html, /localStorage\.getItem\("guide-draft:/, 'guide should restore a newer local draft');
 assert.match(html, /서버 저장에 실패했습니다/, 'guide should distinguish a local backup from a server save');
@@ -1062,7 +1065,7 @@ test('issued guide panel shows permanent-link management, answers, follow-ups, a
     },
     { guideId: 'guide_permanent', status: 'reviewing', memo: '자료 도착 후 확인' }
   );
-  assert.match(markup, /https:\/\/dashboard\.example\.test\/\?guide=guide_permanent/);
+  assert.match(markup, /https:\/\/dashboard\.example\.test\/guide\.html\?id=guide_permanent/);
   assert.match(markup, /제출 완료/);
   assert.match(markup, /최근 저장 최근 시각/);
   assert.match(markup, /제출 제출 시각/);

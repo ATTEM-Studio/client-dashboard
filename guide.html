@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>업체 정보 안내문</title>
+  <meta http-equiv="Cache-Control" content="no-store" />
+</head>
+<body>
+  <p style="font-family:system-ui,sans-serif;text-align:center;padding:48px;color:#6b7280">안내문을 불러오는 중…</p>
+  <script>
+    (function () {
+      var query = new URLSearchParams(location.search);
+      var id = query.get("id") || query.get("guide");
+      if (!id) {
+        document.body.innerHTML = '<p style="font-family:system-ui,sans-serif;text-align:center;padding:48px;color:#b91c1c">유효한 안내문 링크가 없습니다.</p>';
+        return;
+      }
+      location.replace("/?guide=" + encodeURIComponent(id));
+    }());
+  </script>
+</body>
+</html>

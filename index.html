@@ -2364,7 +2364,7 @@
     var savedAt=guide.updatedAt||guide.createdAt;
     var timestampHtml='<span class="muted">최근 저장 '+fmtGuideTimestamp(savedAt)+'</span>';
     if(guide.submittedAt) timestampHtml+='<span class="muted">제출 '+fmtGuideTimestamp(guide.submittedAt)+'</span>';
-    var link=location.origin+"/?guide="+encodeURIComponent(guide.id);
+    var link=location.origin+"/guide.html?id="+encodeURIComponent(guide.id);
     var summary=guideSummary(answers);
     var summaryHtml=summary.length?summary.map(function(item){return '<div class="guide-summary-row"><strong>'+esc(item.label)+'</strong><span>'+esc(item.value)+'</span></div>';}).join(""):'<div class="muted">아직 요약할 정보가 없습니다.</div>';
     var answerFields=[
@@ -2472,7 +2472,7 @@
     var retry=document.getElementById("btn-retry-guide");
     if(retry) retry.onclick=function(){ selectClientWorkspaceTab(client,"guide"); };
     if(!guide || !guide.id) return;
-    var link=location.origin+"/?guide="+encodeURIComponent(guide.id);
+    var link=location.origin+"/guide.html?id="+encodeURIComponent(guide.id);
     var copy=document.getElementById("btn-copy-guide");
     if(copy) copy.onclick=function(){ copyText(link); };
     var preview=document.getElementById("btn-preview-guide");
