@@ -2653,12 +2653,10 @@
   }
   function checklistSetDayCard(draft,day,dayAttr,label){
     var rows="", dayItems=[];
-    (draft.items||[]).forEach(function(item,index){
-      if(Number(item.day)===day) dayItems.push({item:item,index:index});
-    });
+    (draft.items||[]).forEach(function(item,index){ if(Number(item.day)===day) dayItems.push({item:item,index:index}); });
     dayItems.forEach(function(entry,position){
-      var index=entry.index, item=entry.item, order=position+1;
-      rows+='<div class="set-task-row"><input type="text" data-set-item-text="'+index+'" value="'+esc(item.text||"")+'" placeholder="'+day+'일차 업무" /><div class="set-task-row-actions"><button type="button" class="row-move" data-move-set-task="'+index+'" data-move-direction="-1" aria-label="'+day+'일차 '+order+'번째 업무 위로 이동"'+(position===0?' disabled':'')+'>↑</button><button type="button" class="row-move" data-move-set-task="'+index+'" data-move-direction="1" aria-label="'+day+'일차 '+order+'번째 업무 아래로 이동"'+(position===dayItems.length-1?' disabled':'')+'>↓</button><button type="button" class="row-remove" data-remove-set-task="'+index+'" aria-label="'+day+'일차 '+order+'번째 업무 삭제">×</button></div></div>';
+      var index=entry.index, item=entry.item, order=position+1, taskId=item.id||(item.id="set-task-"+index);
+      rows+='<div class="set-task-row"><input type="text" data-set-item-text="'+index+'" data-set-item-id="'+esc(taskId)+'" value="'+esc(item.text||"")+'" placeholder="'+day+'일차 업무" /><div class="set-task-row-actions"><button type="button" class="row-move" data-move-set-task="'+index+'" data-move-direction="-1" aria-label="'+day+'일차 '+order+'번째 업무 위로 이동"'+(position===0?' disabled':'')+'>↑</button><button type="button" class="row-move" data-move-set-task="'+index+'" data-move-direction="1" aria-label="'+day+'일차 '+order+'번째 업무 아래로 이동"'+(position===dayItems.length-1?' disabled':'')+'>↓</button><button type="button" class="row-remove" data-remove-set-task-id="'+esc(taskId)+'" aria-label="'+day+'일차 '+order+'번째 업무 삭제">×</button></div></div>';
     });
     return '<section class="set-day-card" '+dayAttr+'><div class="set-day-head"><strong>'+esc(label||day+"일차")+'</strong><button class="btn btn-ghost btn-sm" data-add-set-task data-set-day-new="'+day+'">+ 업무</button></div>'+(rows||'<div class="set-day-empty">등록된 업무가 없습니다.</div>')+'</section>';
   }
@@ -2666,7 +2664,8 @@
     var rows="";
     (draft.items||[]).forEach(function(item,index){
       if(item.day || String(item.week||"")!==period) return;
-      rows+='<div class="set-task-row"><input type="text" data-set-item-text="'+index+'" value="'+esc(item.text||"")+'" placeholder="기존 주차 업무" /><button class="row-remove" data-remove-set-task="'+index+'" aria-label="기존 주차 업무 삭제">×</button></div>';
+      var taskId=item.id||(item.id="set-task-"+index);
+      rows+='<div class="set-task-row"><input type="text" data-set-item-text="'+index+'" data-set-item-id="'+esc(taskId)+'" value="'+esc(item.text||"")+'" placeholder="기존 주차 업무" /><button class="row-remove" data-remove-set-task-id="'+esc(taskId)+'" aria-label="기존 주차 업무 삭제">×</button></div>';
     });
     return rows ? '<div class="set-legacy"><h4>기존 주차 단위 업무</h4><p>이전 방식으로 만든 항목입니다. 업체에 적용할 때도 주차 정보가 그대로 유지됩니다.</p>'+rows+'</div>' : "";
   }
@@ -2714,7 +2713,7 @@
     app.querySelectorAll("[data-set-period]").forEach(function(b){ b.onclick=function(){ syncChecklistSetEditor(); state.checklistSetPeriod=b.getAttribute("data-set-period"); renderClientWorkspace(cl); }; });
     app.querySelectorAll("[data-add-set-task]").forEach(function(b){ b.onclick=function(){ syncChecklistSetEditor(); state.checklistSetDraft.items.push({day:Number(b.getAttribute("data-set-day-new")),text:""}); renderClientWorkspace(cl); }; });
     app.querySelectorAll("[data-move-set-task]").forEach(function(b){ b.onclick=function(){ syncChecklistSetEditor(); if(moveChecklistSetTask(state.checklistSetDraft.items,Number(b.getAttribute("data-move-set-task")),Number(b.getAttribute("data-move-direction")))) renderClientWorkspace(cl); }; });
-    app.querySelectorAll("[data-remove-set-task]").forEach(function(b){ b.onclick=function(){ syncChecklistSetEditor(); state.checklistSetDraft.items.splice(Number(b.getAttribute("data-remove-set-task")),1); renderClientWorkspace(cl); }; });
+    app.querySelectorAll("[data-remove-set-task-id]").forEach(function(b){ b.onclick=function(){ syncChecklistSetEditor(); var taskId=b.getAttribute("data-remove-set-task-id"); var index=state.checklistSetDraft.items.findIndex(function(item){return String(item.id||"")===String(taskId);}); if(index>=0) state.checklistSetDraft.items.splice(index,1); renderClientWorkspace(cl); }; });
     var cancel=document.getElementById("btn-cancel-set-editor"); if(cancel) cancel.onclick=function(){ state.checklistSetDraft=null; renderClientWorkspace(cl); };
     var save=document.getElementById("btn-save-set-editor"); if(save) save.onclick=function(){ saveChecklistSetEditor(cl); };
   }

@@ -5,6 +5,7 @@ const fs = require('fs');
 const vm = require('vm');
 
 const html = fs.readFileSync('index.html', 'utf8');
+assert.match(html, /data-remove-set-task-id/, 'set task deletion must target a stable task id');
 const match = html.match(/(function calendarDateOrdinal[\s\S]*?\n  function checklistPeriod[\s\S]*?\n  }\n  function dailyPeriod[\s\S]*?\n  }[\s\S]*?\n\n  function cloneChecklistSet[\s\S]*?\n  })/);
 assert.ok(match, 'calendar and checklist-set helpers must exist in index.html');
 
