@@ -1756,9 +1756,10 @@
 
     body.innerHTML=statsHtml+listHtml;
 
-    var managedCard=document.getElementById("stat-managed-clients");
-    if(managedCard) managedCard.addEventListener("click",function(){
-      var activeClients=clients.filter(function(item){return item.status!=="ended";});
+    var statCards=[document.getElementById("stat-managed-clients"),document.querySelector(".stats-grid .stat-card:nth-child(2)"),document.querySelector(".stats-grid .stat-card:nth-child(3)")].filter(Boolean);
+    statCards.forEach(function(statCard){ statCard.style.cursor="pointer"; statCard.addEventListener("click",function(){
+      var statIndex=Array.prototype.indexOf.call(statCards,statCard);
+      var activeClients=clients.filter(function(item){return item.status!=="ended" && (statIndex===0 || (statIndex===1 ? item.contractType!=="renewal" : item.contractType==="renewal"));});
       var layer=document.getElementById("modal-layer"), bodyEl=document.getElementById("modal-body"), confirm=document.getElementById("modal-confirm"), cancel=document.getElementById("modal-cancel");
       document.getElementById("modal-title").textContent="관리 업체";
       var today=new Date();
@@ -1773,7 +1774,7 @@
       }).join("")+'</div>';
       layer.classList.add("show","client-info-modal"); confirm.hidden=true; cancel.textContent="닫기"; _confirmCb=null;
       bodyEl.querySelectorAll("[data-stat-client]").forEach(function(btn){btn.onclick=function(){closeModal();openClient(btn.getAttribute("data-stat-client"));};});
-    });
+    }); });
 
     var b1=document.getElementById("btn-empty-client");
     if(b1) b1.addEventListener("click", function(){ state.editingClient=null; state.view="clientForm"; render(); });
