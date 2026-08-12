@@ -7,6 +7,7 @@ const html = fs.readFileSync('index.html', 'utf8');
 const guideHtml = fs.readFileSync('guide.html', 'utf8');
 assert.match(guideHtml, /location\.replace\("\/\?guide=/, 'customer guide links should use a dedicated page');
 assert.match(html, /location\.origin\+"\/guide\.html\?id="/, 'dashboard should issue dedicated customer guide links');
+assert.match(html, /\/api\/data\?key=" \+ encodeURIComponent\("guide:"\+guideId\)/, 'guide reads need an authenticated fallback path');
 assert.match(html, /localStorage\.setItem\("guide-draft:/, 'guide drafts should survive reopening after a failed save');
 assert.match(html, /localStorage\.getItem\("guide-draft:/, 'guide should restore a newer local draft');
 assert.match(html, /서버 저장에 실패했습니다/, 'guide should distinguish a local backup from a server save');

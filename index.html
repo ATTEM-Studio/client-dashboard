@@ -631,10 +631,15 @@
     },
     async getPublicGuide(guideId){
       var res = await fetch("/api/guide?id=" + encodeURIComponent(guideId), { headers: authHeaders(), cache: "no-store" });
+      if (res.ok) {
+        var data = await res.json();
+        return data.value ? JSON.parse(data.value) : (data.guide || null);
+      }
       if (res.status === 404) { var missing = new Error("guide not found"); missing.code = "not_found"; throw missing; }
-      if (!res.ok) throw new Error("guide get failed " + res.status);
-      var data = await res.json();
-      return data.value ? JSON.parse(data.value) : (data.guide || null);
+      var legacy=await fetch("/api/data?key=" + encodeURIComponent("guide:"+guideId), { headers: authHeaders(), cache: "no-store" });
+      if (!legacy.ok) throw new Error("guide get failed " + res.status);
+      var legacyData=await legacy.json();
+      return legacyData.value ? JSON.parse(legacyData.value) : (legacyData.guide || null);
     },
     async mutatePublicContract(contractId, contract, submitted){
       var res = await fetch("/api/data", {
