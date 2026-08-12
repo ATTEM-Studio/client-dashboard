@@ -1299,11 +1299,6 @@
         try{ sessionStorage.setItem("guide-draft:"+guide.id,JSON.stringify(guide)); localStorage.setItem("guide-draft:"+guide.id,JSON.stringify(guide)); }catch(e){}
         return true;
       }catch(e){
-        if(!submitted){
-          guide.localOnly=true;
-          try{ localStorage.setItem("guide-draft:"+guide.id,JSON.stringify(guide)); }catch(ignore){}
-          return true;
-        }
         return false;
       }
     });
@@ -1365,9 +1360,9 @@
     var saved=await savePublicGuide(guide,false);
     if(saveRevision!==publicGuideRevision) return saved;
     if(saved){
-      setGuideSaveStatus(guide.localOnly?"offline":"saved",guide.localOnly?"이 기기에 임시 저장됨 · 연결되면 서버에 동기화됩니다":"저장되었습니다",guide.localOnly?function(){ persistPublicGuideDraft(guide,++publicGuideRevision); }:null);
+      setGuideSaveStatus("saved","서버에 저장되었습니다",null);
     }else{
-      setGuideSaveStatus("failed","저장에 실패했습니다",function(){ persistPublicGuideDraft(guide,++publicGuideRevision); });
+      setGuideSaveStatus("failed","서버 저장에 실패했습니다 · 이 기기에 임시 보관됨",function(){ persistPublicGuideDraft(guide,++publicGuideRevision); });
     }
     return saved;
   }
@@ -1445,7 +1440,6 @@
     try{ result=(typeof storageBackend!=="undefined"&&storageBackend.getPublicGuide) ? {status:"found",value:await storageBackend.getPublicGuide(publicGuideId)} : await readS("guide:"+publicGuideId); }
     catch(e){ result={status:e&&e.code==="not_found"?"missing":"error",error:e}; }
     var guide=result.status==="found"?result.value:null;
-    if(guide){ try{ var cachedGuide=JSON.parse(localStorage.getItem("guide-draft:"+publicGuideId)||"null"); if(cachedGuide&&Number(cachedGuide.updatedAt||0)>Number(guide.updatedAt||0)) guide=cachedGuide; }catch(e){} }
     if(result.status!=="found"||!guide||typeof guide!=="object"||guide.id!==publicGuideId||!guide.answers||typeof guide.answers!=="object"){
       if(result.status==="error"){
         try{
