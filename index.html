@@ -1759,7 +1759,6 @@
     var managedCard=document.getElementById("stat-managed-clients");
     if(managedCard) managedCard.addEventListener("click",function(){
       var activeClients=clients.filter(function(item){return item.status!=="ended";});
-      if(activeClients.length===1){ showClientInfoModal(activeClients[0]); return; }
       var layer=document.getElementById("modal-layer"), bodyEl=document.getElementById("modal-body"), confirm=document.getElementById("modal-confirm"), cancel=document.getElementById("modal-cancel");
       document.getElementById("modal-title").textContent="관리 업체";
       var today=new Date();
