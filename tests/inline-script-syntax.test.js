@@ -20,8 +20,8 @@ assert.doesNotMatch(html, /return '<div class="workspace-columns"/, 'ordinary ch
 assert.match(html, /data-set-period="1"/, 'set editor must navigate to week 1');
 assert.match(html, /data-set-period="4"/, 'set editor must navigate to week 4');
 assert.match(html, /data-set-period="closing"/, 'set editor must navigate to the closing period');
-assert.match(html, /data-set-day="29"/, 'closing editor must expose day 29');
-assert.match(html, /data-set-day="30"/, 'closing editor must expose day 30');
+assert.match(html, /checklistSetPeriodDays\(period,excludeWeekends\)/, 'set editor must derive visible days from the weekend-aware period helper');
+assert.match(html, /\[21,22\]/, 'weekend-aware closing editor must map to workdays 21 and 22');
 assert.match(html, /data-add-set-task/, 'each day must support adding task rows');
 assert.match(html, /data-remove-set-task/, 'daily task rows must be independently removable');
 assert.match(html, /data-move-set-task/, 'daily task rows must expose reorder controls');

@@ -73,6 +73,9 @@ assert.deepStrictEqual(
 );
 
 assert.match(html, /id="f-revenue-weekly"/, 'weekly reports must expose the optional revenue input');
+assert.match(html, /id="f-delivery-memo"/, 'weekly reports must expose a delivery memo field');
+assert.match(html, /rep\.deliveryMemo/,
+  'weekly report views must render a saved delivery memo when present');
 assert.match(html, /id="f-revenue-previous"/, 'monthly reports must expose the optional previous-month input');
 assert.match(html, /id="f-revenue-override"/, 'monthly reports must expose the optional confirmed override input');
 
@@ -175,6 +178,7 @@ function saveSandbox(revenueValue, options = {}) {
     'f-goal': { value: '' },
     'f-external': { value: '' },
     'f-uncertain': { value: '' },
+    'f-delivery-memo': { value: options.deliveryMemo || '' },
     'f-memo': { value: '' }
   };
   if(options.includeRevenueInput !== false){
@@ -230,6 +234,11 @@ function saveSandbox(revenueValue, options = {}) {
   const populated = saveSandbox(' 1,250,000 ');
   await populated.context.saveReport();
   assert.deepStrictEqual(json(populated.stored[0].value.revenue), { weekly: 1250000 });
+
+  const weeklyMemo = saveSandbox('', { deliveryMemo: '이번 주는 리뷰 답글 확인 부탁드립니다.' });
+  await weeklyMemo.context.saveReport();
+  assert.strictEqual(weeklyMemo.stored[0].value.deliveryMemo, '이번 주는 리뷰 답글 확인 부탁드립니다.',
+    'weekly reports must persist an optional delivery memo');
 
   const monthlyWithWeeklySnapshot = saveSandbox('', {
     type: 'monthly', reports: trendReports, previousValue: '', overrideValue: ''

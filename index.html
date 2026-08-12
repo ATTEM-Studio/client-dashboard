@@ -354,6 +354,8 @@
   .set-editor-meta{ display:grid; grid-template-columns:1fr 1.4fr; gap:12px; margin-bottom:16px; }
   .set-editor-meta label{ display:block; font-size:12px; font-weight:800; color:var(--ink-600); }
   .set-editor-meta input{ width:100%; margin-top:6px; border:1px solid var(--line); border-radius:10px; padding:10px 12px; background:#FAFBFC; font-size:13.5px; }
+  .set-editor-meta .toggle-row{ display:flex; align-items:center; gap:8px; padding:10px 12px; border:1px solid var(--line); border-radius:10px; background:#FAFBFC; }
+  .set-editor-meta .toggle-row input{ width:auto; margin:0; }
   .set-period-nav{ display:flex; gap:6px; padding:4px; margin-bottom:14px; border-radius:12px; background:#F2F4F6; overflow-x:auto; }
   .set-period-nav button{ flex:1; min-width:70px; border:0; border-radius:9px; padding:8px 10px; background:transparent; color:var(--ink-500); font-size:12.5px; font-weight:800; }
   .set-period-nav button.active{ background:#fff; color:var(--brand-dark); box-shadow:0 1px 4px rgba(15,23,42,.1); }
@@ -780,6 +782,7 @@
     next.startDate=startDate;
     next.previousCycles=archived;
     next.checklist=checklistSet ? checklistTasksFromSet(checklistSet) : [];
+    if(checklistSet) next.excludeWeekends=checklistSet.excludeWeekends!==false;
     next.progress={};
     next.updatedAt=Date.now();
     return next;
@@ -891,6 +894,20 @@
     var value=Number(day);
     if(!isFinite(value) || Math.floor(value)!==value || value<1 || value>30) return null;
     return value>28 ? "closing" : String(Math.ceil(value/7));
+  }
+  function checklistSetPeriodDays(period,excludeWeekends){
+    if(excludeWeekends!==false){
+      if(period==="closing") return [21,22];
+      var week=Number(period);
+      if(!week || week<1 || week>4) return [];
+      var first=(week-1)*5+1;
+      return [first,first+1,first+2,first+3,first+4];
+    }
+    if(period==="closing") return [29,30];
+    var legacyWeek=Number(period);
+    if(!legacyWeek || legacyWeek<1 || legacyWeek>4) return [];
+    var legacyFirst=(legacyWeek-1)*7+1;
+    return [legacyFirst,legacyFirst+1,legacyFirst+2,legacyFirst+3,legacyFirst+4,legacyFirst+5,legacyFirst+6];
   }
   function moveChecklistSetTask(items,index,direction){
     if(!Array.isArray(items) || !items[index] || !dailyPeriod(items[index].day) || (direction!==-1 && direction!==1)) return false;
@@ -2537,7 +2554,7 @@
     var body=sets.length ? sets.map(function(s){
       var daily=(s.items||[]).filter(function(i){return dailyPeriod(Number(i.day));}).length;
       var legacy=(s.items||[]).length-daily;
-      var detail=daily+"개 일별 업무"+(legacy?" · "+legacy+"개 기존 주차 업무":"");
+      var detail=daily+"개 일별 업무"+(legacy?" · "+legacy+"개 기존 주차 업무":"")+(s.excludeWeekends===false?" · 주말 포함":" · 주말 제외");
       return '<div class="set-card"><h4>'+esc(s.name)+'</h4><div class="muted">'+esc(s.description||"설명 없음")+' · '+detail+'</div><button class="btn btn-ghost btn-sm" data-apply-set="'+esc(s.id)+'" style="margin-top:10px">현재 업체에 적용</button><button class="btn btn-plain btn-sm" data-edit-set="'+esc(s.id)+'" style="margin-top:10px">수정</button></div>';
     }).join("") : '<div class="set-empty"><strong>아직 만든 세트가 없습니다</strong><p>30일 동안 반복해서 사용할 업무를 날짜별로 정리해 보세요.</p><button class="btn btn-primary btn-sm" id="btn-empty-new-set">첫 세트 만들기</button></div>';
     return '<div class="panel fade-in"><div class="panel-head set-collection-head"><div><h3 class="panel-title">체크리스트 세트</h3><p class="panel-hint">필요할 때 업체에 적용할 30일 업무 모음입니다.</p></div><button class="btn btn-primary btn-sm" id="btn-new-set">+ 새 세트</button></div>'+body+'</div>';
@@ -2546,15 +2563,15 @@
     var draft=state.checklistSetDraft, period=state.checklistSetPeriod||"1";
     var nav='<div class="set-period-nav" aria-label="세트 기간"><button class="'+(period==="1"?"active":"")+'" data-set-period="1">1주차</button><button class="'+(period==="2"?"active":"")+'" data-set-period="2">2주차</button><button class="'+(period==="3"?"active":"")+'" data-set-period="3">3주차</button><button class="'+(period==="4"?"active":"")+'" data-set-period="4">4주차</button><button class="'+(period==="closing"?"active":"")+'" data-set-period="closing">마무리</button></div>';
     var legacy=checklistSetLegacyRows(draft,period), days="";
-    if(period==="closing"){
-      days=checklistSetDayCard(draft,29,'data-set-day="29"')+checklistSetDayCard(draft,30,'data-set-day="30"');
-    }else{
-      var first=(Number(period)-1)*7+1;
-      for(var day=first;day<first+7;day++) days+=checklistSetDayCard(draft,day,'data-set-day="'+day+'"');
-    }
-    return '<div class="panel fade-in"><div class="panel-head"><div><h3 class="panel-title">'+(draft.id?"체크리스트 세트 수정":"새 체크리스트 세트")+'</h3><p class="panel-hint">각 날짜에는 업무를 원하는 만큼 추가하거나 비워둘 수 있습니다.</p></div></div><div class="set-editor-meta"><label>세트 이름<input id="set-editor-name" type="text" value="'+esc(draft.name||"")+'" placeholder="예: 신규 업체 30일 운영" /></label><label>설명<input id="set-editor-description" type="text" value="'+esc(draft.description||"")+'" placeholder="이 세트의 용도를 적어주세요" /></label></div>'+nav+legacy+'<div class="set-day-grid">'+days+'</div><div class="set-editor-actions"><button class="btn btn-plain btn-sm" id="btn-cancel-set-editor">취소</button><button class="btn btn-primary btn-sm" id="btn-save-set-editor">세트 저장</button></div></div>';
+    var excludeWeekends=draft.excludeWeekends!==false;
+    checklistSetPeriodDays(period,excludeWeekends).forEach(function(day,index){
+      var weekdayLabels=["월","화","수","목","금","토","일"];
+      var label=period==="closing" ? "마무리 "+(index+1)+"일차" : (excludeWeekends ? weekdayLabels[index] : day+"일차");
+      days+=checklistSetDayCard(draft,day,'data-set-day="'+day+'"',label);
+    });
+    return '<div class="panel fade-in"><div class="panel-head"><div><h3 class="panel-title">'+(draft.id?"체크리스트 세트 수정":"새 체크리스트 세트")+'</h3><p class="panel-hint">주차별 월·화·수·목·금에 필요한 업무를 여러 개 넣을 수 있습니다.</p></div></div><div class="set-editor-meta"><label>세트 이름<input id="set-editor-name" type="text" value="'+esc(draft.name||"")+'" placeholder="예: 신규 업체 운영 세트" /></label><label>설명<input id="set-editor-description" type="text" value="'+esc(draft.description||"")+'" placeholder="이 세트의 용도를 적어주세요" /></label><label class="toggle-row"><input id="set-editor-exclude-weekends" type="checkbox" '+(excludeWeekends?"checked":"")+' /> 주말 제외 업무일 기준</label></div>'+nav+legacy+'<div class="set-day-grid">'+days+'</div><div class="set-editor-actions"><button class="btn btn-plain btn-sm" id="btn-cancel-set-editor">취소</button><button class="btn btn-primary btn-sm" id="btn-save-set-editor">세트 저장</button></div></div>';
   }
-  function checklistSetDayCard(draft,day,dayAttr){
+  function checklistSetDayCard(draft,day,dayAttr,label){
     var rows="", dayItems=[];
     (draft.items||[]).forEach(function(item,index){
       if(Number(item.day)===day) dayItems.push({item:item,index:index});
@@ -2563,7 +2580,7 @@
       var index=entry.index, item=entry.item, order=position+1;
       rows+='<div class="set-task-row"><input type="text" data-set-item-text="'+index+'" value="'+esc(item.text||"")+'" placeholder="'+day+'일차 업무" /><div class="set-task-row-actions"><button type="button" class="row-move" data-move-set-task="'+index+'" data-move-direction="-1" aria-label="'+day+'일차 '+order+'번째 업무 위로 이동"'+(position===0?' disabled':'')+'>↑</button><button type="button" class="row-move" data-move-set-task="'+index+'" data-move-direction="1" aria-label="'+day+'일차 '+order+'번째 업무 아래로 이동"'+(position===dayItems.length-1?' disabled':'')+'>↓</button><button type="button" class="row-remove" data-remove-set-task="'+index+'" aria-label="'+day+'일차 '+order+'번째 업무 삭제">×</button></div></div>';
     });
-    return '<section class="set-day-card" '+dayAttr+'><div class="set-day-head"><strong>'+day+'일차</strong><button class="btn btn-ghost btn-sm" data-add-set-task data-set-day-new="'+day+'">+ 업무</button></div>'+(rows||'<div class="set-day-empty">등록된 업무가 없습니다.</div>')+'</section>';
+    return '<section class="set-day-card" '+dayAttr+'><div class="set-day-head"><strong>'+esc(label||day+"일차")+'</strong><button class="btn btn-ghost btn-sm" data-add-set-task data-set-day-new="'+day+'">+ 업무</button></div>'+(rows||'<div class="set-day-empty">등록된 업무가 없습니다.</div>')+'</section>';
   }
   function checklistSetLegacyRows(draft,period){
     var rows="";
@@ -2611,7 +2628,7 @@
     app.querySelectorAll("[data-del-work]").forEach(function(b){ b.onclick=function(){ var id=b.getAttribute("data-del-work"); cl.checklist=(cl.checklist||[]).filter(function(t){return t.id!==id;}); saveClientAndRefresh(cl); }; });
     var add=document.querySelector("[data-add-task]"); if(add) add.onclick=function(){ var text=document.getElementById("new-work-text").value.trim(); if(!text){showToast("업무 내용을 입력하세요");return;} cl.checklist=cl.checklist||[]; cl.checklist.push({id:uid("ck"),text:text,week:document.getElementById("new-work-week").value,done:false}); saveClientAndRefresh(cl); };
     var toggle=document.getElementById("btn-toggle-sets"); if(toggle) toggle.onclick=function(){ setChecklistCollectionOpen(!state.setCollectionOpen); renderClientWorkspace(cl); };
-    app.querySelectorAll("[data-apply-set]").forEach(function(b){ b.onclick=function(){ var set=state.checklistSets.filter(function(s){return s.id===b.getAttribute("data-apply-set");})[0]; if(!set)return; cl.checklist=(cl.checklist||[]).concat(cloneChecklistSet(set,function(){return uid("ck");})); saveClientAndRefresh(cl); showToast("체크리스트 세트를 적용했습니다"); }; });
+    app.querySelectorAll("[data-apply-set]").forEach(function(b){ b.onclick=function(){ var set=state.checklistSets.filter(function(s){return s.id===b.getAttribute("data-apply-set");})[0]; if(!set)return; cl.excludeWeekends=set.excludeWeekends!==false; cl.checklist=(cl.checklist||[]).concat(cloneChecklistSet(set,function(){return uid("ck");})); saveClientAndRefresh(cl); showToast("체크리스트 세트를 적용했습니다"); }; });
     [document.getElementById("btn-new-set"),document.getElementById("btn-empty-new-set")].forEach(function(create){ if(create) create.onclick=function(){ openChecklistSetEditor(); }; });
     app.querySelectorAll("[data-edit-set]").forEach(function(b){ b.onclick=function(){ openChecklistSetEditor(b.getAttribute("data-edit-set")); }; });
     app.querySelectorAll("[data-set-period]").forEach(function(b){ b.onclick=function(){ syncChecklistSetEditor(); state.checklistSetPeriod=b.getAttribute("data-set-period"); renderClientWorkspace(cl); }; });
@@ -2649,6 +2666,7 @@
       id:set?set.id:null,
       name:set?set.name||"":"",
       description:set?set.description||"":"",
+      excludeWeekends:set?set.excludeWeekends!==false:true,
       items:set?(set.items||[]).map(function(item){return Object.assign({},item);}):[]
     };
     renderClientWorkspace(state.currentClient);
@@ -2659,6 +2677,8 @@
     var name=document.getElementById("set-editor-name"), description=document.getElementById("set-editor-description");
     if(name) draft.name=name.value;
     if(description) draft.description=description.value;
+    var exclude=document.getElementById("set-editor-exclude-weekends");
+    if(exclude) draft.excludeWeekends=exclude.checked;
     app.querySelectorAll("[data-set-item-text]").forEach(function(input){
       var item=draft.items[Number(input.getAttribute("data-set-item-text"))];
       if(item) item.text=input.value;
@@ -2669,7 +2689,7 @@
     var draft=state.checklistSetDraft;
     if(!draft || !draft.name.trim()){ showToast("세트 이름을 입력하세요"); return; }
     var items=checklistSetItemsForSave(draft.items);
-    var saved={id:draft.id||uid("set"),name:draft.name.trim(),description:draft.description.trim(),items:items};
+    var saved={id:draft.id||uid("set"),name:draft.name.trim(),description:draft.description.trim(),excludeWeekends:draft.excludeWeekends!==false,items:items};
     var existing=state.checklistSets.findIndex(function(set){return set.id===saved.id;});
     if(existing>=0) state.checklistSets[existing]=saved; else state.checklistSets.push(saved);
     await saveChecklistSets();
@@ -2997,7 +3017,10 @@
         '<div class="fsection"><div class="fsec-num">07</div><h3 class="fsec-title">다음 주 행동</h3>'+
           '<p class="fsec-hint">다음 주에 무엇을 할지 정리하십시오.</p>'+
           '<div id="rows-nextweek">'+nw.map(function(v){return rowTpl("예: 문구 테스트 1주 더 유지",v);}).join("")+'</div>'+
-          '<button type="button" class="add-row-btn" data-add="rows-nextweek">+ 행동 항목 추가</button></div>';
+          '<button type="button" class="add-row-btn" data-add="rows-nextweek">+ 행동 항목 추가</button></div>'+
+        '<div class="fsection"><div class="fsec-num">08</div><h3 class="fsec-title">전달 메모 <span class="optional-label">선택</span></h3>'+
+          '<p class="fsec-hint">리포트 맨 아래에 함께 전달하고 싶은 내용을 자유롭게 적어주세요.</p>'+
+          '<div class="field"><textarea id="f-delivery-memo" rows="4" placeholder="예: 이번 주는 리뷰 답글 확인을 먼저 부탁드립니다.">'+esc(base.deliveryMemo||"")+'</textarea></div></div>';
     } else {
       var ad=base.actions_done&&base.actions_done.length?base.actions_done:[""];
       var fa=base.facts&&base.facts.length?base.facts:[""];
@@ -3213,6 +3236,7 @@
         rep.tests=collectRows("rows-tests");
         rep.results=collectRows("rows-results");
         rep.next_week=collectRows("rows-nextweek");
+        rep.deliveryMemo=document.getElementById("f-delivery-memo").value.trim();
       } else {
         rep.actions_done=collectRows("rows-actions");
         rep.facts=collectRows("rows-facts");
@@ -3330,12 +3354,13 @@
     var th=(rep.tests||[]).length?'<ul class="checklist">'+rep.tests.map(function(a){return '<li><span class="check-ico">✓</span>'+esc(a)+'</li>';}).join("")+'</ul>':'<div class="muted">기록된 테스트가 없습니다</div>';
     var rh=(rep.results||[]).length?'<ul class="fi-list">'+rep.results.map(function(a){return '<li>'+esc(a)+'</li>';}).join("")+'</ul>':'<div class="fi-caption">기록된 결과가 없습니다</div>';
     var nh=(rep.next_week||[]).length?'<ul class="checklist">'+rep.next_week.map(function(a){return '<li><span class="check-ico">→</span>'+esc(a)+'</li>';}).join("")+'</ul>':'<div class="muted">기록된 행동 항목이 없습니다</div>';
+    var deliveryMemo=rep.deliveryMemo?'<div class="rsection fade-in"><div class="rsec-title">전달 메모</div><div class="memo-box">'+esc(rep.deliveryMemo)+'</div></div>':"";
     var body=reportRevenueSection(rep,state.reports)+'<div class="rsection fade-in"><div class="rsec-title">이번 주 핵심 숫자</div>'+mh+'</div>'+
       (rep.external?'<div class="rsection fade-in"><div class="rsec-title">외부 변수</div><div class="extvar-box">'+esc(rep.external)+'</div></div>':"")+
       '<div class="rsection fade-in"><div class="rsec-title">이번 주 테스트</div>'+th+'</div>'+
       '<div class="rsection fade-in"><div class="rsec-title">결과</div>'+rh+'</div>'+
       '<div class="rsection fade-in"><div class="rsec-title">다음 주 행동</div>'+nh+'</div>'+
-      shareCard(rep);
+      deliveryMemo+shareCard(rep);
     paintReport(rep, "주간 리포트", body, false);
   }
 

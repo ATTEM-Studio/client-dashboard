@@ -46,6 +46,16 @@ assert.strictEqual(sandbox.dailyPeriod(29), 'closing');
 assert.strictEqual(sandbox.dailyPeriod(30), 'closing');
 assert.strictEqual(sandbox.dailyPeriod(0), null);
 assert.strictEqual(sandbox.dailyPeriod(31), null);
+assert.deepStrictEqual(JSON.parse(JSON.stringify(sandbox.checklistSetPeriodDays('1', true))), [1, 2, 3, 4, 5],
+  'weekend-aware checklist sets must define week 1 by five workdays');
+assert.deepStrictEqual(JSON.parse(JSON.stringify(sandbox.checklistSetPeriodDays('4', true))), [16, 17, 18, 19, 20],
+  'weekend-aware checklist sets must keep week 4 to workdays 16-20');
+assert.deepStrictEqual(JSON.parse(JSON.stringify(sandbox.checklistSetPeriodDays('closing', true))), [21, 22],
+  'weekend-aware checklist sets must use workdays 21-22 as the closing period');
+assert.deepStrictEqual(JSON.parse(JSON.stringify(sandbox.checklistSetPeriodDays('1', false))), [1, 2, 3, 4, 5, 6, 7],
+  'calendar-day checklist sets must preserve the old seven-day weekly layout');
+assert.match(html, /id="set-editor-exclude-weekends"[\s\S]*checked/,
+  'new checklist sets must default to weekend exclusion in the editor');
 
 const source = { id: 'set-1', items: [{ text: 'legacy task', week: '1' }] };
 const copied = sandbox.cloneChecklistSet(source, () => 'task-1');
