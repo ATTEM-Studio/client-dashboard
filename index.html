@@ -1686,7 +1686,7 @@
 
     var statsHtml=
       '<div class="stats-grid">'+
-        '<div class="stat-card"><div class="stat-label">관리 업체</div><div class="stat-value">'+active.length+'<span class="stat-unit">곳</span></div><div class="stat-sub">전체 등록 '+clients.length+'곳</div></div>'+
+        '<div class="stat-card" id="stat-managed-clients" style="cursor:pointer"><div class="stat-label">관리 업체</div><div class="stat-value">'+active.length+'<span class="stat-unit">곳</span></div><div class="stat-sub">전체 등록 '+clients.length+'곳</div></div>'+
         '<div class="stat-card"><div class="stat-label">신규 계약</div><div class="stat-value">'+newCount+'<span class="stat-unit">건</span></div><div class="stat-sub">'+esc(monthLabel(mk))+' 시작</div></div>'+
         '<div class="stat-card"><div class="stat-label">재계약</div><div class="stat-value">'+renewCount+'<span class="stat-unit">건</span></div><div class="stat-sub">'+esc(monthLabel(mk))+' 갱신</div></div>'+
         '<div class="stat-card accent"><div class="stat-label">이번 달 진행률</div><div class="stat-value">'+pct+'<span class="stat-unit">%</span></div>'+
@@ -1746,6 +1746,17 @@
     }
 
     body.innerHTML=statsHtml+listHtml;
+
+    var managedCard=document.getElementById("stat-managed-clients");
+    if(managedCard) managedCard.addEventListener("click",function(){
+      var activeClients=clients.filter(function(item){return item.status!=="ended";});
+      if(activeClients.length===1){ showClientInfoModal(activeClients[0]); return; }
+      var layer=document.getElementById("modal-layer"), bodyEl=document.getElementById("modal-body"), confirm=document.getElementById("modal-confirm"), cancel=document.getElementById("modal-cancel");
+      document.getElementById("modal-title").textContent="관리 업체";
+      bodyEl.innerHTML='<div class="client-info-grid">'+activeClients.map(function(item){var p=thirtyDayProgress(item.startDate);var progress=p.state==="missing"?"시작일 미입력":(p.state==="upcoming"?"시작 전":p.elapsed+"일 / 30일");return '<button type="button" class="client-info-item" data-stat-client="'+esc(item.id)+'" style="text-align:left;cursor:pointer"><span class="client-info-label">'+esc(contractLabel(item))+'</span><span class="client-info-value">'+esc(item.name)+' · '+esc(progress)+'</span></button>';}).join("")+'</div>';
+      layer.classList.add("show","client-info-modal"); confirm.hidden=true; cancel.textContent="닫기"; _confirmCb=null;
+      bodyEl.querySelectorAll("[data-stat-client]").forEach(function(btn){btn.onclick=function(){closeModal();openClient(btn.getAttribute("data-stat-client"));};});
+    });
 
     var b1=document.getElementById("btn-empty-client");
     if(b1) b1.addEventListener("click", function(){ state.editingClient=null; state.view="clientForm"; render(); });
