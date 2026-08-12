@@ -136,6 +136,13 @@
   /* modal */
   #modal-layer{ position:fixed; inset:0; background:rgba(15,23,42,.42); display:none; align-items:center; justify-content:center; padding:20px; z-index:100; }
   #modal-layer.show{ display:flex; }
+  #modal-layer.client-info-modal .modal{ max-width:460px; }
+  #modal-layer.client-info-modal #modal-body{ white-space:normal; }
+  .client-info-grid{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin:6px 0 18px; }
+  .client-info-item{ padding:11px 12px; border:1px solid var(--line); border-radius:10px; background:#FAFBFC; }
+  .client-info-label{ display:block; color:var(--ink-400); font-size:11px; margin-bottom:4px; }
+  .client-info-value{ display:block; color:var(--ink-700); font-size:13px; font-weight:700; word-break:break-word; }
+  @media(max-width:520px){ .client-info-grid{ grid-template-columns:1fr; } }
   #renewal-modal{ position:fixed; inset:0; background:rgba(15,23,42,.42); display:none; align-items:center; justify-content:center; padding:20px; z-index:105; }
   #renewal-modal.show{ display:flex; }
   #renewal-set-options{ display:grid; gap:8px; margin:0 0 18px; }
@@ -1143,12 +1150,29 @@
     document.getElementById("modal-layer").classList.add("show");
     _confirmCb=cb;
   }
-  function closeModal(){ document.getElementById("modal-layer").classList.remove("show"); _confirmCb=null; }
+  function closeModal(){ var layer=document.getElementById("modal-layer"), confirm=document.getElementById("modal-confirm"), cancel=document.getElementById("modal-cancel"); layer.classList.remove("show","client-info-modal"); confirm.hidden=false; cancel.textContent="취소"; document.getElementById("modal-body").textContent=""; _confirmCb=null; }
   document.getElementById("modal-cancel").addEventListener("click", closeModal);
   document.getElementById("modal-layer").addEventListener("click", function(e){ if(e.target.id==="modal-layer") closeModal(); });
   document.getElementById("modal-confirm").addEventListener("click", function(){
     var cb=_confirmCb; closeModal(); if(cb) cb();
   });
+
+  function showClientInfoModal(client){
+    if(!client) return;
+    var layer=document.getElementById("modal-layer"), body=document.getElementById("modal-body"), confirm=document.getElementById("modal-confirm"), cancel=document.getElementById("modal-cancel");
+    var rows=[
+      ["업체명",client.name], ["업종",client.industry],
+      ["계약 구분",contractLabel(client)], ["재계약 회차",client.contractType==="renewal"?String(client.renewalCount||1)+"회차":"신규"],
+      ["시작일",client.startDate], ["계약 기간",client.contractMonths?String(client.contractMonths)+"개월":"미입력"],
+      ["월 금액",client.fee?formatRevenueWon(client.fee):"미입력"], ["담당자",client.manager],
+      ["연락처",client.contact], ["이메일",client.email]
+    ];
+    document.getElementById("modal-title").textContent="업체 정보";
+    body.innerHTML='<div class="client-info-grid">'+rows.map(function(row){return '<div class="client-info-item"><span class="client-info-label">'+esc(row[0])+'</span><span class="client-info-value">'+esc(row[1]||"미입력")+'</span></div>';}).join("")+'</div>';
+    layer.classList.add("show","client-info-modal");
+    confirm.hidden=true; cancel.textContent="닫기";
+    _confirmCb=null;
+  }
 
   /* ============ storage ============ */
   async function readS(k){
@@ -1732,7 +1756,10 @@
     if(b2) b2.addEventListener("click", createSampleClient);
 
     body.querySelectorAll("[data-open-client]").forEach(function(el){
-      el.addEventListener("click", function(){ openClient(el.getAttribute("data-open-client")); });
+      el.addEventListener("click", function(){
+        var target=clients.find(function(item){ return item.id===el.getAttribute("data-open-client"); });
+        if(target) showClientInfoModal(target);
+      });
     });
   }
 
