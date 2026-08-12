@@ -25,12 +25,14 @@ assert.match(html, /id="contract-business-number"/, 'contract form must include 
 assert.match(html, /\?contract=/, 'contract form must expose a shareable public contract link');
 assert.match(html, /renderPublicContract/, 'public contract route renderer must exist');
 assert.match(html, /mutatePublicContract/, 'browser transport must support public contract saves');
+assert.match(html, /await getS\("contract:"\+id\)/,
+  'opening a saved contract original must reload the full contract document, not the lightweight index row');
 
 const contractSandbox = {
   state: {
     clients: [],
     contracts: [
-      { id: 'ct_1', clientId: 'cl_1', clientName: 'Client One', contractType: 'renewal', renewalCount: 2, updatedAt: 10 },
+      { id: 'ct_1', clientId: 'cl_1', clientName: 'Client One', contractType: 'renewal', renewalCount: 2, signerName: 'Owner', submittedAt: 12345, hasSignature: true, updatedAt: 10 },
       { id: 'ct_2', clientId: 'cl_2', clientName: 'Client Two', contractType: 'new', updatedAt: 20 }
     ]
   },
@@ -65,6 +67,7 @@ assert.match(panel, /data-new-client-contract="cl_1"/);
 assert.match(panel, /data-open-contract="ct_1"/, 'saved contract card should open the original contract');
 assert.match(panel, /data-open-contract-link="ct_1"/, 'saved contract card should open the public contract link');
 assert.match(panel, /data-copy-contract-link="ct_1"/, 'saved contract card should copy the public contract link');
+assert.match(panel, /서명 완료|signed/i, 'signed contract cards must clearly show that a signature was received');
 
 const renderedForm = contractSandbox.renderContractForm({
   id: 'contract_secret_123456789012345678901234',
@@ -192,6 +195,17 @@ assert.doesNotMatch(publicHtml, /signature-preview/, 'public signer link should 
 assert.doesNotMatch(publicHtml, /정기결제|선결제 1회차|선결제 6회차|선결제 12회차/, 'public contract should not show old recurring/prepay labels');
 assert.doesNotMatch(saveSandbox.renderPublicContract(Object.assign({}, publicPayload, { contractType: 'new' })), /id="contract-renewal-count"/, 'public new contract must not expose renewal-count editing');
 assert.doesNotMatch(saveSandbox.renderPublicContract(Object.assign({}, publicPayload, { contractType: 'renewal' })), /id="contract-renewal-count"/, 'public renewal contract must show renewal count as read-only text, not an input');
+const submittedPublicHtml = saveSandbox.renderPublicContract(Object.assign({}, publicPayload, {
+  submittedAt: 12345,
+  signatureDataUrl: 'data:image/png;base64,publicsigned',
+  signerName: 'Owner'
+}));
+assert.match(submittedPublicHtml, /contract-readonly-card/,
+  'submitted public contract links must still show the signed contract details');
+assert.match(submittedPublicHtml, /contract-signed-preview/,
+  'submitted public contract links must show the saved signature');
+assert.match(submittedPublicHtml, /data:image\/png;base64,publicsigned/,
+  'submitted public contract links must render the stored signature image');
 
 const publicCollectSandbox = Object.assign({}, saveSandbox, {
   document: {

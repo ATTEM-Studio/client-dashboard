@@ -378,7 +378,7 @@ module.exports = async (req, res) => {
         try { contractsIndex = JSON.parse(contractsIndexResult.result); } catch {}
         if (!Array.isArray(contractsIndex)) contractsIndex = [];
         contractsIndex = contractsIndex.filter((item) => item && item.id !== fullContract.id);
-        contractsIndex.push({ id: fullContract.id, clientId: fullContract.clientId, clientName: fullContract.clientName || "계약서 작성 대기", contractType: fullContract.contractType, renewalCount: fullContract.renewalCount, productName: fullContract.productName, startDate: fullContract.startDate, contractMonths: fullContract.contractMonths, fee: fullContract.fee, signerName: fullContract.signerName, updatedAt: fullContract.updatedAt });
+        contractsIndex.push({ id: fullContract.id, clientId: fullContract.clientId, clientName: fullContract.clientName || "계약서 작성 대기", contractType: fullContract.contractType, renewalCount: fullContract.renewalCount, productName: fullContract.productName, startDate: fullContract.startDate, contractMonths: fullContract.contractMonths, fee: fullContract.fee, signerName: fullContract.signerName, submittedAt: fullContract.submittedAt, hasSignature: !!fullContract.signatureDataUrl, updatedAt: fullContract.updatedAt });
         await redis("set", [PREFIX + "contracts-index"], JSON.stringify(contractsIndex));
         return res.status(200).json({ contract: sanitizePublicContractObject(fullContract) });
       }

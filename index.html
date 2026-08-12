@@ -238,6 +238,8 @@
   .signature-box{ border:1.5px dashed var(--line); border-radius:14px; background:#FAFBFC; padding:10px; }
   .signature-canvas{ width:100%; height:160px; display:block; border-radius:10px; background:#fff; touch-action:none; }
   .signature-preview{ max-width:100%; height:90px; object-fit:contain; border:1px solid var(--line); border-radius:10px; background:#fff; margin-top:8px; }
+  .contract-signed-preview{ display:block; width:100%; max-height:150px; object-fit:contain; border:1px solid var(--line); border-radius:14px; background:#fff; padding:10px; margin-top:10px; }
+  .contract-signed-status{ display:inline-flex; align-items:center; gap:6px; color:#0B8F55; background:var(--scale-light); border-radius:999px; padding:6px 10px; font-size:12px; font-weight:800; }
 
   /* report rows in detail */
   .report-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 0; border-bottom:1px solid var(--line); }
@@ -1958,7 +1960,37 @@
     var paymentLabel=contract.paymentMethod==="transfer"?"계좌이체":"카드";
     function row(label,value){ return '<div class="contract-readonly-row"><span class="contract-readonly-label">'+esc(label)+'</span><span class="contract-readonly-value">'+esc(value||"-")+'</span></div>'; }
     if(submitted){
-      return '<div class="public-guide public-contract"><div class="guide-complete"><div class="guide-complete-icon">✓</div><h1>계약서 제출이 완료되었습니다</h1><p class="guide-complete-copy">계약 정보와 서명이 저장되었습니다. 담당자가 확인 후 진행하겠습니다.</p></div></div>';
+      return '<div class="public-guide public-contract"><div class="public-guide-head"><div class="public-guide-brand"><span class="brand-mark"></span>계약 신청서</div><p class="public-guide-kicker">CONTRACT</p><h1>계약서 제출이 완료되었습니다</h1><p class="public-guide-intro">아래 계약 정보와 저장된 서명을 함께 확인할 수 있습니다.</p><span class="contract-signed-status">✓ 서명 저장 완료</span></div>'+
+      '<div class="guide-form">'+
+        '<section class="guide-section"><div class="guide-section-label">01</div><h2>계약 내용</h2>'+
+          '<div class="contract-readonly-card">'+
+            row("업체명",contract.clientName)+
+            row("계약 구분",typeLabel)+
+            row("계약 시작일",contract.startDate)+
+            row("계약 기간",contract.contractMonths ? contract.contractMonths+"개월" : "")+
+          '</div>'+
+        '</section>'+
+        '<section class="guide-section"><div class="guide-section-label">02</div><h2>상품 및 결제</h2>'+
+          '<div class="contract-readonly-card">'+
+            row("상품",productLabel)+
+            row("상품명",contract.productName)+
+            row("공급가",contract.supplyPrice)+
+            row("최종 금액",contract.fee)+
+            row("결제 방식",paymentLabel)+
+          '</div>'+
+          (contract.terms ? '<div class="contract-readonly-terms">'+esc(contract.terms)+'</div>' : '')+
+        '</section>'+
+        '<section class="guide-section"><div class="guide-section-label">03</div><h2>제출 정보 및 서명</h2>'+
+          '<div class="contract-readonly-card">'+
+            row("사업자등록번호",contract.businessNumber)+
+            row("연락처",contract.contact)+
+            row("이메일",contract.email)+
+            row("서명자",contract.signerName)+
+          '</div>'+
+          (contract.signatureDataUrl ? '<img class="contract-signed-preview" alt="저장된 계약 서명" src="'+esc(contract.signatureDataUrl)+'" />' : '<div class="muted" style="margin-top:10px">저장된 서명 이미지가 없습니다.</div>')+
+          (contract.specialTerms ? '<div class="contract-readonly-terms"><strong>특약 사항</strong><br>'+esc(contract.specialTerms)+'</div>' : '')+
+        '</section>'+
+      '</div></div>';
     }
     return '<div class="public-guide public-contract"><div class="public-guide-head"><div class="public-guide-brand"><span class="brand-mark"></span>계약 신청서</div><p class="public-guide-kicker">CONTRACT</p><h1>계약 내용을 확인하고 서명해 주세요</h1><p class="public-guide-intro">계약 조건은 담당자가 먼저 작성했습니다. 내용을 확인한 뒤 필요한 연락 정보와 서명만 남겨주세요.</p></div>'+
       '<div class="guide-form">'+
@@ -2038,7 +2070,7 @@
       var saved=await setS("contract:"+state.currentContract.id,state.currentContract);
       if(!saved){ showToast("계약서 링크 저장에 실패했습니다"); return; }
       var index=(state.contracts||[]).filter(function(c){ return c.id!==state.currentContract.id; });
-      index.push({ id:state.currentContract.id, clientId:state.currentContract.clientId, clientName:state.currentContract.clientName||"계약서 작성 대기", contractType:state.currentContract.contractType, renewalCount:state.currentContract.renewalCount, productName:state.currentContract.productName, startDate:state.currentContract.startDate, contractMonths:state.currentContract.contractMonths, fee:state.currentContract.fee, signerName:state.currentContract.signerName, updatedAt:state.currentContract.updatedAt });
+      index.push({ id:state.currentContract.id, clientId:state.currentContract.clientId, clientName:state.currentContract.clientName||"계약서 작성 대기", contractType:state.currentContract.contractType, renewalCount:state.currentContract.renewalCount, productName:state.currentContract.productName, startDate:state.currentContract.startDate, contractMonths:state.currentContract.contractMonths, fee:state.currentContract.fee, signerName:state.currentContract.signerName, submittedAt:state.currentContract.submittedAt, hasSignature:!!state.currentContract.signatureDataUrl, updatedAt:state.currentContract.updatedAt });
       state.contracts=index;
       await setP("contracts-index",index);
       copyText(location.origin+"/?contract="+encodeURIComponent(state.currentContract.id));
@@ -2133,7 +2165,7 @@
     var clientIndexSaved=await setP("clients-index",clientIndex);
     if(!clientIndexSaved){ showToast("업체 목록 저장에 실패했습니다"); return; }
     var index=(state.contracts||[]).filter(function(c){ return c.id!==contract.id; });
-    index.push({ id:contract.id, clientId:contract.clientId, clientName:contract.clientName, contractType:contract.contractType, renewalCount:contract.renewalCount, productName:contract.productName, startDate:contract.startDate, contractMonths:contract.contractMonths, fee:contract.fee, signerName:contract.signerName, updatedAt:contract.updatedAt });
+    index.push({ id:contract.id, clientId:contract.clientId, clientName:contract.clientName, contractType:contract.contractType, renewalCount:contract.renewalCount, productName:contract.productName, startDate:contract.startDate, contractMonths:contract.contractMonths, fee:contract.fee, signerName:contract.signerName, submittedAt:contract.submittedAt, hasSignature:!!contract.signatureDataUrl, updatedAt:contract.updatedAt });
     state.contracts=index;
     var indexSaved=await setP("contracts-index",index);
     if(!indexSaved){ showToast("계약서 목록 저장에 실패했습니다"); return; }
@@ -2148,7 +2180,8 @@
     var rows=items.length ? items.map(function(contract){
       var pseudo={ contractType:contract.contractType, renewalCount:contract.renewalCount };
       var amount=toNum(contract.fee) ? Number(toNum(contract.fee)).toLocaleString("ko-KR")+"원" : "금액 미입력";
-      return '<div class="contract-card"><h4>'+esc(contract.clientName||client.name||"계약서")+'</h4><div class="contract-meta"><span>'+esc(contractLabel(pseudo))+'</span><span>시작 '+esc(contract.startDate||"미입력")+'</span><span>'+amount+'</span><span>서명자 '+esc(contract.signerName||"미입력")+'</span></div><div class="contract-actions"><button class="btn btn-plain btn-sm" data-open-contract="'+esc(contract.id)+'">원본 열람</button><button class="btn btn-ghost btn-sm" data-open-contract-link="'+esc(contract.id)+'">링크 열람</button><button class="btn btn-ghost btn-sm" data-copy-contract-link="'+esc(contract.id)+'">링크 복사</button></div></div>';
+      var signStatus=(contract.submittedAt||contract.hasSignature||contract.signatureDataUrl)?'<span class="contract-signed-status">✓ 서명 완료</span>':'<span>서명자 '+esc(contract.signerName||"미입력")+'</span>';
+      return '<div class="contract-card"><h4>'+esc(contract.clientName||client.name||"계약서")+'</h4><div class="contract-meta"><span>'+esc(contractLabel(pseudo))+'</span><span>시작 '+esc(contract.startDate||"미입력")+'</span><span>'+amount+'</span>'+signStatus+'</div><div class="contract-actions"><button class="btn btn-plain btn-sm" data-open-contract="'+esc(contract.id)+'">원본 열람</button><button class="btn btn-ghost btn-sm" data-open-contract-link="'+esc(contract.id)+'">링크 열람</button><button class="btn btn-ghost btn-sm" data-copy-contract-link="'+esc(contract.id)+'">링크 복사</button></div></div>';
     }).join("") : '<div class="set-empty"><strong>저장된 계약서가 없습니다</strong><p>계약서 생성 버튼으로 이 업체의 계약서를 남겨보세요.</p></div>';
     return '<div class="panel fade-in"><div class="panel-head"><div><h3 class="panel-title">계약서</h3><p class="panel-hint">작성·서명·저장된 계약서를 업체별로 확인합니다.</p></div><button class="btn btn-primary btn-sm" data-new-client-contract="'+esc(client&&client.id||"")+'">계약서 생성</button></div>'+rows+'</div>';
   }
@@ -2534,9 +2567,10 @@
       state.view="contractForm";
       render();
     }; });
-    app.querySelectorAll("[data-open-contract]").forEach(function(b){ b.onclick=function(){
+    app.querySelectorAll("[data-open-contract]").forEach(function(b){ b.onclick=async function(){
       var id=b.getAttribute("data-open-contract");
-      var contract=(state.contracts||[]).filter(function(item){ return item.id===id; })[0];
+      var contract=await getS("contract:"+id);
+      if(!contract) contract=(state.contracts||[]).filter(function(item){ return item.id===id; })[0];
       if(!contract){ showToast("계약서를 찾을 수 없습니다"); return; }
       state.currentContract=Object.assign(blankContract(),contract);
       state.view="contractForm";
