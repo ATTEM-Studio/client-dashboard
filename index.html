@@ -1782,10 +1782,7 @@
     if(b2) b2.addEventListener("click", createSampleClient);
 
     body.querySelectorAll("[data-open-client]").forEach(function(el){
-      el.addEventListener("click", function(){
-        var target=clients.find(function(item){ return item.id===el.getAttribute("data-open-client"); });
-        if(target) showClientInfoModal(target);
-      });
+      el.addEventListener("click", function(){ openClient(el.getAttribute("data-open-client")); });
     });
   }
 
