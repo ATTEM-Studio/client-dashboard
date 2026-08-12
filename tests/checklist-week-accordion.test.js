@@ -3,6 +3,9 @@ const fs = require('fs');
 const vm = require('vm');
 
 const html = fs.readFileSync('index.html', 'utf8');
+assert.match(html, /today-pending/, 'checklist rows need a pending-day status');
+assert.match(html, /today-done/, 'checklist rows need a completed-day status');
+assert.match(html, /today-missed/, 'checklist rows need an incomplete-day status');
 
 function functionSource(name) {
   const match = html.match(new RegExp(
@@ -16,6 +19,7 @@ function functionSource(name) {
 const sandbox = {
   state: { setCollectionOpen: false, checklistWeeksOpen: { '1': true, closing: true } },
   esc(value) { return String(value == null ? '' : value); },
+  checklistTaskTodayClass() { return ''; },
   checklistSetCollectionPanel() { return '<div class="sets"></div>'; }
 };
 

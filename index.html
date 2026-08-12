@@ -235,6 +235,9 @@
   .day-task span{ flex:1; }
   .check-text{ flex:1; font-size:14px; color:var(--ink-700); }
   .check-row.done .check-text{ color:var(--ink-300); text-decoration:line-through; }
+  .check-row.today-pending{ background:#EEF5FF; border-left:3px solid #3182F6; padding-left:8px; }
+  .check-row.today-done{ background:#ECFDF5; border-left:3px solid #00A86B; padding-left:8px; }
+  .check-row.today-missed{ background:#FFF8E1; border-left:3px solid #F5A623; padding-left:8px; }
   .check-week{ font-size:10.5px; font-weight:800; color:var(--ink-400); background:#F2F4F6; padding:2px 7px; border-radius:6px; flex:none; }
   .check-del{ flex:none; width:26px; height:26px; border:none; background:transparent; color:var(--ink-300); border-radius:7px; font-size:13px; }
   .check-del:hover{ background:var(--stop-light); color:var(--stop); }
@@ -2615,13 +2618,19 @@
     });
     return sections.filter(function(section){ return section.tasks.length; });
   }
+  function checklistTaskTodayClass(cl,t){
+    var today=isoDate(new Date()), current=cycleDayOrdinal(cl,today), day=Number(t.day);
+    if(!current || !dailyPeriod(day)) return '';
+    if(day>current) return 'today-pending';
+    return t.done ? 'today-done' : 'today-missed';
+  }
   function checklistPanel(cl,tasks,done){
     var sections=checklistSections(cl,tasks), firstOpenKey=sections.length?sections[0].key:"";
     var taskHtml=sections.length ? sections.map(function(section){
       var openKey=section.key||"unassigned";
       var configured=state.checklistWeeksOpen&&Object.prototype.hasOwnProperty.call(state.checklistWeeksOpen,openKey);
       var open=configured ? state.checklistWeeksOpen[openKey] : (section.key===firstOpenKey || section.key==="");
-      var rows=open ? '<div class="check-section-body">'+section.tasks.map(function(t){ var label=t.day ? t.day+"일차" : periodLabel(t.week); return '<div class="check-row '+(t.done?"done":"")+'"><button class="check-box '+(t.done?"on":"")+'" data-toggle-work="'+esc(t.id)+'">✓</button><span class="check-week">'+esc(label)+'</span><span class="check-text">'+esc(t.text)+'</span><button class="check-del" data-del-work="'+esc(t.id)+'">×</button></div>'; }).join("")+'</div>' : "";
+      var rows=open ? '<div class="check-section-body">'+section.tasks.map(function(t){ var label=t.day ? t.day+"일차" : periodLabel(t.week); return '<div class="check-row '+(t.done?"done":"")+' '+checklistTaskTodayClass(cl,t)+'"><button class="check-box '+(t.done?"on":"")+'" data-toggle-work="'+esc(t.id)+'">✓</button><span class="check-week">'+esc(label)+'</span><span class="check-text">'+esc(t.text)+'</span><button class="check-del" data-del-work="'+esc(t.id)+'">×</button></div>'; }).join("")+'</div>' : "";
       return '<div class="check-section"><button class="check-section-head" data-toggle-check-section="'+esc(openKey)+'" aria-expanded="'+(open?"true":"false")+'"><span class="check-section-title"><span class="check-section-arrow">›</span>'+esc(section.label)+'</span><span class="check-section-count">'+section.done+' / '+section.tasks.length+' 완료</span></button>'+rows+'</div>';
     }).join("") : '<div class="muted">세트를 적용하거나 업무를 직접 추가하면 실행 목록이 만들어집니다.</div>';
     var toggleLabel=state.setCollectionOpen ? "세트 닫기" : "체크리스트 세트";
