@@ -595,14 +595,10 @@
       return data.reservation || null;
     },
     async mutatePublicGuide(guideId, answers, submitted){
-      var res = await fetch("/api/data", {
+      var res = await fetch("/api/guide?id=" + encodeURIComponent(guideId) + "&action=" + (submitted ? "submit" : "save"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          operation: submitted ? "submit-public-guide" : "save-public-guide",
-          guideId: guideId,
-          answers: answers
-        })
+        body: JSON.stringify({ answers: answers })
       });
       if (!res.ok) {
         var e = await res.json().catch(function(){ return {}; });
@@ -610,6 +606,13 @@
       }
       var data = await res.json();
       return data.guide || null;
+    },
+    async getPublicGuide(guideId){
+      var res = await fetch("/api/guide?id=" + encodeURIComponent(guideId), { headers: authHeaders(), cache: "no-store" });
+      if (res.status === 404) { var missing = new Error("guide not found"); missing.code = "not_found"; throw missing; }
+      if (!res.ok) throw new Error("guide get failed " + res.status);
+      var data = await res.json();
+      return data.value ? JSON.parse(data.value) : (data.guide || null);
     },
     async mutatePublicContract(contractId, contract, submitted){
       var res = await fetch("/api/data", {
@@ -1166,6 +1169,10 @@
   async function delS(k){ try{ return await storageBackend.delete(k,true); }catch(e){ return null; } }
   async function reserveGuideIssue(clientId){ try{ return await storageBackend.reserveGuideIssue(clientId); }catch(e){ console.error(e); return null; } }
   async function mutatePublicGuide(guideId,answers,submitted){ try{ return await storageBackend.mutatePublicGuide(guideId,answers,submitted); }catch(e){ console.error(e); return null; } }
+  async function readPublicGuide(guideId){
+    try{ return {status:"found",value:await storageBackend.getPublicGuide(guideId)}; }
+    catch(e){ return {status:e&&e.code==="not_found"?"missing":"error",error:e}; }
+  }
   async function mutatePublicContract(contractId,contract,submitted){ try{ return await storageBackend.mutatePublicContract(contractId,contract,submitted); }catch(e){ console.error(e); return null; } }
 
   /* ============ public client information guide ============ */
@@ -1390,7 +1397,9 @@
       return "missing";
     }
     app.innerHTML='<div style="padding:60px;text-align:center;color:#8B95A1;">안내문을 불러오는 중…</div>';
-    var result=await readS("guide:"+publicGuideId);
+    var result;
+    try{ result=(typeof storageBackend!=="undefined"&&storageBackend.getPublicGuide) ? {status:"found",value:await storageBackend.getPublicGuide(publicGuideId)} : await readS("guide:"+publicGuideId); }
+    catch(e){ result={status:e&&e.code==="not_found"?"missing":"error",error:e}; }
     var guide=result.status==="found"?result.value:null;
     if(result.status!=="found"||!guide||typeof guide!=="object"||guide.id!==publicGuideId||!guide.answers||typeof guide.answers!=="object"){
       var stateName=result.status==="missing"?"missing":"error";
@@ -2420,7 +2429,9 @@
       await setS("client:"+client.id,Object.assign({},client,{guideId:reservedGuide.id}));
     }
     var guideId=client.guideId;
-    var guideResult=await readS("guide:"+guideId);
+    var guideResult;
+    try{ guideResult=(typeof storageBackend!=="undefined"&&storageBackend.getPublicGuide) ? {status:"found",value:await storageBackend.getPublicGuide(guideId)} : await readS("guide:"+guideId); }
+    catch(e){ guideResult={status:e&&e.code==="not_found"?"missing":"error",error:e}; }
     if(state.currentClient!==client || state.clientTab!=="guide" || client.guideId!==guideId) return;
     if(guideResult.status!=="found"){
       state.currentGuide=null;

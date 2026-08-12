@@ -781,7 +781,7 @@ test('guide reads distinguish confirmed absence from transport and invalid JSON 
   assert.strictEqual(found.value.id, 'guide_ok');
 });
 
-test('browser public guide mutation sends only operation, guide ID, and answers', async () => {
+test('browser public guide mutation uses the dedicated guide endpoint and answers only', async () => {
   const backendMatch = html.match(/(var storageBackend = \{[\s\S]*?\n  \};)(?=\r?\n\r?\n  function forceLogout)/);
   assert.ok(backendMatch, 'storage backend must be independently testable');
   let request;
@@ -803,10 +803,8 @@ test('browser public guide mutation sends only operation, guide ID, and answers'
     await sandbox.storageBackend.mutatePublicGuide('guide_permanent', { goal: 'answer' }, true),
     returnedGuide
   );
-  assert.strictEqual(request.url, '/api/data');
-  assert.deepStrictEqual(JSON.parse(request.options.body), {
-    operation: 'submit-public-guide', guideId: 'guide_permanent', answers: { goal: 'answer' }
-  });
+  assert.strictEqual(request.url, '/api/guide?id=guide_permanent&action=submit');
+  assert.deepStrictEqual(JSON.parse(request.options.body), { answers: { goal: 'answer' } });
 });
 
 test('public guide transport errors render a retry state while invalid IDs render missing', async () => {
@@ -816,7 +814,7 @@ test('public guide transport errors render a retry state while invalid IDs rende
   const sandbox = {
     app: { innerHTML: '' },
     document: { getElementById(id) { return id === 'btn-retry-public-guide' ? retry : null; } },
-    async readS() { return { status: 'error' }; },
+    storageBackend: { async getPublicGuide() { throw new Error('network'); } },
     guideStatus() { return 'draft'; },
     renderGuideComplete() { return 'complete'; },
     mountPublicGuide() {},
