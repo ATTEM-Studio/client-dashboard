@@ -1687,8 +1687,8 @@
     if(!document.getElementById("dash-body")) return;
 
     var active=clients.filter(function(c){ return c.status==="active"; });
-    var newCount=clients.filter(function(c){ return isNewIn(c,mk); }).length;
-    var renewCount=clients.reduce(function(a,c){ return a+renewalsIn(c,mk); },0);
+    var newCount=clients.filter(function(c){ return c.status!=="ended" && c.contractType!=="renewal"; }).length;
+    var renewCount=clients.filter(function(c){ return c.status!=="ended" && c.contractType==="renewal"; }).length;
     var totalCells=0, doneCells=0;
     active.forEach(function(c){ var p=progressOf(c,mk); totalCells+=p.total; doneCells+=p.done; });
     var pct= totalCells? Math.round(doneCells/totalCells*100) : 0;
@@ -1696,8 +1696,8 @@
     var statsHtml=
       '<div class="stats-grid">'+
         '<div class="stat-card" id="stat-managed-clients" style="cursor:pointer"><div class="stat-label">관리 업체</div><div class="stat-value">'+active.length+'<span class="stat-unit">곳</span></div><div class="stat-sub">전체 등록 '+clients.length+'곳</div></div>'+
-        '<div class="stat-card"><div class="stat-label">신규 계약</div><div class="stat-value">'+newCount+'<span class="stat-unit">건</span></div><div class="stat-sub">'+esc(monthLabel(mk))+' 시작</div></div>'+
-        '<div class="stat-card"><div class="stat-label">재계약</div><div class="stat-value">'+renewCount+'<span class="stat-unit">건</span></div><div class="stat-sub">'+esc(monthLabel(mk))+' 갱신</div></div>'+
+        '<div class="stat-card"><div class="stat-label">신규 업체</div><div class="stat-value">'+newCount+'<span class="stat-unit">곳</span></div><div class="stat-sub">현재 신규 계약 기준</div></div>'+ 
+        '<div class="stat-card"><div class="stat-label">재계약 업체</div><div class="stat-value">'+renewCount+'<span class="stat-unit">곳</span></div><div class="stat-sub">현재 재계약 기준</div></div>'+ 
         '<div class="stat-card accent"><div class="stat-label">이번 달 진행률</div><div class="stat-value">'+pct+'<span class="stat-unit">%</span></div>'+
           '<div class="progress-track"><div class="progress-fill" style="width:'+pct+'%"></div></div>'+
           '<div class="stat-sub">'+doneCells+' / '+totalCells+' 주차 완료</div></div>'+
