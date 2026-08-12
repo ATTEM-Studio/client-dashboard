@@ -142,6 +142,15 @@
   .client-info-item{ padding:11px 12px; border:1px solid var(--line); border-radius:10px; background:#FAFBFC; }
   .client-info-label{ display:block; color:var(--ink-400); font-size:11px; margin-bottom:4px; }
   .client-info-value{ display:block; color:var(--ink-700); font-size:13px; font-weight:700; word-break:break-word; }
+  .client-status-table{ display:grid; gap:6px; max-height:420px; overflow:auto; margin:6px 0 18px; }
+  .client-status-row{ display:grid; grid-template-columns:minmax(0,1.4fr) .9fr .9fr .8fr; gap:8px; align-items:center; padding:11px 12px; border:1px solid var(--line); border-radius:10px; background:#fff; font-size:12px; }
+  .client-status-row.season{ background:#FFF7E8; border-color:#F4C36A; }
+  .client-status-row.complete{ background:#ECFDF5; border-color:#6EE7B7; }
+  .client-status-row.overdue{ background:#FFF1F2; border-color:#FDA4AF; }
+  .client-status-row button{ border:0; background:transparent; color:var(--brand-dark); font-weight:800; text-align:left; padding:0; cursor:pointer; }
+  .client-status-head{ color:var(--ink-400); font-size:10.5px; font-weight:700; }
+  .client-status-badge{ font-size:10.5px; font-weight:800; }
+  @media(max-width:560px){ .client-status-row{ grid-template-columns:1.3fr .9fr .9fr; } .client-status-row .client-status-badge{ grid-column:1 / -1; } }
   @media(max-width:520px){ .client-info-grid{ grid-template-columns:1fr; } }
   #renewal-modal{ position:fixed; inset:0; background:rgba(15,23,42,.42); display:none; align-items:center; justify-content:center; padding:20px; z-index:105; }
   #renewal-modal.show{ display:flex; }
@@ -1753,7 +1762,16 @@
       if(activeClients.length===1){ showClientInfoModal(activeClients[0]); return; }
       var layer=document.getElementById("modal-layer"), bodyEl=document.getElementById("modal-body"), confirm=document.getElementById("modal-confirm"), cancel=document.getElementById("modal-cancel");
       document.getElementById("modal-title").textContent="관리 업체";
-      bodyEl.innerHTML='<div class="client-info-grid">'+activeClients.map(function(item){var p=thirtyDayProgress(item.startDate);var progress=p.state==="missing"?"시작일 미입력":(p.state==="upcoming"?"시작 전":p.elapsed+"일 / 30일");return '<button type="button" class="client-info-item" data-stat-client="'+esc(item.id)+'" style="text-align:left;cursor:pointer"><span class="client-info-label">'+esc(contractLabel(item))+'</span><span class="client-info-value">'+esc(item.name)+' · '+esc(progress)+'</span></button>';}).join("")+'</div>';
+      var today=new Date();
+      bodyEl.innerHTML='<div class="client-status-table"><div class="client-status-row client-status-head"><span>업체명</span><span>시작일</span><span>종료일</span><span>상태</span></div>'+activeClients.map(function(item){
+        var end=contractEndKey(item), diff=end?Math.ceil((end-today)/86400000):null;
+        var season=item.contractType!=="renewal"&&diff!==null&&diff<=14&&diff>=0;
+        var overdue=item.contractType!=="renewal"&&diff!==null&&diff<0;
+        var complete=item.contractType==="renewal";
+        var cls=complete?"complete":(overdue?"overdue":(season?"season":""));
+        var label=complete?"재계약 완료":(overdue?"갱신 미진행":(season?"재계약 시즌":"진행 중"));
+        return '<div class="client-status-row '+cls+'"><button type="button" data-stat-client="'+esc(item.id)+'">'+esc(item.name)+'</button><span>'+esc(item.startDate||"-")+'</span><span>'+esc(end?end.toISOString().slice(0,10):"-")+'</span><span class="client-status-badge">'+label+'</span></div>';
+      }).join("")+'</div>';
       layer.classList.add("show","client-info-modal"); confirm.hidden=true; cancel.textContent="닫기"; _confirmCb=null;
       bodyEl.querySelectorAll("[data-stat-client]").forEach(function(btn){btn.onclick=function(){closeModal();openClient(btn.getAttribute("data-stat-client"));};});
     });
