@@ -2333,7 +2333,11 @@
   async function issueGuideForClient(client){
     if(!client || !client.id) return null;
     var storedClient=await getS("client:"+client.id);
-    if(!storedClient) return null;
+    if(!storedClient){
+      storedClient=Object.assign({},client);
+      var recovered=await setS("client:"+client.id,storedClient);
+      if(!recovered) return null;
+    }
     if(storedClient.guideId){
       client.guideId=storedClient.guideId;
       return await getS("guide:"+storedClient.guideId);
