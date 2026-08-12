@@ -3028,12 +3028,15 @@
     return '<div class="row"><input type="text" class="row-input" placeholder="'+esc(ph)+'" value="'+esc(val||"")+'" />'+
       '<button type="button" class="row-remove" data-action="remove-row">✕</button></div>';
   }
+  function coreMetricDefaults(){
+    return ["\uB178\uCD9C\uC218","\uD074\uB9AD\uC218","CTR","CPC","\uCD1D\uAD11\uACE0\uBE44"].map(function(label){return {label:label,value:"",unit:"",compareValue:"",compareLabel:""};});
+  }
   function metricRowTpl(m){
     m=m||{};
     return '<div class="metric-row">'+
       '<input type="text" class="m-label" placeholder="지표명 (예: 노출)" value="'+esc(m.label||"")+'" />'+
       '<input type="text" class="m-value" placeholder="이번 값" value="'+esc(m.value||"")+'" />'+
-      '<input type="text" class="m-unit" placeholder="단위" value="'+esc(m.unit||"")+'" />'+
+      '<input type="hidden" class="m-unit" value="'+esc(m.unit||"")+'" />'+
       '<input type="text" class="m-compare" placeholder="비교 값" value="'+esc(m.compareValue||"")+'" />'+
       '<input type="text" class="m-comparelabel" placeholder="비교 기준" value="'+esc(m.compareLabel||"")+'" />'+
       '<button type="button" class="row-remove" data-action="remove-row">✕</button></div>';
@@ -3055,7 +3058,7 @@
     base=base||{};
     base.type = base.type==="weekly"?"weekly":"monthly";
     var type=base.type;
-    var channels=base.channels&&base.channels.length?base.channels:[{name:"플레이스",metrics:[{},{}]}];
+    var channels=base.channels&&base.channels.length?base.channels:[{name:"플레이스",metrics:coreMetricDefaults()}];
     var names=channels.map(function(c){return c.name;});
     var quick=["플레이스","인스타그램","당근마켓","카카오맵","구글"].filter(function(n){ return names.indexOf(n)===-1; });
     var quickHtml='<div class="channel-quickadd">'+

@@ -3,6 +3,8 @@ const fs = require('fs');
 const vm = require('vm');
 
 const html = fs.readFileSync('index.html', 'utf8');
+assert.match(html, /coreMetricDefaults/, 'reports should provide core metric defaults');
+assert.match(html, /type="hidden" class="m-unit"/, 'report metrics should not require units');
 const match = html.match(/(function parseRevenueWon[\s\S]*?\n  function revenueAxis[\s\S]*?\n  })/);
 assert.ok(match, 'revenue derivation helpers must exist in index.html');
 
