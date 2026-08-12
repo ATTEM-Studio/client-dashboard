@@ -227,6 +227,7 @@ function sanitizePublicGuideValue(value) {
 function parseStoredGuide(value, guideId) {
   try {
     const guide = JSON.parse(value);
+    if (guide.submittedAt === undefined) guide.submittedAt = null;
     if (
       !guide || typeof guide !== "object" || Array.isArray(guide) ||
       guide.id !== guideId || typeof guide.clientId !== "string" ||

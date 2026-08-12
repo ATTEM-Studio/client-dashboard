@@ -25,3 +25,14 @@ test('dedicated guide endpoint maps public reads to the guide data contract', as
     assert.strictEqual(res.body.key, 'guide:guide_abcdefghijklmnopqrstuvwx');
   } finally { global.fetch = previous; }
 });
+
+test('dedicated guide endpoint repairs legacy guides without submittedAt', async () => {
+  const previous = global.fetch;
+  global.fetch = async () => ({ ok: true, async json() { return { result: JSON.stringify({ id: 'guide_abcdefghijklmnopqrstuvwx', clientId: 'client-one', createdAt: 1, updatedAt: 1, answers: {} }) }; } });
+  try {
+    const res = response();
+    await guideApi({ method: 'GET', query: { id: 'guide_abcdefghijklmnopqrstuvwx' }, headers: {} }, res);
+    assert.strictEqual(res.statusCode, 200);
+    assert.match(res.body.value, /"submittedAt":null/);
+  } finally { global.fetch = previous; }
+});
