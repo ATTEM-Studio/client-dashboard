@@ -1258,6 +1258,7 @@
         guide.updatedAt=result.updatedAt;
         guide.submittedAt=result.submittedAt;
         if(typeof result.serviceContext==="string") guide.serviceContext=result.serviceContext;
+        try{ sessionStorage.setItem("guide-draft:"+guide.id,JSON.stringify(guide)); }catch(e){}
         return true;
       }catch(e){
         return false;
@@ -1402,6 +1403,16 @@
     catch(e){ result={status:e&&e.code==="not_found"?"missing":"error",error:e}; }
     var guide=result.status==="found"?result.value:null;
     if(result.status!=="found"||!guide||typeof guide!=="object"||guide.id!==publicGuideId||!guide.answers||typeof guide.answers!=="object"){
+      if(result.status==="error"){
+        try{
+          var cached=JSON.parse(sessionStorage.getItem("guide-draft:"+publicGuideId)||"null");
+          if(cached&&cached.id===publicGuideId&&cached.answers&&typeof cached.answers==="object"){
+            mountPublicGuide(cached);
+            setGuideSaveStatus("failed","연결이 복구되면 서버에 동기화됩니다",function(){ loadPublicGuidePage(publicGuideId); });
+            return "ready";
+          }
+        }catch(e){}
+      }
       var stateName=result.status==="missing"?"missing":"error";
       app.innerHTML=renderPublicGuideUnavailable(stateName);
       if(stateName==="error"){
