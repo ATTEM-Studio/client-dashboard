@@ -6,6 +6,7 @@ const { after, test } = require('node:test');
 const html = fs.readFileSync('index.html', 'utf8');
 assert.match(html, /localStorage\.setItem\("guide-draft:/, 'guide drafts should survive reopening after a failed save');
 assert.match(html, /localStorage\.getItem\("guide-draft:/, 'guide should restore a newer local draft');
+assert.match(html, /이 기기에 임시 저장됨/, 'guide should provide a local-first fallback when the server is unavailable');
 const dataApi = require('../api/data.js');
 const validGuideKey = 'guide:guide_abcdefghijklmnopqrstuvwx';
 const validReviewKey = 'guide-review:guide_abcdefghijklmnopqrstuvwx';
