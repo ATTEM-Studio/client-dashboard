@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>업체 관리 대시보드</title>
+<title>?�체 관�??�?�보??/title>
 <style>
   :root{
     --bg-page:#F2F4F6;
@@ -533,26 +533,26 @@
 <div id="app"></div>
 <div id="toast"></div>
 <div id="modal-layer"><div class="modal">
-  <h3 id="modal-title">확인</h3>
+  <h3 id="modal-title">?�인</h3>
   <p id="modal-body"></p>
   <div class="modal-actions">
     <button class="btn btn-plain" id="modal-cancel">취소</button>
-    <button class="btn btn-danger" id="modal-confirm">삭제</button>
+    <button class="btn btn-danger" id="modal-confirm">??��</button>
   </div>
 </div></div>
 <div id="renewal-modal">
   <div class="modal">
     <div id="renewal-date-step">
-      <h3>재계약 시작일</h3>
-      <p>새 계약은 월요일에 시작합니다.</p>
-      <div class="field"><label for="renewal-start-date">시작일</label><input id="renewal-start-date" type="date" /></div>
-      <div class="modal-actions"><button class="btn btn-plain" id="btn-cancel-renewal">취소</button><button class="btn btn-primary" id="btn-next-renewal">다음</button></div>
+      <h3>?�계???�작??/h3>
+      <p>??계약?� ?�요?�에 ?�작?�니??</p>
+      <div class="field"><label for="renewal-start-date">?�작??/label><input id="renewal-start-date" type="date" /></div>
+      <div class="modal-actions"><button class="btn btn-plain" id="btn-cancel-renewal">취소</button><button class="btn btn-primary" id="btn-next-renewal">?�음</button></div>
     </div>
     <div id="renewal-set-step" hidden>
-      <h3>체크리스트 세트</h3>
-      <p>새 계약에 적용할 체크리스트를 선택하세요.</p>
+      <h3>체크리스???�트</h3>
+      <p>??계약???�용??체크리스?��? ?�택?�세??</p>
       <div id="renewal-set-options"></div>
-      <div class="modal-actions"><button class="btn btn-plain" id="btn-back-renewal">이전</button><button class="btn btn-primary" id="btn-confirm-renewal">재계약 시작</button></div>
+      <div class="modal-actions"><button class="btn btn-plain" id="btn-back-renewal">?�전</button><button class="btn btn-primary" id="btn-confirm-renewal">?�계???�작</button></div>
     </div>
   </div>
 </div>
@@ -561,7 +561,7 @@
 (function(){
   "use strict";
 
-  /* ============ 저장소 (Upstash Redis via /api/data) ============ */
+  /* ============ ?�?�소 (Upstash Redis via /api/data) ============ */
   var AUTH_KEY = "rs:team-token";
   var authToken = null;
   try { authToken = localStorage.getItem(AUTH_KEY); } catch(e) {}
@@ -684,11 +684,11 @@
   function guideSummary(answers){
     var source=answers&&typeof answers==="object"?answers:{};
     return [
-      ["goal","최우선 마케팅 목표"],
-      ["priorityMenu","우선 홍보 메뉴"],
-      ["desiredCustomers","유치하고 싶은 고객"],
-      ["strengths","매장 핵심 강점"],
-      ["story","꼭 알리고 싶은 이야기"]
+      ["goal","최우??마�???목표"],
+      ["priorityMenu","?�선 ?�보 메뉴"],
+      ["desiredCustomers","?�치?�고 ?��? 고객"],
+      ["strengths","매장 ?�심 강점"],
+      ["story","�??�리�??��? ?�야�?]
     ].map(function(field){
       return {label:field[1],value:String(source[field[0]]==null?"":source[field[0]]).trim()};
     }).filter(function(item){return item.value!=="";});
@@ -696,18 +696,18 @@
   function guideFollowUps(answers){
     var source=answers&&typeof answers==="object"?answers:{};
     var fields=[
-      ["concern","현재 매장의 가장 큰 고민"],
-      ["goal","최우선 마케팅 목표"],
-      ["priorityMenu","우선 홍보 메뉴"],
-      ["currentCustomers","현재 주요 고객"],
-      ["desiredCustomers","유치하고 싶은 고객"],
-      ["strengths","매장 핵심 강점"],
-      ["story","꼭 알리고 싶은 이야기"],
-      ["contentTone","원하는 콘텐츠 분위기"],
-      ["avoidExpressions","피하고 싶은 표현"],
-      ["approverName","검수 및 승인 담당자 이름"],
-      ["approverContact","검수 및 승인 담당자 연락 수단"],
-      ["operatingNotes","운영 시 주의사항"]
+      ["concern","?�재 매장??가????고�?"],
+      ["goal","최우??마�???목표"],
+      ["priorityMenu","?�선 ?�보 메뉴"],
+      ["currentCustomers","?�재 주요 고객"],
+      ["desiredCustomers","?�치?�고 ?��? 고객"],
+      ["strengths","매장 ?�심 강점"],
+      ["story","�??�리�??��? ?�야�?],
+      ["contentTone","?�하??콘텐�?분위�?],
+      ["avoidExpressions","?�하�??��? ?�현"],
+      ["approverName","검??�??�인 ?�당???�름"],
+      ["approverContact","검??�??�인 ?�당???�락 ?�단"],
+      ["operatingNotes","?�영 ??주의?�항"]
     ];
     var result=[];
     fields.forEach(function(field){
@@ -715,8 +715,8 @@
     });
     if(Object.prototype.hasOwnProperty.call(source,"materialStatus")){
       var materialStatus=String(source.materialStatus==null?"":source.materialStatus).trim();
-      if(!materialStatus) result.push("보유 사진·영상 자료 상태");
-      else if(materialStatus==="별도 전달 예정") result.push("자료 별도 전달 확인");
+      if(!materialStatus) result.push("보유 ?�진·?�상 ?�료 ?�태");
+      else if(materialStatus==="별도 ?�달 ?�정") result.push("?�료 별도 ?�달 ?�인");
     }
     return result;
   }
@@ -753,7 +753,7 @@
   }
   function validateClientStartDate(client){
     if(client && client.contractType==="new" && !isMondayDate(client.startDate)){
-      return "?좉퇋 怨꾩빟 ?쒖옉?쇱? ?붿슂?쇰쭔 ?좏깮?????덉뒿?덈떎.";
+      return "?좉퇋 ?�꾩�???�옉??? ?붿슂??�쭔 ?좏깮??????�뒿??�떎.";
     }
     return "";
   }
@@ -807,7 +807,7 @@
     return next;
   }
   function monthKey(d){ return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"); }
-  function monthLabel(key){ var p=key.split("-"); return p[0]+"년 "+parseInt(p[1],10)+"월"; }
+  function monthLabel(key){ var p=key.split("-"); return p[0]+"??"+parseInt(p[1],10)+"??; }
   function weeksInMonth(key){
     var p=key.split("-"), y=+p[0], m=+p[1];
     var days=new Date(y,m,0).getDate();
@@ -975,9 +975,9 @@
   function contractLabel(client){
     if(client && client.contractType==="renewal"){
       var count=Number(client.renewalCount);
-      return "재계약 "+(Number.isInteger(count)&&count>0 ? count : 1)+"회차";
+      return "?�계??"+(Number.isInteger(count)&&count>0 ? count : 1)+"?�차";
     }
-    return "신규";
+    return "?�규";
   }
   function calendarPeriodClass(period){
     var value=String(period||"");
@@ -1143,11 +1143,11 @@
   }
   function copyText(text){
     if(navigator.clipboard&&navigator.clipboard.writeText){
-      navigator.clipboard.writeText(text).then(function(){showToast("복사되었습니다");}).catch(fb);
+      navigator.clipboard.writeText(text).then(function(){showToast("복사?�었?�니??);}).catch(fb);
     } else fb();
     function fb(){
       var ta=document.createElement("textarea"); ta.value=text; document.body.appendChild(ta); ta.select();
-      try{ document.execCommand("copy"); showToast("복사되었습니다"); }catch(e){ showToast("복사에 실패했습니다"); }
+      try{ document.execCommand("copy"); showToast("복사?�었?�니??); }catch(e){ showToast("복사???�패?�습?�다"); }
       document.body.removeChild(ta);
     }
   }
@@ -1155,7 +1155,7 @@
   function confirmDialog(title, body, confirmLabel, cb){
     document.getElementById("modal-title").textContent=title;
     document.getElementById("modal-body").textContent=body;
-    document.getElementById("modal-confirm").textContent=confirmLabel||"삭제";
+    document.getElementById("modal-confirm").textContent=confirmLabel||"??��";
     document.getElementById("modal-layer").classList.add("show");
     _confirmCb=cb;
   }
@@ -1170,12 +1170,12 @@
     if(!client) return;
     var layer=document.getElementById("modal-layer"), body=document.getElementById("modal-body"), confirm=document.getElementById("modal-confirm"), cancel=document.getElementById("modal-cancel");
     var progress=thirtyDayProgress(client.startDate);
-    var progressText=progress.state==="missing"?"시작일 미입력":(progress.state==="upcoming"?"시작 전":progress.elapsed+"일 / 30일");
-    var rows=[["계약 구분",contractLabel(client)],["회차",client.contractType==="renewal"?String(client.renewalCount||1)+"회차":"신규"],["진행 사항",progressText],["시작일",client.startDate||"미입력"]];
-    document.getElementById("modal-title").textContent="업체 정보";
-    body.innerHTML='<div class="client-info-grid">'+rows.map(function(row){return '<div class="client-info-item"><span class="client-info-label">'+esc(row[0])+'</span><span class="client-info-value">'+esc(row[1]||"미입력")+'</span></div>';}).join("")+'</div><button type="button" class="btn btn-primary btn-block" id="btn-client-info-open">업체 상세로 이동</button>';
+    var progressText=progress.state==="missing"?"?�작??미입??:(progress.state==="upcoming"?"?�작 ??:progress.elapsed+"??/ 30??);
+    var rows=[["계약 구분",contractLabel(client)],["?�차",client.contractType==="renewal"?String(client.renewalCount||1)+"?�차":"?�규"],["진행 ?�항",progressText],["?�작??,client.startDate||"미입??]];
+    document.getElementById("modal-title").textContent="?�체 ?�보";
+    body.innerHTML='<div class="client-info-grid">'+rows.map(function(row){return '<div class="client-info-item"><span class="client-info-label">'+esc(row[0])+'</span><span class="client-info-value">'+esc(row[1]||"미입??)+'</span></div>';}).join("")+'</div><button type="button" class="btn btn-primary btn-block" id="btn-client-info-open">?�체 ?�세�??�동</button>';
     layer.classList.add("show","client-info-modal");
-    confirm.hidden=true; cancel.textContent="닫기";
+    confirm.hidden=true; cancel.textContent="?�기";
     _confirmCb=null;
     document.getElementById("btn-client-info-open").onclick=function(){ closeModal(); openClient(client.id); };
   }
@@ -1216,11 +1216,11 @@
   function renderPublicGuide(guide){
     var answers=guide&&guide.answers&&typeof guide.answers==="object"?guide.answers:{};
     var currentStatus=guideStatus(guide);
-    var statusLabel=currentStatus==="submitted"?"제출된 답변 · 계속 수정 가능":(currentStatus==="draft"?"임시 저장된 답변":"처음 작성 중");
+    var statusLabel=currentStatus==="submitted"?"?�출???��? · 계속 ?�정 가??:(currentStatus==="draft"?"?�시 ?�?�된 ?��?":"처음 ?�성 �?);
     var serviceContext=guide&&typeof guide.serviceContext==="string"?guide.serviceContext.trim():"";
-    var serviceContextHtml=serviceContext?'<div class="guide-progress-card"><strong>계약 서비스</strong><p class="muted" style="margin-top:6px;">'+esc(serviceContext)+'에 맞춰 참고할 내용을 편하게 알려주세요.</p></div>':"";
+    var serviceContextHtml=serviceContext?'<div class="guide-progress-card"><strong>계약 ?�비??/strong><p class="muted" style="margin-top:6px;">'+esc(serviceContext)+'??맞춰 참고???�용???�하�??�려주세??</p></div>':"";
     function value(name){ return esc(answers[name]||""); }
-    function optional(){ return '<span class="guide-optional">선택</span>'; }
+    function optional(){ return '<span class="guide-optional">?�택</span>'; }
     function textField(name,label,placeholder,autocomplete){
       return '<div class="guide-question"><label for="guide-'+name+'">'+label+optional()+'</label>'+
         '<input type="text" id="guide-'+name+'" data-guide-field="'+name+'" value="'+value(name)+'" placeholder="'+placeholder+'"'+(autocomplete?' autocomplete="'+autocomplete+'"':'')+' /></div>';
@@ -1234,47 +1234,47 @@
     }
     return '<main class="public-guide fade-in">'+
       '<header class="public-guide-head">'+
-        '<div class="public-guide-brand"><span class="brand-mark"></span>함께 만드는 매장 안내</div>'+
+        '<div class="public-guide-brand"><span class="brand-mark"></span>?�께 만드??매장 ?�내</div>'+
         '<p class="public-guide-kicker">CLIENT INFORMATION GUIDE</p>'+
-        '<h1>매장을 더 잘 이해할 수 있도록 알려주세요</h1>'+
-        '<p class="public-guide-intro">편하게 답할 수 있는 내용만 적어주세요. 모든 질문은 선택이며, 입력한 답변은 잠시 후 자동으로 저장됩니다.</p>'+
+        '<h1>매장???????�해?????�도�??�려주세??/h1>'+
+        '<p class="public-guide-intro">?�하�??�할 ???�는 ?�용�??�어주세?? 모든 질문?� ?�택?�며, ?�력???��??� ?�시 ???�동?�로 ?�?�됩?�다.</p>'+
         '<span class="guide-state">'+statusLabel+'</span>'+
       '</header>'+
       serviceContextHtml+
-      '<div class="guide-progress-card" aria-label="작성 진행 상황">'+
-        '<div class="guide-progress-copy"><strong id="guide-progress-title">매장과 목표</strong><span id="guide-progress-count">1 / 3</span></div>'+
+      '<div class="guide-progress-card" aria-label="?�성 진행 ?�황">'+
+        '<div class="guide-progress-copy"><strong id="guide-progress-title">매장�?목표</strong><span id="guide-progress-count">1 / 3</span></div>'+
         '<div class="guide-progress-track"><div class="guide-progress-fill" id="guide-progress-fill" style="width:33.333%"></div></div>'+
       '</div>'+
       '<form class="guide-form" id="public-guide-form">'+
         '<section class="guide-section" data-guide-section="0">'+
-          '<div class="guide-section-label">SECTION 1</div><h2>매장과 목표</h2><p class="guide-section-desc">요즘 가장 신경 쓰이는 일과 우선순위를 알려주세요.</p>'+
-          textArea("concern","현재 매장의 가장 큰 고민","예: 평일 저녁 방문 고객이 줄었어요")+
-          textArea("goal","최우선 마케팅 목표","예: 신메뉴 인지도 높이기, 재방문 늘리기")+
-          textField("priorityMenu","우선 홍보 메뉴","예: 시그니처 파스타")+
+          '<div class="guide-section-label">SECTION 1</div><h2>매장�?목표</h2><p class="guide-section-desc">?�즘 가???�경 ?�이???�과 ?�선?�위�??�려주세??</p>'+
+          textArea("concern","?�재 매장??가????고�?","?? ?�일 ?�??방문 고객??줄었?�요")+
+          textArea("goal","최우??마�???목표","?? ?�메???��????�이�? ?�방�??�리�?)+
+          textField("priorityMenu","?�선 ?�보 메뉴","?? ?�그?�처 ?�스?�")+
         '</section>'+
         '<section class="guide-section" data-guide-section="1" hidden>'+
-          '<div class="guide-section-label">SECTION 2</div><h2>고객과 메시지</h2><p class="guide-section-desc">우리 매장을 누구에게, 어떤 모습으로 소개하면 좋을지 들려주세요.</p>'+
-          textArea("currentCustomers","현재 주요 고객","예: 인근 직장인과 30대 커플")+
-          textArea("desiredCustomers","유치하고 싶은 고객","예: 주말 가족 고객")+
-          textArea("strengths","매장 핵심 강점","예: 매일 직접 만드는 소스와 친절한 응대")+
-          textArea("story","꼭 알리고 싶은 이야기","매장의 시작, 철학, 특별한 에피소드가 있다면 적어주세요")+
-          textField("contentTone","원하는 콘텐츠 분위기","예: 따뜻하고 친근하게")+
-          textArea("avoidExpressions","피하고 싶은 표현","사용하지 않았으면 하는 말이나 이미지가 있다면 적어주세요")+
+          '<div class="guide-section-label">SECTION 2</div><h2>고객�?메시지</h2><p class="guide-section-desc">?�리 매장???�구?�게, ?�떤 모습?�로 ?�개?�면 좋을지 ?�려주세??</p>'+
+          textArea("currentCustomers","?�재 주요 고객","?? ?�근 직장?�과 30?� 커플")+
+          textArea("desiredCustomers","?�치?�고 ?��? 고객","?? 주말 가�?고객")+
+          textArea("strengths","매장 ?�심 강점","?? 매일 직접 만드???�스?� 친절???��?")+
+          textArea("story","�??�리�??��? ?�야�?,"매장???�작, 철학, ?�별???�피?�드가 ?�다�??�어주세??)+
+          textField("contentTone","?�하??콘텐�?분위�?,"?? ?�뜻?�고 친근?�게")+
+          textArea("avoidExpressions","?�하�??��? ?�현","?�용?��? ?�았?�면 ?�는 말이???��?지가 ?�다�??�어주세??)+
         '</section>'+
         '<section class="guide-section" data-guide-section="2" hidden>'+
-          '<div class="guide-section-label">SECTION 3</div><h2>운영과 확인</h2><p class="guide-section-desc">자료 전달과 검수 과정에 필요한 내용을 확인할게요.</p>'+
-          '<fieldset class="guide-question" style="border:0;padding:0;"><legend>보유 사진·영상 자료 상태'+optional()+'</legend><div class="guide-radio-group">'+
-            materialRadio("보유함")+materialRadio("별도 전달 예정")+materialRadio("없음")+
+          '<div class="guide-section-label">SECTION 3</div><h2>?�영�??�인</h2><p class="guide-section-desc">?�료 ?�달�?검??과정???�요???�용???�인?�게??</p>'+
+          '<fieldset class="guide-question" style="border:0;padding:0;"><legend>보유 ?�진·?�상 ?�료 ?�태'+optional()+'</legend><div class="guide-radio-group">'+
+            materialRadio("보유??)+materialRadio("별도 ?�달 ?�정")+materialRadio("?�음")+
           '</div></fieldset>'+
-          textField("approverName","검수 및 승인 담당자 이름","예: 홍길동","name")+
-          textField("approverContact","담당자 연락 수단","예: 010-0000-0000 또는 이메일","tel")+
-          textArea("operatingNotes","운영 시 주의사항","휴무일, 촬영 가능 시간, 사전 확인이 필요한 내용 등을 적어주세요")+
+          textField("approverName","검??�??�인 ?�당???�름","?? ?�길??,"name")+
+          textField("approverContact","?�당???�락 ?�단","?? 010-0000-0000 ?�는 ?�메??,"tel")+
+          textArea("operatingNotes","?�영 ??주의?�항","?�무?? 촬영 가???�간, ?�전 ?�인???�요???�용 ?�을 ?�어주세??)+
         '</section>'+
-        '<div class="guide-save-row" data-state="saved"><span id="guide-save-status" role="status" aria-live="polite">불러온 답변이 저장되어 있습니다.</span><button type="button" class="guide-retry" id="guide-retry-save" hidden>다시 시도</button></div>'+
+        '<div class="guide-save-row" data-state="saved"><span id="guide-save-status" role="status" aria-live="polite">불러???��????�?�되???�습?�다.</span><button type="button" class="guide-retry" id="guide-retry-save" hidden>?�시 ?�도</button></div>'+
         '<div class="guide-actions">'+
-          '<button type="button" class="btn btn-plain" id="guide-prev" hidden>이전</button>'+
-          '<button type="button" class="btn btn-primary" id="guide-next">다음</button>'+
-          '<button type="submit" class="btn btn-primary" id="guide-submit" hidden>제출하기</button>'+
+          '<button type="button" class="btn btn-plain" id="guide-prev" hidden>?�전</button>'+
+          '<button type="button" class="btn btn-primary" id="guide-next">?�음</button>'+
+          '<button type="submit" class="btn btn-primary" id="guide-submit" hidden>?�출?�기</button>'+
         '</div>'+
       '</form>'+
     '</main>';
@@ -1304,11 +1304,11 @@
     var summaryHtml=summary.length?'<div class="guide-complete-summary">'+summary.map(function(item){
       return '<div><strong>'+esc(item.label)+'</strong>'+esc(item.value)+'</div>';
     }).join("")+'</div>':"";
-    var followUpNote=followUps.length?'<p class="guide-complete-note">비워 둔 질문 '+followUps.length+'개는 필요할 때 같은 링크에서 보완할 수 있어요.</p>':"";
-    return '<main class="public-guide fade-in"><div class="public-guide-brand" style="padding-top:8px;"><span class="brand-mark"></span>함께 만드는 매장 안내</div>'+
-      '<section class="guide-complete"><div class="guide-complete-icon">✓</div><h1>답변을 전달했어요</h1>'+
-      '<p class="guide-complete-copy">소중한 내용을 바탕으로 매장을 더 잘 알릴 방법을 준비할게요. 이 같은 링크로 언제든 돌아와 답변을 수정할 수 있습니다.</p>'+
-      summaryHtml+followUpNote+'<button type="button" class="btn btn-ghost btn-block" id="guide-edit-answers">답변 수정하기</button></section></main>';
+    var followUpNote=followUps.length?'<p class="guide-complete-note">비워 ??질문 '+followUps.length+'개는 ?�요????같�? 링크?�서 보완?????�어??</p>':"";
+    return '<main class="public-guide fade-in"><div class="public-guide-brand" style="padding-top:8px;"><span class="brand-mark"></span>?�께 만드??매장 ?�내</div>'+
+      '<section class="guide-complete"><div class="guide-complete-icon">??/div><h1>?��????�달?�어??/h1>'+
+      '<p class="guide-complete-copy">?�중???�용??바탕?�로 매장???????�릴 방법??준비할게요. ??같�? 링크�??�제???�아?� ?��????�정?????�습?�다.</p>'+
+      summaryHtml+followUpNote+'<button type="button" class="btn btn-ghost btn-block" id="guide-edit-answers">?��? ?�정?�기</button></section></main>';
   }
   function setGuideSaveStatus(stateName,message,retryAction){
     var status=document.getElementById("guide-save-status");
@@ -1320,7 +1320,7 @@
     retry.onclick=retryAction||null;
   }
   function syncPublicGuideSection(){
-    var names=["매장과 목표","고객과 메시지","운영과 확인"];
+    var names=["매장�?목표","고객�?메시지","?�영�??�인"];
     app.querySelectorAll("[data-guide-section]").forEach(function(section){
       section.hidden=Number(section.getAttribute("data-guide-section"))!==publicGuideSection;
     });
@@ -1341,20 +1341,20 @@
     clearTimeout(publicGuideSaveTimer);
     if(publicGuideSubmitting){ publicGuideSavePending=true; return; }
     var revision=++publicGuideRevision;
-    setGuideSaveStatus("saving","저장 대기 중…",null);
+    setGuideSaveStatus("saving","?�???��?중�?,null);
     publicGuideSaveTimer=setTimeout(function(){ persistPublicGuideDraft(guide,revision); },500);
   }
   async function persistPublicGuideDraft(guide,revision){
     clearTimeout(publicGuideSaveTimer);
     if(publicGuideSubmitting){ publicGuideSavePending=true; return false; }
     var saveRevision=revision||++publicGuideRevision;
-    setGuideSaveStatus("saving","저장 중…",null);
+    setGuideSaveStatus("saving","?�??중�?,null);
     var saved=await savePublicGuide(guide,false);
     if(saveRevision!==publicGuideRevision) return saved;
     if(saved){
-      setGuideSaveStatus("saved","저장되었습니다",null);
+      setGuideSaveStatus("saved","?�?�되?�습?�다",null);
     }else{
-      setGuideSaveStatus("failed","저장에 실패했습니다",function(){ persistPublicGuideDraft(guide,++publicGuideRevision); });
+      setGuideSaveStatus("failed","?�?�에 ?�패?�습?�다",function(){ persistPublicGuideDraft(guide,++publicGuideRevision); });
     }
     return saved;
   }
@@ -1365,9 +1365,9 @@
     publicGuideSubmitting=true;
     publicGuideSavePending=false;
     var submit=document.getElementById("guide-submit");
-    if(submit){ submit.disabled=true; submit.textContent="제출 중…"; }
+    if(submit){ submit.disabled=true; submit.textContent="?�출 중�?; }
     app.querySelectorAll("[data-guide-field],#guide-prev,#guide-next").forEach(function(control){ control.disabled=true; });
-    setGuideSaveStatus("saving","제출 내용을 저장 중…",null);
+    setGuideSaveStatus("saving","?�출 ?�용???�??중�?,null);
     var saved=await savePublicGuide(guide,true);
     while(saved&&publicGuideSavePending){
       publicGuideSavePending=false;
@@ -1375,9 +1375,9 @@
     }
     publicGuideSubmitting=false;
     if(!saved){
-      if(submit){ submit.disabled=false; submit.textContent="제출하기"; }
+      if(submit){ submit.disabled=false; submit.textContent="?�출?�기"; }
       app.querySelectorAll("[data-guide-field],#guide-prev,#guide-next").forEach(function(control){ control.disabled=false; });
-      setGuideSaveStatus("failed","저장에 실패했습니다",function(){ submitPublicGuide(guide); });
+      setGuideSaveStatus("failed","?�?�에 ?�패?�습?�다",function(){ submitPublicGuide(guide); });
       return;
     }
     app.innerHTML=renderGuideComplete(guide);
@@ -1416,18 +1416,18 @@
   function renderPublicGuideUnavailable(stateName){
     if(stateName==="missing"){
       return '<main class="public-guide fade-in"><div class="empty-state" style="margin-top:60px;">'+
-        '<div class="es-title">찾을 수 없는 안내문입니다</div><div class="es-sub">주소를 다시 확인하거나 안내문을 전달한 담당자에게 문의해 주세요.</div></div></main>';
+        '<div class="es-title">찾을 ???�는 ?�내문입?�다</div><div class="es-sub">주소�??�시 ?�인?�거???�내문을 ?�달???�당?�에�?문의??주세??</div></div></main>';
     }
     return '<main class="public-guide fade-in"><div class="empty-state" style="margin-top:60px;">'+
-      '<div class="es-title">안내문을 불러오지 못했습니다</div><div class="es-sub">연결 상태를 확인한 뒤 다시 시도해 주세요.</div>'+
-      '<button class="btn btn-ghost btn-sm" id="btn-retry-public-guide">다시 시도</button></div></main>';
+      '<div class="es-title">?�내문을 불러?��? 못했?�니??/div><div class="es-sub">?�결 ?�태�??�인?????�시 ?�도??주세??</div>'+
+      '<button class="btn btn-ghost btn-sm" id="btn-retry-public-guide">?�시 ?�도</button></div></main>';
   }
   async function loadPublicGuidePage(publicGuideId){
     if(!/^guide_[A-Za-z0-9_-]{24,}$/.test(publicGuideId||"")){
       app.innerHTML=renderPublicGuideUnavailable("missing");
       return "missing";
     }
-    app.innerHTML='<div style="padding:60px;text-align:center;color:#8B95A1;">안내문을 불러오는 중…</div>';
+    app.innerHTML='<div style="padding:60px;text-align:center;color:#8B95A1;">?�내문을 불러?�는 중�?/div>';
     var result;
     try{ result=(typeof storageBackend!=="undefined"&&storageBackend.getPublicGuide) ? {status:"found",value:await storageBackend.getPublicGuide(publicGuideId)} : await readS("guide:"+publicGuideId); }
     catch(e){ result={status:e&&e.code==="not_found"?"missing":"error",error:e}; }
@@ -1438,7 +1438,7 @@
           var cached=JSON.parse(sessionStorage.getItem("guide-draft:"+publicGuideId)||"null");
           if(cached&&cached.id===publicGuideId&&cached.answers&&typeof cached.answers==="object"){
             mountPublicGuide(cached);
-            setGuideSaveStatus("failed","연결이 복구되면 서버에 동기화됩니다",function(){ loadPublicGuidePage(publicGuideId); });
+            setGuideSaveStatus("failed","?�결??복구?�면 ?�버???�기?�됩?�다",function(){ loadPublicGuidePage(publicGuideId); });
             return "ready";
           }
         }catch(e){}
@@ -1492,7 +1492,7 @@
   /* ============ init ============ */
   async function init(){
     var params = new URLSearchParams(location.search);
-    // 고객 안내문(?guide=ID)은 팀 로그인보다 먼저 불러오며 해당 안내문 데이터만 사용한다.
+    // 고객 ?�내�??guide=ID)?� ?� 로그?�보??먼�? 불러?�며 ?�당 ?�내�??�이?�만 ?�용?�다.
     var publicGuideId=params.get("guide");
     if(params.has("guide")){
       await loadPublicGuidePage(publicGuideId);
@@ -1504,17 +1504,16 @@
       return;
     }
 
-    // 공유 링크(?report=ID)로 접속한 경우 — 로그인 없이 열람만
-    var sharedId = params.get("report");
+    // 공유 링크(?report=ID)�??�속??경우 ??로그???�이 ?�람�?    var sharedId = params.get("report");
     var sharedId = params.get("report");
     if (sharedId) {
       state.readOnly = true;
-      app.innerHTML = '<div style="padding:60px;text-align:center;color:#8B95A1;">리포트를 불러오는 중…</div>';
+      app.innerHTML = '<div style="padding:60px;text-align:center;color:#8B95A1;">리포?��? 불러?�는 중�?/div>';
       var rep = await getS("report:" + sharedId);
       if (!rep) {
         app.innerHTML = '<div class="empty-state" style="margin-top:60px;">'+
-          '<div class="es-title">리포트를 찾을 수 없습니다</div>'+
-          '<div class="es-sub">링크가 만료되었거나 삭제된 리포트일 수 있습니다.</div></div>';
+          '<div class="es-title">리포?��? 찾을 ???�습?�다</div>'+
+          '<div class="es-sub">링크가 만료?�었거나 ??��??리포?�일 ???�습?�다.</div></div>';
         return;
       }
       rep.type = rep.type === "weekly" ? "weekly" : "monthly";
@@ -1527,7 +1526,7 @@
   }
 
   async function loadWorkspace(){
-    app.innerHTML = '<div style="padding:60px;text-align:center;color:#8B95A1;">불러오는 중…</div>';
+    app.innerHTML = '<div style="padding:60px;text-align:center;color:#8B95A1;">불러?�는 중�?/div>';
     var c = await getP("clients-index"); state.clients = Array.isArray(c) ? c : [];
     var r = await getP("reports-index"); state.reports = Array.isArray(r) ? r : [];
     var contracts = await getP("contracts-index"); state.contracts = Array.isArray(contracts) ? contracts : [];
@@ -1542,13 +1541,13 @@
     app.innerHTML =
       '<div style="max-width:380px;margin:12vh auto 0;">'+
         '<div class="brand" style="justify-content:center;margin-bottom:22px;">'+
-          '<span class="brand-mark"></span>업체 관리 대시보드</div>'+
+          '<span class="brand-mark"></span>?�체 관�??�?�보??/div>'+
         '<div class="panel">'+
-          '<h3 class="panel-title" style="margin-bottom:6px;">팀 비밀번호를 입력하십시오</h3>'+
-          '<p class="panel-hint">등록된 업체와 리포트는 팀원 모두가 함께 조회합니다.</p>'+
-          '<div class="field"><input type="password" id="login-pw" placeholder="비밀번호" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:12px 13px;font-size:14px;background:#FAFBFC;" /></div>'+
+          '<h3 class="panel-title" style="margin-bottom:6px;">?� 비�?번호�??�력?�십?�오</h3>'+
+          '<p class="panel-hint">?�록???�체?� 리포?�는 ?�??모두가 ?�께 조회?�니??</p>'+
+          '<div class="field"><input type="password" id="login-pw" placeholder="비�?번호" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:12px 13px;font-size:14px;background:#FAFBFC;" /></div>'+
           '<div id="login-error" class="muted" style="color:var(--stop);display:none;margin-bottom:10px;font-size:13px;"></div>'+
-          '<button class="btn btn-primary btn-block" id="btn-login">들어가기</button>'+
+          '<button class="btn btn-primary btn-block" id="btn-login">?�어가�?/button>'+
         '</div>'+
       '</div>';
 
@@ -1561,8 +1560,8 @@
       var btn = document.getElementById("btn-login");
       var errBox = document.getElementById("login-error");
       var val = pw.value;
-      if (!val) { showToast("비밀번호를 입력하십시오"); return; }
-      btn.disabled = true; btn.textContent = "확인 중…";
+      if (!val) { showToast("비�?번호�??�력?�십?�오"); return; }
+      btn.disabled = true; btn.textContent = "?�인 중�?;
       errBox.style.display = "none";
       try {
         var res = await fetch("/api/auth", {
@@ -1572,31 +1571,31 @@
         });
         var data = await res.json().catch(function(){ return {}; });
         if (!res.ok) {
-          errBox.textContent = data.error || "비밀번호가 올바르지 않습니다";
+          errBox.textContent = data.error || "비�?번호가 ?�바르�? ?�습?�다";
           errBox.style.display = "block";
-          btn.disabled = false; btn.textContent = "들어가기";
+          btn.disabled = false; btn.textContent = "?�어가�?;
           return;
         }
         if (!data.redisConfigured) {
-          errBox.textContent = "Redis가 연결되지 않았습니다. Vercel에서 Upstash Redis를 연결해 주세요.";
+          errBox.textContent = "Redis가 ?�결?��? ?�았?�니?? Vercel?�서 Upstash Redis�??�결??주세??";
           errBox.style.display = "block";
-          btn.disabled = false; btn.textContent = "들어가기";
+          btn.disabled = false; btn.textContent = "?�어가�?;
           return;
         }
         authToken = data.token;
         try { localStorage.setItem(AUTH_KEY, authToken); } catch(e) {}
         await loadWorkspace();
       } catch(e) {
-        errBox.textContent = "접속에 실패했습니다. 잠시 후 다시 시도해 주세요.";
+        errBox.textContent = "?�속???�패?�습?�다. ?�시 ???�시 ?�도??주세??";
         errBox.style.display = "block";
-        btn.disabled = false; btn.textContent = "들어가기";
+        btn.disabled = false; btn.textContent = "?�어가�?;
       }
     }
   }
 
   function render(){
     syncChecklistSetEditor();
-    if(state.view==="loading"){ app.innerHTML='<div style="padding:60px;text-align:center;color:#8B95A1;">불러오는 중…</div>'; return; }
+    if(state.view==="loading"){ app.innerHTML='<div style="padding:60px;text-align:center;color:#8B95A1;">불러?�는 중�?/div>'; return; }
     if(state.view==="dashboard") return renderDashboard();
     if(state.view==="clientForm") return renderClientForm(state.editingClient);
     if(state.view==="clientDetail") return renderClientDetail(state.currentClient);
@@ -1647,20 +1646,20 @@
   function renderDashboard(){
     app.innerHTML=
       '<div class="topbar">'+
-        '<div class="brand"><span class="brand-mark"></span>업체 관리 대시보드</div>'+
-        '<div class="top-actions"><button class="btn btn-primary" id="btn-new-client">+ 업체 등록</button></div>'+
+        '<div class="brand"><span class="brand-mark"></span>?�체 관�??�?�보??/div>'+
+        '<div class="top-actions"><button class="btn btn-primary" id="btn-new-client">+ ?�체 ?�록</button></div>'+
       '</div>'+
       '<div class="hero">'+
-        '<p class="eyebrow">'+esc(monthLabel(state.month))+' 기준</p>'+
-        '<h1>이번 달 어디까지 진행됐는지 한눈에</h1>'+
+        '<p class="eyebrow">'+esc(monthLabel(state.month))+' 기�?</p>'+
+        '<h1>?�번 ???�디까�? 진행?�는지 ?�눈??/h1>'+
       '</div>'+
       '<div class="monthbar">'+
-        '<button class="mb-arrow" data-month-shift="-1">‹</button>'+
+        '<button class="mb-arrow" data-month-shift="-1">??/button>'+
         '<span class="mb-label">'+esc(monthLabel(state.month))+'</span>'+
-        '<button class="mb-arrow" data-month-shift="1">›</button>'+
-        '<button class="btn btn-plain btn-sm mb-today" id="btn-this-month">이번 달</button>'+
+        '<button class="mb-arrow" data-month-shift="1">??/button>'+
+        '<button class="btn btn-plain btn-sm mb-today" id="btn-this-month">?�번 ??/button>'+
       '</div>'+
-      '<div id="dash-body"><div class="muted" style="padding:30px 0;text-align:center;">불러오는 중…</div></div>';
+      '<div id="dash-body"><div class="muted" style="padding:30px 0;text-align:center;">불러?�는 중�?/div></div>';
 
     document.getElementById("btn-new-client").addEventListener("click", function(){
       state.editingClient=null; state.view="clientForm"; render();
@@ -1695,23 +1694,23 @@
 
     var statsHtml=
       '<div class="stats-grid">'+
-        '<div class="stat-card" id="stat-managed-clients" style="cursor:pointer"><div class="stat-label">관리 업체</div><div class="stat-value">'+active.length+'<span class="stat-unit">곳</span></div><div class="stat-sub">전체 등록 '+clients.length+'곳</div></div>'+
-        '<div class="stat-card"><div class="stat-label">신규 업체</div><div class="stat-value">'+newCount+'<span class="stat-unit">곳</span></div><div class="stat-sub">현재 신규 계약 기준</div></div>'+ 
-        '<div class="stat-card"><div class="stat-label">재계약 업체</div><div class="stat-value">'+renewCount+'<span class="stat-unit">곳</span></div><div class="stat-sub">현재 재계약 기준</div></div>'+ 
-        '<div class="stat-card accent"><div class="stat-label">이번 달 진행률</div><div class="stat-value">'+pct+'<span class="stat-unit">%</span></div>'+
+        '<div class="stat-card" id="stat-managed-clients" style="cursor:pointer"><div class="stat-label">관�??�체</div><div class="stat-value">'+active.length+'<span class="stat-unit">�?/span></div><div class="stat-sub">?�체 ?�록 '+clients.length+'�?/div></div>'+
+        '<div class="stat-card"><div class="stat-label">?�규 ?�체</div><div class="stat-value">'+newCount+'<span class="stat-unit">�?/span></div><div class="stat-sub">?�재 ?�규 계약 기�?</div></div>'+
+        '<div class="stat-card"><div class="stat-label">?�계???�체</div><div class="stat-value">'+renewCount+'<span class="stat-unit">�?/span></div><div class="stat-sub">?�재 ?�계??기�?</div></div>'+
+        '<div class="stat-card accent"><div class="stat-label">?�번 ??진행�?/div><div class="stat-value">'+pct+'<span class="stat-unit">%</span></div>'+
           '<div class="progress-track"><div class="progress-fill" style="width:'+pct+'%"></div></div>'+
-          '<div class="stat-sub">'+doneCells+' / '+totalCells+' 주차 완료</div></div>'+
+          '<div class="stat-sub">'+doneCells+' / '+totalCells+' 주차 ?�료</div></div>'+
       '</div>';
 
     var listHtml;
     if(clients.length===0){
       listHtml=
         '<div class="empty-state">'+
-          '<div class="es-title">등록된 업체가 없습니다</div>'+
-          '<div class="es-sub">대행을 맡게 된 업체를 등록하면 주차별 진행 상황과 리포트를 관리할 수 있습니다.</div>'+
+          '<div class="es-title">?�록???�체가 ?�습?�다</div>'+
+          '<div class="es-sub">?�?�을 맡게 ???�체�??�록?�면 주차�?진행 ?�황�?리포?��? 관리할 ???�습?�다.</div>'+
           '<div class="es-actions">'+
-            '<button class="btn btn-primary" id="btn-empty-client">업체 등록</button>'+
-            '<button class="btn btn-plain" id="btn-sample-client">예시 업체 불러오기</button>'+
+            '<button class="btn btn-primary" id="btn-empty-client">?�체 ?�록</button>'+
+            '<button class="btn btn-plain" id="btn-sample-client">?�시 ?�체 불러?�기</button>'+
           '</div>'+
         '</div>';
     } else {
@@ -1721,37 +1720,37 @@
       }).map(function(c){
         var day=thirtyDayProgress(c.startDate);
         var gauge=day.state==="missing"
-          ? '<p class="panel-hint" style="margin:12px 0 0;">시작일을 등록해 주세요.</p>'
+          ? '<p class="panel-hint" style="margin:12px 0 0;">?�작?�을 ?�록??주세??</p>'
           : '<div class="day-progress">'+
               '<div class="day-progress-copy"><strong>'+
-                (day.state==="upcoming"?"시작 전":day.week+"주차 · "+day.elapsed+"일 / 30일")+
-              '</strong><span>'+(day.state==="complete"?"30일 완료":day.remaining+"일 남음")+'</span></div>'+
+                (day.state==="upcoming"?"?�작 ??:day.week+"주차 · "+day.elapsed+"??/ 30??)+
+              '</strong><span>'+(day.state==="complete"?"30???�료":day.remaining+"???�음")+'</span></div>'+
               '<div class="day-progress-track"><div class="day-progress-fill" style="width:'+day.percent+'%"></div></div>'+
-              '<div class="day-progress-weeks"><span>1주차<small>1일–7일</small></span><span>2주차<small>8일–14일</small></span><span>3주차<small>15일–21일</small></span><span>4주차<small>22일–28일</small></span><span>5주차<small>29일–30일</small></span></div>'+
+              '<div class="day-progress-weeks"><span>1주차<small>1?��???/small></span><span>2주차<small>8?��?4??/small></span><span>3주차<small>15?��?1??/small></span><span>4주차<small>22?��?8??/small></span><span>5주차<small>29?��?0??/small></span></div>'+
             '</div>';
         var tags='<span class="tag '+(c.contractType==="renewal"?'tag-renew':'tag-new')+'">'+esc(contractLabel(c))+'</span>';
-        if(c.status==="paused") tags+='<span class="tag tag-paused">일시중지</span>';
+        if(c.status==="paused") tags+='<span class="tag tag-paused">?�시중�?</span>';
         if(c.status==="ended") tags+='<span class="tag tag-ended">종료</span>';
         var end=contractEndKey(c);
         if(c.status==="active" && end){
           var diff=Math.round((end-new Date())/86400000);
-          if(diff>=0 && diff<=30) tags+='<span class="tag tag-soon">만료 '+diff+'일</span>';
+          if(diff>=0 && diff<=30) tags+='<span class="tag tag-soon">만료 '+diff+'??/span>';
         }
         var meta=[];
         if(c.industry) meta.push(esc(c.industry));
-        if(c.startDate) meta.push("시작 "+esc(c.startDate));
+        if(c.startDate) meta.push("?�작 "+esc(c.startDate));
         if(end) meta.push("만료 "+end.getFullYear()+"."+String(end.getMonth()+1).padStart(2,"0"));
         return '<div class="client-card">'+
           '<div class="cc-top" data-open-client="'+esc(c.id)+'" style="cursor:pointer;">'+
             '<div><div class="cc-name">'+esc(c.name)+tags+'</div>'+
             '<div class="cc-meta">'+meta.join(" · ")+'</div></div>'+
-            '<span class="cc-arrow">›</span>'+
+            '<span class="cc-arrow">??/span>'+
           '</div>'+
           gauge+
         '</div>';
       }).join("");
-      listHtml='<div class="sec-head"><h2>업체별 진행 현황</h2><span class="count">'+clients.length+'곳</span></div>'+listHtml+
-        '<p class="panel-hint" style="margin-top:10px;">진행 게이지는 업체 시작일을 기준으로 30일까지 자동으로 채워집니다.</p>';
+      listHtml='<div class="sec-head"><h2>?�체�?진행 ?�황</h2><span class="count">'+clients.length+'�?/span></div>'+listHtml+
+        '<p class="panel-hint" style="margin-top:10px;">진행 게이지???�체 ?�작?�을 기�??�로 30?�까지 ?�동?�로 채워집니??</p>';
     }
 
     body.innerHTML=statsHtml+listHtml;
@@ -1761,18 +1760,18 @@
       var activeClients=clients.filter(function(item){return item.status!=="ended";});
       if(activeClients.length===1){ showClientInfoModal(activeClients[0]); return; }
       var layer=document.getElementById("modal-layer"), bodyEl=document.getElementById("modal-body"), confirm=document.getElementById("modal-confirm"), cancel=document.getElementById("modal-cancel");
-      document.getElementById("modal-title").textContent="관리 업체";
+      document.getElementById("modal-title").textContent="관�??�체";
       var today=new Date();
-      bodyEl.innerHTML='<div class="client-status-table"><div class="client-status-row client-status-head"><span>업체명</span><span>시작일</span><span>종료일</span><span>상태</span></div>'+activeClients.map(function(item){
+      bodyEl.innerHTML='<div class="client-status-table"><div class="client-status-row client-status-head"><span>?�체�?/span><span>?�작??/span><span>종료??/span><span>?�태</span></div>'+activeClients.map(function(item){
         var end=contractEndKey(item), diff=end?Math.ceil((end-today)/86400000):null;
         var season=item.contractType!=="renewal"&&diff!==null&&diff<=14&&diff>=0;
         var overdue=item.contractType!=="renewal"&&diff!==null&&diff<0;
         var complete=item.contractType==="renewal";
         var cls=complete?"complete":(overdue?"overdue":(season?"season":""));
-        var label=complete?"재계약 완료":(overdue?"갱신 미진행":(season?"재계약 시즌":"진행 중"));
+        var label=complete?"?�계???�료":(overdue?"갱신 미진??:(season?"?�계???�즌":"진행 �?));
         return '<div class="client-status-row '+cls+'"><button type="button" data-stat-client="'+esc(item.id)+'">'+esc(item.name)+'</button><span>'+esc(item.startDate||"-")+'</span><span>'+esc(end?end.toISOString().slice(0,10):"-")+'</span><span class="client-status-badge">'+label+'</span></div>';
       }).join("")+'</div>';
-      layer.classList.add("show","client-info-modal"); confirm.hidden=true; cancel.textContent="닫기"; _confirmCb=null;
+      layer.classList.add("show","client-info-modal"); confirm.hidden=true; cancel.textContent="?�기"; _confirmCb=null;
       bodyEl.querySelectorAll("[data-stat-client]").forEach(function(btn){btn.onclick=function(){closeModal();openClient(btn.getAttribute("data-stat-client"));};});
     });
 
@@ -1788,7 +1787,7 @@
 
   async function cycleWeek(clientId, week){
     var cl=await getS("client:"+clientId);
-    if(!cl){ showToast("업체 정보를 불러오지 못했습니다"); return; }
+    if(!cl){ showToast("?�체 ?�보�?불러?��? 못했?�니??); return; }
     cl.progress=cl.progress||{};
     cl.progress[state.month]=cl.progress[state.month]||{};
     var cur=cl.progress[state.month][week]||"none";
@@ -1804,24 +1803,24 @@
     var cl=blankClient();
     var now=new Date();
     cl.id=uid("cl");
-    cl.name="OO뷰티 강남점";
+    cl.name="OO뷰티 강남??;
     cl.industry="뷰티/미용";
-    cl.manager="김담당";
+    cl.manager="김?�당";
     cl.contractType="new";
     cl.startDate=now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0")+"-01";
     cl.contractMonths="6";
     cl.fee="800000";
     cl.checklist=[
-      { id:uid("ck"), text:"플레이스 소재 3종 교체", done:true, week:"1" },
-      { id:uid("ck"), text:"키워드 순위 점검", done:false, week:"2" },
-      { id:uid("ck"), text:"월간 리포트 발송", done:false, week:"4" }
+      { id:uid("ck"), text:"?�레?�스 ?�재 3�?교체", done:true, week:"1" },
+      { id:uid("ck"), text:"?�워???�위 ?��?", done:false, week:"2" },
+      { id:uid("ck"), text:"?�간 리포??발송", done:false, week:"4" }
     ];
     cl.progress={}; cl.progress[monthKey(now)]={ 1:"done", 2:"doing" };
     cl.createdAt=Date.now(); cl.updatedAt=Date.now();
     await setS("client:"+cl.id, cl);
     state.clients.push({ id:cl.id, name:cl.name, contractType:cl.contractType, renewalCount:cl.renewalCount, startDate:cl.startDate, status:cl.status, updatedAt:cl.updatedAt });
     await setP("clients-index", state.clients);
-    showToast("예시 업체가 등록되었습니다");
+    showToast("?�시 ?�체가 ?�록?�었?�니??);
     render();
   }
 
@@ -1832,52 +1831,52 @@
     var c=base||blankClient();
     app.innerHTML=
       '<div class="topbar">'+
-        '<div class="brand"><span class="brand-mark"></span>업체 관리 대시보드</div>'+
-        '<button class="btn btn-text" id="btn-back">← 돌아가기</button>'+
+        '<div class="brand"><span class="brand-mark"></span>?�체 관�??�?�보??/div>'+
+        '<button class="btn btn-text" id="btn-back">???�아가�?/button>'+
       '</div>'+
       '<div class="form-card fade-in">'+
         '<div class="fsection">'+
           '<div class="fsec-num">01</div>'+
-          '<h3 class="fsec-title">'+(isEdit?"업체 정보 수정":"업체 등록")+'</h3>'+
-          '<p class="fsec-hint">대행을 맡게 된 업체의 기본 정보를 입력하십시오.</p>'+
+          '<h3 class="fsec-title">'+(isEdit?"?�체 ?�보 ?�정":"?�체 ?�록")+'</h3>'+
+          '<p class="fsec-hint">?�?�을 맡게 ???�체??기본 ?�보�??�력?�십?�오.</p>'+
           '<div class="two-col">'+
-            '<div class="field"><label>업체명 *</label><input type="text" id="c-name" placeholder="예: OO뷰티 강남점" value="'+esc(c.name)+'" /></div>'+
-            '<div class="field"><label>업종</label><input type="text" id="c-industry" placeholder="예: 뷰티/미용" value="'+esc(c.industry)+'" /></div>'+
+            '<div class="field"><label>?�체�?*</label><input type="text" id="c-name" placeholder="?? OO뷰티 강남?? value="'+esc(c.name)+'" /></div>'+
+            '<div class="field"><label>?�종</label><input type="text" id="c-industry" placeholder="?? 뷰티/미용" value="'+esc(c.industry)+'" /></div>'+
           '</div>'+
           '<div class="two-col">'+
-            '<div class="field"><label>담당자</label><input type="text" id="c-manager" placeholder="예: 김담당" value="'+esc(c.manager)+'" /></div>'+
-            '<div class="field"><label>월 광고비 / 대행료 (원)</label><input type="text" id="c-fee" placeholder="예: 800000" value="'+esc(c.fee)+'" /></div>'+
+            '<div class="field"><label>?�당??/label><input type="text" id="c-manager" placeholder="?? 김?�당" value="'+esc(c.manager)+'" /></div>'+
+            '<div class="field"><label>??광고�?/ ?�?�료 (??</label><input type="text" id="c-fee" placeholder="?? 800000" value="'+esc(c.fee)+'" /></div>'+
           '</div>'+
         '</div>'+
         '<div class="fsection">'+
           '<div class="fsec-num">02</div>'+
-          '<h3 class="fsec-title">계약 정보</h3>'+
-          '<p class="fsec-hint">계약 구분과 시작일을 입력하면 신규·재계약 현황에 반영됩니다.</p>'+
+          '<h3 class="fsec-title">계약 ?�보</h3>'+
+          '<p class="fsec-hint">계약 구분�??�작?�을 ?�력?�면 ?�규·?�계???�황??반영?�니??</p>'+
           '<div class="field"><label>계약 구분</label>'+
             '<div class="seg" id="seg-contract">'+
-              '<button type="button" data-contract="new" class="'+(c.contractType==="new"?"active":"")+'">신규</button>'+
-              '<button type="button" data-contract="renewal" class="'+(c.contractType==="renewal"?"active":"")+'">재계약</button>'+
+              '<button type="button" data-contract="new" class="'+(c.contractType==="new"?"active":"")+'">?�규</button>'+
+              '<button type="button" data-contract="renewal" class="'+(c.contractType==="renewal"?"active":"")+'">?�계??/button>'+
             '</div>'+
           '</div>'+
-          '<div class="field" id="renewal-count-field" style="'+(c.contractType==="renewal"?"":"display:none")+'"><label>재계약 회차</label><input type="number" id="c-renewal-count" min="1" step="1" value="'+esc(c.renewalCount||1)+'" /><p class="field-hint">잘못 누른 재계약 회차는 여기서 직접 보정할 수 있습니다. 기존 체크리스트·리포트·매출 기록은 유지됩니다.</p></div>'+
+          '<div class="field" id="renewal-count-field" style="'+(c.contractType==="renewal"?"":"display:none")+'"><label>?�계???�차</label><input type="number" id="c-renewal-count" min="1" step="1" value="'+esc(c.renewalCount||1)+'" /><p class="field-hint">?�못 ?�른 ?�계???�차???�기??직접 보정?????�습?�다. 기존 체크리스?�·리?�트·매출 기록?� ?��??�니??</p></div>'+
           '<div class="two-col">'+
-            '<div class="field"><label>계약 시작일</label><input type="date" id="c-start" value="'+esc(c.startDate)+'" /></div>'+
-            '<div class="field"><label>계약 기간 (개월)</label><input type="text" id="c-months" placeholder="예: 6" value="'+esc(c.contractMonths)+'" /></div>'+
+            '<div class="field"><label>계약 ?�작??/label><input type="date" id="c-start" value="'+esc(c.startDate)+'" /></div>'+
+            '<div class="field"><label>계약 기간 (개월)</label><input type="text" id="c-months" placeholder="?? 6" value="'+esc(c.contractMonths)+'" /></div>'+
           '</div>'+
-          '<div class="field"><label>상태</label>'+
+          '<div class="field"><label>?�태</label>'+
             '<div class="seg" id="seg-status">'+
-              '<button type="button" data-status="active" class="'+(c.status==="active"?"active":"")+'">진행중</button>'+
-              '<button type="button" data-status="paused" class="'+(c.status==="paused"?"active":"")+'">일시중지</button>'+
+              '<button type="button" data-status="active" class="'+(c.status==="active"?"active":"")+'">진행�?/button>'+
+              '<button type="button" data-status="paused" class="'+(c.status==="paused"?"active":"")+'">?�시중�?</button>'+
               '<button type="button" data-status="ended" class="'+(c.status==="ended"?"active":"")+'">종료</button>'+
             '</div>'+
           '</div>'+
-          '<div class="field"><label>메모</label><textarea id="c-memo" rows="3" placeholder="예: 주력 채널은 플레이스, 인스타그램은 보조">'+esc(c.memo)+'</textarea></div>'+
+          '<div class="field"><label>메모</label><textarea id="c-memo" rows="3" placeholder="?? 주력 채널?� ?�레?�스, ?�스?�그램?� 보조">'+esc(c.memo)+'</textarea></div>'+
         '</div>'+
-        '<label class="check-inline"><input id="f-exclude-weekends" type="checkbox"> 주말 제외</label>'+
+        '<label class="check-inline"><input id="f-exclude-weekends" type="checkbox"> 주말 ?�외</label>'+
         '<div class="form-actions">'+
-          (isEdit?'<button class="btn btn-danger" id="btn-del-client">업체 삭제</button>':'')+
+          (isEdit?'<button class="btn btn-danger" id="btn-del-client">?�체 ??��</button>':'')+
           '<button class="btn btn-plain" id="btn-cancel">취소</button>'+
-          '<button class="btn btn-primary" id="btn-save-client">'+(isEdit?"저장":"등록")+'</button>'+
+          '<button class="btn btn-primary" id="btn-save-client">'+(isEdit?"?�??:"?�록")+'</button>'+
         '</div>'+
       '</div>';
 
@@ -1910,13 +1909,13 @@
 
     var delBtn=document.getElementById("btn-del-client");
     if(delBtn) delBtn.addEventListener("click", function(){
-      confirmDialog("업체를 삭제할까요?", c.name+" 업체와 연결된 체크리스트·진행 기록이 함께 삭제됩니다. 이 작업은 되돌릴 수 없습니다.", "삭제", function(){ deleteClient(c.id); });
+      confirmDialog("?�체�???��?�까??", c.name+" ?�체?� ?�결??체크리스?�·진??기록???�께 ??��?�니?? ???�업?� ?�돌�????�습?�다.", "??��", function(){ deleteClient(c.id); });
     });
 
     document.getElementById("btn-save-client").addEventListener("click", async function(){
       var name=document.getElementById("c-name").value.trim();
-      if(!name){ showToast("업체명을 입력하십시오"); return; }
-      var btn=this; btn.disabled=true; btn.textContent="저장 중…";
+      if(!name){ showToast("?�체명을 ?�력?�십?�오"); return; }
+      var btn=this; btn.disabled=true; btn.textContent="?�??중�?;
       try{
         var obj = isEdit ? Object.assign({}, base) : blankClient();
         obj.id = isEdit ? base.id : uid("cl");
@@ -1962,11 +1961,11 @@
 
         state.currentClient=obj;
         state.view="clientDetail";
-        showToast(isEdit?"저장되었습니다":"업체가 등록되었습니다");
+        showToast(isEdit?"?�?�되?�습?�다":"?�체가 ?�록?�었?�니??);
         render();
       }catch(e){
-        console.error(e); showToast("저장에 실패했습니다");
-        btn.disabled=false; btn.textContent=isEdit?"저장":"등록";
+        console.error(e); showToast("?�?�에 ?�패?�습?�다");
+        btn.disabled=false; btn.textContent=isEdit?"?�??:"?�록";
       }
     });
   }
@@ -2003,121 +2002,121 @@
     if(!contract.baseTerms && state.contractBaseTermsTemplate) contract.baseTerms=state.contractBaseTermsTemplate;
     var origin=(typeof location!=="undefined"&&location.origin)?location.origin:"";
     var publicLink=origin+"/?contract="+encodeURIComponent(contract.id);
-    return '<div class="topbar"><div class="brand"><span class="brand-mark"></span>업체 등록</div><button class="btn btn-text" id="btn-back">← 돌아가기</button></div>'+
+    return '<div class="topbar"><div class="brand"><span class="brand-mark"></span>?�체 ?�록</div><button class="btn btn-text" id="btn-back">???�아가�?/button></div>'+
       '<div class="form-card fade-in">'+
-        '<div class="fsection"><div class="fsec-num">CONTRACT</div><h3 class="fsec-title">계약 신청서</h3><p class="fsec-hint">계약서를 먼저 작성하면 계약서와 업체 정보가 함께 저장됩니다.</p>'+
+        '<div class="fsection"><div class="fsec-num">CONTRACT</div><h3 class="fsec-title">계약 ?�청??/h3><p class="fsec-hint">계약?��? 먼�? ?�성?�면 계약?��? ?�체 ?�보가 ?�께 ?�?�됩?�다.</p>'+
           '<div class="guide-link-box"><code>'+esc(publicLink)+'</code><div class="guide-link-actions"><button type="button" class="btn btn-plain btn-sm" id="btn-copy-contract-link">링크 복사</button></div></div>'+
-          '<div class="two-col"><div class="field"><label>업체명 *</label><input id="contract-client-name" type="text" value="'+esc(contract.clientName||"")+'" placeholder="예: 꿈카페 하단지점" /></div>'+
-          '<div class="field"><label>계약 구분</label><select id="contract-type"><option value="new" '+(contract.contractType==="new"?"selected":"")+'>신규</option><option value="renewal" '+(contract.contractType==="renewal"?"selected":"")+'>재계약</option></select></div></div>'+
-          '<div class="two-col"><div class="field"><label>업체 시작일</label><input type="date" id="contract-start" value="'+esc(contract.startDate||"")+'" /></div>'+
+          '<div class="two-col"><div class="field"><label>?�체�?*</label><input id="contract-client-name" type="text" value="'+esc(contract.clientName||"")+'" placeholder="?? 꿈카???�단지?? /></div>'+
+          '<div class="field"><label>계약 구분</label><select id="contract-type"><option value="new" '+(contract.contractType==="new"?"selected":"")+'>?�규</option><option value="renewal" '+(contract.contractType==="renewal"?"selected":"")+'>?�계??/option></select></div></div>'+
+          '<div class="two-col"><div class="field"><label>?�체 ?�작??/label><input type="date" id="contract-start" value="'+esc(contract.startDate||"")+'" /></div>'+
           '<div class="field"><label>계약 기간 (개월)</label><input type="text" id="contract-months" value="'+esc(contract.contractMonths||"3")+'" /></div></div>'+
-          '<div class="field" id="contract-renewal-count-field" style="'+(contract.contractType==="renewal"?"":"display:none")+'"><label>재계약 회차</label><input type="number" min="1" step="1" id="contract-renewal-count" value="'+esc(contract.renewalCount||1)+'" /></div>'+
+          '<div class="field" id="contract-renewal-count-field" style="'+(contract.contractType==="renewal"?"":"display:none")+'"><label>?�계???�차</label><input type="number" min="1" step="1" id="contract-renewal-count" value="'+esc(contract.renewalCount||1)+'" /></div>'+
         '</div>'+
-        '<div class="fsection"><div class="fsec-num">PRODUCT</div><h3 class="fsec-title">상품 명세</h3>'+
-          '<div class="two-col"><div class="field"><label>상품</label><select id="contract-product-type"><option value="regular" '+(contract.productType==="regular"?"selected":"")+'>광고비용</option><option value="custom" '+(contract.productType==="custom"?"selected":"")+'>새로 생성</option></select></div>'+
-          '<div class="field"><label>상품명</label><input id="contract-product-name" type="text" value="'+esc(contract.productName||"")+'" placeholder="예: 다각화 플랜" /></div></div>'+
-          '<div class="two-col"><div class="field"><label>공급가</label><input id="contract-supply-price" type="text" value="'+esc(contract.supplyPrice||"")+'" placeholder="예: 700000" /></div>'+
-          '<div class="field"><label>최종 금액</label><input type="text" id="contract-fee" value="'+esc(contract.fee||"")+'" placeholder="예: 770000" /></div></div>'+
-          '<div class="field"><label>설명 / 주요 조건</label><textarea id="contract-terms" rows="8" placeholder="상품 범위, 포함 서비스, 특이 조건을 적어주세요.">'+esc(contract.terms||"")+'</textarea></div>'+
+        '<div class="fsection"><div class="fsec-num">PRODUCT</div><h3 class="fsec-title">?�품 명세</h3>'+
+          '<div class="two-col"><div class="field"><label>?�품</label><select id="contract-product-type"><option value="regular" '+(contract.productType==="regular"?"selected":"")+'>광고비용</option><option value="custom" '+(contract.productType==="custom"?"selected":"")+'>?�로 ?�성</option></select></div>'+
+          '<div class="field"><label>?�품�?/label><input id="contract-product-name" type="text" value="'+esc(contract.productName||"")+'" placeholder="?? ?�각???�랜" /></div></div>'+
+          '<div class="two-col"><div class="field"><label>공급가</label><input id="contract-supply-price" type="text" value="'+esc(contract.supplyPrice||"")+'" placeholder="?? 700000" /></div>'+
+          '<div class="field"><label>최종 금액</label><input type="text" id="contract-fee" value="'+esc(contract.fee||"")+'" placeholder="?? 770000" /></div></div>'+
+          '<div class="field"><label>?�명 / 주요 조건</label><textarea id="contract-terms" rows="8" placeholder="?�품 범위, ?�함 ?�비?? ?�이 조건???�어주세??">'+esc(contract.terms||"")+'</textarea></div>'+
         '</div>'+
-        '<div class="fsection"><div class="fsec-num">PAYMENT</div><h3 class="fsec-title">결제 및 기재 사항</h3>'+
-          '<div class="field"><label>결제 방식</label><select id="contract-payment-method"><option value="card" '+((contract.paymentMethod||"card")==="card"?"selected":"")+'>카드</option><option value="transfer" '+(contract.paymentMethod==="transfer"?"selected":"")+'>계좌이체</option></select></div>'+
-          '<div class="two-col"><div class="field"><label>사업자등록번호</label><input id="contract-business-number" type="text" value="'+esc(contract.businessNumber||"")+'" placeholder="123-45-67890" /></div>'+
-          '<div class="field"><label>연락처</label><input id="contract-contact" type="text" value="'+esc(contract.contact||"")+'" placeholder="010-0000-0000" /></div></div>'+
-          '<div class="field"><label>이메일</label><input id="contract-email" type="text" value="'+esc(contract.email||"")+'" placeholder="example@domain.com" /></div>'+
+        '<div class="fsection"><div class="fsec-num">PAYMENT</div><h3 class="fsec-title">결제 �?기재 ?�항</h3>'+
+          '<div class="field"><label>결제 방식</label><select id="contract-payment-method"><option value="card" '+((contract.paymentMethod||"card")==="card"?"selected":"")+'>카드</option><option value="transfer" '+(contract.paymentMethod==="transfer"?"selected":"")+'>계좌?�체</option></select></div>'+
+          '<div class="two-col"><div class="field"><label>?�업?�등록번??/label><input id="contract-business-number" type="text" value="'+esc(contract.businessNumber||"")+'" placeholder="123-45-67890" /></div>'+
+          '<div class="field"><label>?�락�?/label><input id="contract-contact" type="text" value="'+esc(contract.contact||"")+'" placeholder="010-0000-0000" /></div></div>'+
+          '<div class="field"><label>?�메??/label><input id="contract-email" type="text" value="'+esc(contract.email||"")+'" placeholder="example@domain.com" /></div>'+
         '</div>'+
-        '<div class="fsection"><div class="fsec-num">TERMS</div><h3 class="fsec-title">특약 및 내부 메모</h3>'+
-          '<div class="field"><label>특약 사항</label><textarea id="contract-special-terms" rows="3" placeholder="별도 특약이 있으면 적어주세요.">'+esc(contract.specialTerms||"")+'</textarea></div>'+
-          '<div class="field"><label>기본 계약 내용</label><textarea id="contract-base-terms" rows="10" placeholder="기본 계약 내용을 입력해두면 저장 후 다음 계약서에도 자동으로 불러옵니다.">'+esc(contract.baseTerms||"")+'</textarea><div style="margin-top:8px"><button type="button" class="btn btn-plain btn-sm" id="btn-save-base-terms-template">기본 계약 내용 저장</button></div></div>'+
-          '<div class="field"><label>내부 메모</label><textarea id="contract-internal-memo" rows="3" placeholder="내부 참고용 메모입니다. 고객에게 공유되는 계약서에는 표시하지 않습니다.">'+esc(contract.internalMemo||"")+'</textarea></div>'+
-          '<div class="field"><label>업무 담당자</label><input id="contract-owner" type="text" value="'+esc(contract.owner||"")+'" /></div>'+
+        '<div class="fsection"><div class="fsec-num">TERMS</div><h3 class="fsec-title">?�약 �??��? 메모</h3>'+
+          '<div class="field"><label>?�약 ?�항</label><textarea id="contract-special-terms" rows="3" placeholder="별도 ?�약???�으�??�어주세??">'+esc(contract.specialTerms||"")+'</textarea></div>'+
+          '<div class="field"><label>기본 계약 ?�용</label><textarea id="contract-base-terms" rows="10" placeholder="기본 계약 ?�용???�력?�두�??�?????�음 계약?�에???�동?�로 불러?�니??">'+esc(contract.baseTerms||"")+'</textarea><div style="margin-top:8px"><button type="button" class="btn btn-plain btn-sm" id="btn-save-base-terms-template">기본 계약 ?�용 ?�??/button></div></div>'+
+          '<div class="field"><label>?��? 메모</label><textarea id="contract-internal-memo" rows="3" placeholder="?��? 참고??메모?�니?? 고객?�게 공유?�는 계약?�에???�시?��? ?�습?�다.">'+esc(contract.internalMemo||"")+'</textarea></div>'+
+          '<div class="field"><label>?�무 ?�당??/label><input id="contract-owner" type="text" value="'+esc(contract.owner||"")+'" /></div>'+
         '</div>'+
-        '<div class="fsection"><div class="fsec-num">SIGN</div><h3 class="fsec-title">서명</h3><p class="fsec-hint">마우스 또는 터치로 서명할 수 있습니다.</p>'+
-          '<div class="field"><label>서명자</label><input type="text" id="contract-signer" value="'+esc(contract.signerName||"")+'" placeholder="예: 홍길동" /></div>'+
-          '<div class="signature-box"><canvas id="contract-signature" class="signature-canvas" width="720" height="220"></canvas><div style="margin-top:8px"><button type="button" class="btn btn-plain btn-sm" id="btn-clear-signature">서명 지우기</button></div></div>'+
+        '<div class="fsection"><div class="fsec-num">SIGN</div><h3 class="fsec-title">?�명</h3><p class="fsec-hint">마우???�는 ?�치�??�명?????�습?�다.</p>'+
+          '<div class="field"><label>?�명??/label><input type="text" id="contract-signer" value="'+esc(contract.signerName||"")+'" placeholder="?? ?�길?? /></div>'+
+          '<div class="signature-box"><canvas id="contract-signature" class="signature-canvas" width="720" height="220"></canvas><div style="margin-top:8px"><button type="button" class="btn btn-plain btn-sm" id="btn-clear-signature">?�명 지?�기</button></div></div>'+
         '</div>'+
-        '<div class="form-actions"><button class="btn btn-plain" id="btn-cancel">취소</button><button class="btn btn-primary" id="btn-save-contract">계약서 저장</button></div>'+
+        '<div class="form-actions"><button class="btn btn-plain" id="btn-cancel">취소</button><button class="btn btn-primary" id="btn-save-contract">계약???�??/button></div>'+
       '</div>';
   }
   function renderPublicContract(contract){
     contract=publicContractPayload(contract||{});
     var submitted=contract.submittedAt!==null&&contract.submittedAt!==undefined;
-    var typeLabel=contract.contractType==="renewal"?"재계약 "+(contract.renewalCount||1)+"회차":"신규";
-    var productLabel=contract.productType==="custom"?"새로 생성":"광고비용";
-    var paymentLabel=contract.paymentMethod==="transfer"?"계좌이체":"카드";
+    var typeLabel=contract.contractType==="renewal"?"?�계??"+(contract.renewalCount||1)+"?�차":"?�규";
+    var productLabel=contract.productType==="custom"?"?�로 ?�성":"광고비용";
+    var paymentLabel=contract.paymentMethod==="transfer"?"계좌?�체":"카드";
     function row(label,value){ return '<div class="contract-readonly-row"><span class="contract-readonly-label">'+esc(label)+'</span><span class="contract-readonly-value">'+esc(value||"-")+'</span></div>'; }
     if(submitted){
-      return '<div class="public-guide public-contract"><div class="public-guide-head"><div class="public-guide-brand"><span class="brand-mark"></span>계약 신청서</div><p class="public-guide-kicker">CONTRACT</p><h1>계약서 제출이 완료되었습니다</h1><p class="public-guide-intro">아래 계약 정보와 저장된 서명을 함께 확인할 수 있습니다.</p><span class="contract-signed-status">✓ 서명 저장 완료</span></div>'+
+      return '<div class="public-guide public-contract"><div class="public-guide-head"><div class="public-guide-brand"><span class="brand-mark"></span>계약 ?�청??/div><p class="public-guide-kicker">CONTRACT</p><h1>계약???�출???�료?�었?�니??/h1><p class="public-guide-intro">?�래 계약 ?�보?� ?�?�된 ?�명???�께 ?�인?????�습?�다.</p><span class="contract-signed-status">???�명 ?�???�료</span></div>'+
       '<div class="guide-form">'+
-        '<section class="guide-section"><div class="guide-section-label">01</div><h2>계약 내용</h2>'+
+        '<section class="guide-section"><div class="guide-section-label">01</div><h2>계약 ?�용</h2>'+
           '<div class="contract-readonly-card">'+
-            row("업체명",contract.clientName)+
+            row("?�체�?,contract.clientName)+
             row("계약 구분",typeLabel)+
-            row("계약 시작일",contract.startDate)+
+            row("계약 ?�작??,contract.startDate)+
             row("계약 기간",contract.contractMonths ? contract.contractMonths+"개월" : "")+
           '</div>'+
         '</section>'+
-        '<section class="guide-section"><div class="guide-section-label">02</div><h2>상품 및 결제</h2>'+
+        '<section class="guide-section"><div class="guide-section-label">02</div><h2>?�품 �?결제</h2>'+
           '<div class="contract-readonly-card">'+
-            row("상품",productLabel)+
-            row("상품명",contract.productName)+
+            row("?�품",productLabel)+
+            row("?�품�?,contract.productName)+
             row("공급가",contract.supplyPrice)+
             row("최종 금액",contract.fee)+
             row("결제 방식",paymentLabel)+
           '</div>'+
           (contract.terms ? '<div class="contract-readonly-terms">'+esc(contract.terms)+'</div>' : '')+
         '</section>'+
-        '<section class="guide-section"><div class="guide-section-label">03</div><h2>제출 정보 및 서명</h2>'+
+        '<section class="guide-section"><div class="guide-section-label">03</div><h2>?�출 ?�보 �??�명</h2>'+
           '<div class="contract-readonly-card">'+
-            row("사업자등록번호",contract.businessNumber)+
-            row("연락처",contract.contact)+
-            row("이메일",contract.email)+
-            row("서명자",contract.signerName)+
+            row("?�업?�등록번??,contract.businessNumber)+
+            row("?�락�?,contract.contact)+
+            row("?�메??,contract.email)+
+            row("?�명??,contract.signerName)+
           '</div>'+
-          (contract.signatureDataUrl ? '<img class="contract-signed-preview" alt="저장된 계약 서명" src="'+esc(contract.signatureDataUrl)+'" />' : '<div class="muted" style="margin-top:10px">저장된 서명 이미지가 없습니다.</div>')+
-          (contract.specialTerms ? '<div class="contract-readonly-terms"><strong>특약 사항</strong><br>'+esc(contract.specialTerms)+'</div>' : '')+
+          (contract.signatureDataUrl ? '<img class="contract-signed-preview" alt="?�?�된 계약 ?�명" src="'+esc(contract.signatureDataUrl)+'" />' : '<div class="muted" style="margin-top:10px">?�?�된 ?�명 ?��?지가 ?�습?�다.</div>')+
+          (contract.specialTerms ? '<div class="contract-readonly-terms"><strong>?�약 ?�항</strong><br>'+esc(contract.specialTerms)+'</div>' : '')+
         '</section>'+
       '</div></div>';
     }
-    return '<div class="public-guide public-contract"><div class="public-guide-head"><div class="public-guide-brand"><span class="brand-mark"></span>계약 신청서</div><p class="public-guide-kicker">CONTRACT</p><h1>계약 내용을 확인하고 서명해 주세요</h1><p class="public-guide-intro">계약 조건은 담당자가 먼저 작성했습니다. 내용을 확인한 뒤 필요한 연락 정보와 서명만 남겨주세요.</p></div>'+
+    return '<div class="public-guide public-contract"><div class="public-guide-head"><div class="public-guide-brand"><span class="brand-mark"></span>계약 ?�청??/div><p class="public-guide-kicker">CONTRACT</p><h1>계약 ?�용???�인?�고 ?�명??주세??/h1><p class="public-guide-intro">계약 조건?� ?�당?��? 먼�? ?�성?�습?�다. ?�용???�인?????�요???�락 ?�보?� ?�명�??�겨주세??</p></div>'+
       '<div class="guide-form">'+
-        '<section class="guide-section"><div class="guide-section-label">01</div><h2>계약 내용</h2><p class="guide-section-desc">아래 항목은 담당자가 작성한 계약 조건입니다.</p>'+
+        '<section class="guide-section"><div class="guide-section-label">01</div><h2>계약 ?�용</h2><p class="guide-section-desc">?�래 ??��?� ?�당?��? ?�성??계약 조건?�니??</p>'+
           '<div class="contract-readonly-card">'+
-            row("업체명",contract.clientName)+
+            row("?�체�?,contract.clientName)+
             row("계약 구분",typeLabel)+
-            row("계약 시작일",contract.startDate)+
+            row("계약 ?�작??,contract.startDate)+
             row("계약 기간",contract.contractMonths ? contract.contractMonths+"개월" : "")+
           '</div>'+
         '</section>'+
-        '<section class="guide-section"><div class="guide-section-label">02</div><h2>상품 및 결제</h2>'+
+        '<section class="guide-section"><div class="guide-section-label">02</div><h2>?�품 �?결제</h2>'+
           '<div class="contract-readonly-card">'+
-            row("상품",productLabel)+
-            row("상품명",contract.productName)+
+            row("?�품",productLabel)+
+            row("?�품�?,contract.productName)+
             row("공급가",contract.supplyPrice)+
             row("최종 금액",contract.fee)+
             row("결제 방식",paymentLabel)+
           '</div>'+
           (contract.terms ? '<div class="contract-readonly-terms">'+esc(contract.terms)+'</div>' : '')+
         '</section>'+
-        '<section class="guide-section"><div class="guide-section-label">03</div><h2>확인 정보 및 서명</h2><p class="guide-section-desc">계약 확인에 필요한 정보만 입력해 주세요.</p><div class="contract-public-inputs">'+
-          '<div class="guide-question"><label>사업자등록번호</label><input id="contract-business-number" type="text" value="'+esc(contract.businessNumber||"")+'" /></div>'+
-          '<div class="guide-question"><label>연락처</label><input id="contract-contact" type="text" value="'+esc(contract.contact||"")+'" /></div>'+
-          '<div class="guide-question"><label>이메일</label><input id="contract-email" type="text" value="'+esc(contract.email||"")+'" /></div>'+
-          '<div class="guide-question"><label>서명자</label><input id="contract-signer" type="text" value="'+esc(contract.signerName||"")+'" /></div>'+
+        '<section class="guide-section"><div class="guide-section-label">03</div><h2>?�인 ?�보 �??�명</h2><p class="guide-section-desc">계약 ?�인???�요???�보�??�력??주세??</p><div class="contract-public-inputs">'+
+          '<div class="guide-question"><label>?�업?�등록번??/label><input id="contract-business-number" type="text" value="'+esc(contract.businessNumber||"")+'" /></div>'+
+          '<div class="guide-question"><label>?�락�?/label><input id="contract-contact" type="text" value="'+esc(contract.contact||"")+'" /></div>'+
+          '<div class="guide-question"><label>?�메??/label><input id="contract-email" type="text" value="'+esc(contract.email||"")+'" /></div>'+
+          '<div class="guide-question"><label>?�명??/label><input id="contract-signer" type="text" value="'+esc(contract.signerName||"")+'" /></div>'+
           '<div class="signature-box"><canvas id="contract-signature" class="signature-canvas" width="720" height="220"></canvas></div></div>'+
-          (contract.specialTerms ? '<div class="contract-readonly-terms"><strong>특약 사항</strong><br>'+esc(contract.specialTerms)+'</div>' : '')+
+          (contract.specialTerms ? '<div class="contract-readonly-terms"><strong>?�약 ?�항</strong><br>'+esc(contract.specialTerms)+'</div>' : '')+
         '</section>'+
-        '<div class="guide-actions"><button class="btn btn-primary" id="btn-submit-public-contract">계약서 제출</button></div>'+
+        '<div class="guide-actions"><button class="btn btn-primary" id="btn-submit-public-contract">계약???�출</button></div>'+
       '</div></div>';
   }
   async function loadPublicContractPage(contractId){
-    app.innerHTML='<div style="padding:60px;text-align:center;color:#8B95A1;">계약서를 불러오는 중…</div>';
+    app.innerHTML='<div style="padding:60px;text-align:center;color:#8B95A1;">계약?��? 불러?�는 중�?/div>';
     if(!/^contract_[A-Za-z0-9_-]{24,}$/.test(String(contractId||""))){
-      app.innerHTML='<div class="empty-state" style="margin-top:60px;"><div class="es-title">계약서 링크가 올바르지 않습니다</div></div>';
+      app.innerHTML='<div class="empty-state" style="margin-top:60px;"><div class="es-title">계약??링크가 ?�바르�? ?�습?�다</div></div>';
       return;
     }
     var contract=await getP("contract:"+contractId);
-    if(!contract){ app.innerHTML='<div class="empty-state" style="margin-top:60px;"><div class="es-title">계약서를 찾을 수 없습니다</div></div>'; return; }
+    if(!contract){ app.innerHTML='<div class="empty-state" style="margin-top:60px;"><div class="es-title">계약?��? 찾을 ???�습?�다</div></div>'; return; }
     state.currentContract=contract;
     app.innerHTML=renderPublicContract(contract);
     bindContractTypeToggle();
@@ -2125,10 +2124,10 @@
     restoreSignatureToCanvas(document.getElementById("contract-signature"), contract.signatureDataUrl);
     var submit=document.getElementById("btn-submit-public-contract");
     if(submit) submit.onclick=async function(){
-      submit.disabled=true; submit.textContent="제출 중…";
+      submit.disabled=true; submit.textContent="?�출 중�?;
       var payload=collectContractFromForm(contract);
       var saved=await mutatePublicContract(contract.id,payload,true);
-      if(!saved){ submit.disabled=false; submit.textContent="계약서 제출"; showToast("계약서 제출에 실패했습니다"); return; }
+      if(!saved){ submit.disabled=false; submit.textContent="계약???�출"; showToast("계약???�출???�패?�습?�다"); return; }
       state.currentContract=saved;
       app.innerHTML=renderPublicContract(saved);
     };
@@ -2146,10 +2145,10 @@
     if(saveBaseTerms) saveBaseTerms.onclick=async function(){
       var value=formValue("contract-base-terms");
       var saved=await setS("contract-base-terms-template",value);
-      if(!saved){ showToast("기본 계약 내용 저장에 실패했습니다"); return; }
+      if(!saved){ showToast("기본 계약 ?�용 ?�?�에 ?�패?�습?�다"); return; }
       state.contractBaseTermsTemplate=value;
       state.currentContract=collectContractFromForm(state.currentContract);
-      showToast("기본 계약 내용을 저장했습니다");
+      showToast("기본 계약 ?�용???�?�했?�니??);
     };
     var copyLink=document.getElementById("btn-copy-contract-link");
     if(copyLink) copyLink.onclick=async function(){
@@ -2157,9 +2156,9 @@
       state.currentContract.updatedAt=Date.now();
       state.currentContract.createdAt=state.currentContract.createdAt||state.currentContract.updatedAt;
       var saved=await setS("contract:"+state.currentContract.id,state.currentContract);
-      if(!saved){ showToast("계약서 링크 저장에 실패했습니다"); return; }
+      if(!saved){ showToast("계약??링크 ?�?�에 ?�패?�습?�다"); return; }
       var index=(state.contracts||[]).filter(function(c){ return c.id!==state.currentContract.id; });
-      index.push({ id:state.currentContract.id, clientId:state.currentContract.clientId, clientName:state.currentContract.clientName||"계약서 작성 대기", contractType:state.currentContract.contractType, renewalCount:state.currentContract.renewalCount, productName:state.currentContract.productName, startDate:state.currentContract.startDate, contractMonths:state.currentContract.contractMonths, fee:state.currentContract.fee, signerName:state.currentContract.signerName, submittedAt:state.currentContract.submittedAt, hasSignature:!!state.currentContract.signatureDataUrl, updatedAt:state.currentContract.updatedAt });
+      index.push({ id:state.currentContract.id, clientId:state.currentContract.clientId, clientName:state.currentContract.clientName||"계약???�성 ?��?, contractType:state.currentContract.contractType, renewalCount:state.currentContract.renewalCount, productName:state.currentContract.productName, startDate:state.currentContract.startDate, contractMonths:state.currentContract.contractMonths, fee:state.currentContract.fee, signerName:state.currentContract.signerName, submittedAt:state.currentContract.submittedAt, hasSignature:!!state.currentContract.signatureDataUrl, updatedAt:state.currentContract.updatedAt });
       state.contracts=index;
       await setP("contracts-index",index);
       copyText(location.origin+"/?contract="+encodeURIComponent(state.currentContract.id));
@@ -2241,7 +2240,7 @@
   async function saveContractFromForm(){
     var contract=collectContractFromForm(state.currentContract);
     var clientName=contract.clientName;
-    if(!clientName){ showToast("업체명을 입력하세요"); return; }
+    if(!clientName){ showToast("?�체명을 ?�력?�세??); return; }
     var now=Date.now();
     contract.id=contract.id||uid("ct");
     var clientId=contract.clientId||uid("cl");
@@ -2264,34 +2263,34 @@
     client.createdAt=contract.createdAt;
     client.updatedAt=now;
     var clientSaved=await setS("client:"+client.id,client);
-    if(!clientSaved){ showToast("업체 저장에 실패했습니다"); return; }
+    if(!clientSaved){ showToast("?�체 ?�?�에 ?�패?�습?�다"); return; }
     var saved=await setS("contract:"+contract.id,contract);
-    if(!saved){ showToast("계약서 저장에 실패했습니다"); return; }
+    if(!saved){ showToast("계약???�?�에 ?�패?�습?�다"); return; }
     var clientIndex=(state.clients||[]).filter(function(c){ return c.id!==client.id; });
     clientIndex.push({ id:client.id, name:client.name, contractType:client.contractType, renewalCount:client.renewalCount, startDate:client.startDate, status:client.status, updatedAt:client.updatedAt });
     state.clients=clientIndex;
     var clientIndexSaved=await setP("clients-index",clientIndex);
-    if(!clientIndexSaved){ showToast("업체 목록 저장에 실패했습니다"); return; }
+    if(!clientIndexSaved){ showToast("?�체 목록 ?�?�에 ?�패?�습?�다"); return; }
     var index=(state.contracts||[]).filter(function(c){ return c.id!==contract.id; });
     index.push({ id:contract.id, clientId:contract.clientId, clientName:contract.clientName, contractType:contract.contractType, renewalCount:contract.renewalCount, productName:contract.productName, startDate:contract.startDate, contractMonths:contract.contractMonths, fee:contract.fee, signerName:contract.signerName, submittedAt:contract.submittedAt, hasSignature:!!contract.signatureDataUrl, updatedAt:contract.updatedAt });
     state.contracts=index;
     var indexSaved=await setP("contracts-index",index);
-    if(!indexSaved){ showToast("계약서 목록 저장에 실패했습니다"); return; }
+    if(!indexSaved){ showToast("계약??목록 ?�?�에 ?�패?�습?�다"); return; }
     state.currentContract=contract;
     state.currentClient=client;
     state.view="clientDetail";
-    showToast("계약서와 업체가 저장되었습니다");
+    showToast("계약?��? ?�체가 ?�?�되?�습?�다");
     render();
   }
   function contractsPanel(client){
     var items=clientContracts(client&&client.id);
     var rows=items.length ? items.map(function(contract){
       var pseudo={ contractType:contract.contractType, renewalCount:contract.renewalCount };
-      var amount=toNum(contract.fee) ? Number(toNum(contract.fee)).toLocaleString("ko-KR")+"원" : "금액 미입력";
-      var signStatus=(contract.submittedAt||contract.hasSignature||contract.signatureDataUrl)?'<span class="contract-signed-status">✓ 서명 완료</span>':'<span>서명자 '+esc(contract.signerName||"미입력")+'</span>';
-      return '<div class="contract-card"><h4>'+esc(contract.clientName||client.name||"계약서")+'</h4><div class="contract-meta"><span>'+esc(contractLabel(pseudo))+'</span><span>시작 '+esc(contract.startDate||"미입력")+'</span><span>'+amount+'</span>'+signStatus+'</div><div class="contract-actions"><button class="btn btn-plain btn-sm" data-open-contract="'+esc(contract.id)+'">원본 열람</button><button class="btn btn-ghost btn-sm" data-open-contract-link="'+esc(contract.id)+'">링크 열람</button><button class="btn btn-ghost btn-sm" data-copy-contract-link="'+esc(contract.id)+'">링크 복사</button></div></div>';
-    }).join("") : '<div class="set-empty"><strong>저장된 계약서가 없습니다</strong><p>계약서 생성 버튼으로 이 업체의 계약서를 남겨보세요.</p></div>';
-    return '<div class="panel fade-in"><div class="panel-head"><div><h3 class="panel-title">계약서</h3><p class="panel-hint">작성·서명·저장된 계약서를 업체별로 확인합니다.</p></div><button class="btn btn-primary btn-sm" data-new-client-contract="'+esc(client&&client.id||"")+'">계약서 생성</button></div>'+rows+'</div>';
+      var amount=toNum(contract.fee) ? Number(toNum(contract.fee)).toLocaleString("ko-KR")+"?? : "금액 미입??;
+      var signStatus=(contract.submittedAt||contract.hasSignature||contract.signatureDataUrl)?'<span class="contract-signed-status">???�명 ?�료</span>':'<span>?�명??'+esc(contract.signerName||"미입??)+'</span>';
+      return '<div class="contract-card"><h4>'+esc(contract.clientName||client.name||"계약??)+'</h4><div class="contract-meta"><span>'+esc(contractLabel(pseudo))+'</span><span>?�작 '+esc(contract.startDate||"미입??)+'</span><span>'+amount+'</span>'+signStatus+'</div><div class="contract-actions"><button class="btn btn-plain btn-sm" data-open-contract="'+esc(contract.id)+'">?�본 ?�람</button><button class="btn btn-ghost btn-sm" data-open-contract-link="'+esc(contract.id)+'">링크 ?�람</button><button class="btn btn-ghost btn-sm" data-copy-contract-link="'+esc(contract.id)+'">링크 복사</button></div></div>';
+    }).join("") : '<div class="set-empty"><strong>?�?�된 계약?��? ?�습?�다</strong><p>계약???�성 버튼?�로 ???�체??계약?��? ?�겨보세??</p></div>';
+    return '<div class="panel fade-in"><div class="panel-head"><div><h3 class="panel-title">계약??/h3><p class="panel-hint">?�성·?�명·?�?�된 계약?��? ?�체별로 ?�인?�니??</p></div><button class="btn btn-primary btn-sm" data-new-client-contract="'+esc(client&&client.id||"")+'">계약???�성</button></div>'+rows+'</div>';
   }
 
   async function deleteClient(id){
@@ -2304,13 +2303,13 @@
     await setP("clients-index", state.clients);
     state.currentClient=null;
     state.view="dashboard";
-    showToast("업체가 삭제되었습니다");
+    showToast("?�체가 ??��?�었?�니??);
     render();
   }
 
   async function openClient(id){
     var cl=await getS("client:"+id);
-    if(!cl){ showToast("업체 정보를 찾을 수 없습니다"); return; }
+    if(!cl){ showToast("?�체 ?�보�?찾을 ???�습?�다"); return; }
     state.currentClient=cl; state.currentGuide=null; state.currentGuideReview=null; state.currentGuideLoadState="idle"; state.currentGuideReviewLoadState="idle"; state.clientTab=null; state.calendarMonth=null; state.setCollectionOpen=false; state.checklistWeeksOpen={}; state.view="clientDetail"; render();
   }
 
@@ -2318,66 +2317,66 @@
   function defaultChecklistSets(){
     return [];
   }
-  function periodLabel(period){ return period==="closing" ? "마무리" : period ? period+"주차" : "미배정"; }
+  function periodLabel(period){ return period==="closing" ? "마무�? : period ? period+"주차" : "미배??; }
   function isoDate(date){ return date.getFullYear()+"-"+String(date.getMonth()+1).padStart(2,"0")+"-"+String(date.getDate()).padStart(2,"0"); }
   async function saveChecklistSets(){ await setP("checklist-sets", state.checklistSets); }
   function reportRows(cl){
     var reports=state.reports.filter(function(r){ return r.clientId===cl.id; }).sort(function(a,b){ return (b.updatedAt||0)-(a.updatedAt||0); });
-    return reports.length ? reports.map(function(r){ return '<div class="report-row"><div class="rr-main" data-open-report="'+esc(r.id)+'"><div class="rr-title">'+esc(r.period||"")+'</div><div class="rr-date">'+fmtDate(r.updatedAt)+' 저장</div></div><button class="btn btn-danger btn-sm" data-del-report="'+esc(r.id)+'">삭제</button></div>'; }).join("") : '<div class="muted">작성된 리포트가 없습니다.</div>';
+    return reports.length ? reports.map(function(r){ return '<div class="report-row"><div class="rr-main" data-open-report="'+esc(r.id)+'"><div class="rr-title">'+esc(r.period||"")+'</div><div class="rr-date">'+fmtDate(r.updatedAt)+' ?�??/div></div><button class="btn btn-danger btn-sm" data-del-report="'+esc(r.id)+'">??��</button></div>'; }).join("") : '<div class="muted">?�성??리포?��? ?�습?�다.</div>';
   }
   function fmtGuideTimestamp(timestamp){
-    if(!timestamp) return "기록 없음";
+    if(!timestamp) return "기록 ?�음";
     var date=new Date(timestamp);
-    if(isNaN(date.getTime())) return "기록 없음";
+    if(isNaN(date.getTime())) return "기록 ?�음";
     return date.getFullYear()+"."+String(date.getMonth()+1).padStart(2,"0")+"."+String(date.getDate()).padStart(2,"0")+" "+String(date.getHours()).padStart(2,"0")+":"+String(date.getMinutes()).padStart(2,"0");
   }
   function informationGuidePanel(client,guide,guideReview,guideLoadState,guideReviewLoadState){
     if(!client.guideId){
-      return '<div class="panel fade-in"><div class="guide-issue-card"><h3>업체 정보 안내문</h3><p>업체가 운영 방향과 홍보에 필요한 정보를 직접 작성할 수 있는 전용 안내문입니다. 링크는 한 번만 발급되며 같은 주소로 계속 수정할 수 있습니다.</p><button class="btn btn-primary" id="btn-issue-guide">설문 링크 발급</button></div></div>';
+      return '<div class="panel fade-in"><div class="guide-issue-card"><h3>?�체 ?�보 ?�내�?/h3><p>?�체가 ?�영 방향�??�보???�요???�보�?직접 ?�성?????�는 ?�용 ?�내문입?�다. 링크????번만 발급?�며 같�? 주소�?계속 ?�정?????�습?�다.</p><button class="btn btn-primary" id="btn-issue-guide">?�문 링크 발급</button></div></div>';
     }
     var resolvedGuideState=guideLoadState||(guide===null?"loading":(guide&&guide.id===client.guideId?"ready":"missing"));
     if(resolvedGuideState==="loading"||resolvedGuideState==="idle"){
-      return '<div class="panel fade-in"><div class="muted" style="padding:26px;text-align:center">안내문을 불러오는 중…</div></div>';
+      return '<div class="panel fade-in"><div class="muted" style="padding:26px;text-align:center">?�내문을 불러?�는 중�?/div></div>';
     }
     if(resolvedGuideState==="missing"){
-      return '<div class="panel fade-in"><div class="empty-state"><div class="es-title">안내문을 찾을 수 없습니다</div><div class="es-sub">발급된 링크 정보는 유지됩니다. 담당자에게 저장 상태를 확인해 주세요.</div></div></div>';
+      return '<div class="panel fade-in"><div class="empty-state"><div class="es-title">?�내문을 찾을 ???�습?�다</div><div class="es-sub">발급??링크 ?�보???��??�니?? ?�당?�에�??�???�태�??�인??주세??</div></div></div>';
     }
     if(resolvedGuideState==="error"||!guide || guide.id!==client.guideId){
-      return '<div class="panel fade-in"><div class="empty-state"><div class="es-title">안내문을 불러오지 못했습니다</div><div class="es-sub">저장된 링크 정보는 유지됩니다. 잠시 후 다시 불러와 주세요.</div><button class="btn btn-ghost btn-sm" id="btn-retry-guide">다시 불러오기</button></div></div>';
+      return '<div class="panel fade-in"><div class="empty-state"><div class="es-title">?�내문을 불러?��? 못했?�니??/div><div class="es-sub">?�?�된 링크 ?�보???��??�니?? ?�시 ???�시 불러?� 주세??</div><button class="btn btn-ghost btn-sm" id="btn-retry-guide">?�시 불러?�기</button></div></div>';
     }
     var answers=guide.answers&&typeof guide.answers==="object"?guide.answers:{};
     var status=guideStatus(guide);
-    var statusLabels={not_started:"미작성",draft:"작성 중",submitted:"제출 완료"};
+    var statusLabels={not_started:"미작??,draft:"?�성 �?,submitted:"?�출 ?�료"};
     var savedAt=guide.updatedAt||guide.createdAt;
-    var timestampHtml='<span class="muted">최근 저장 '+fmtGuideTimestamp(savedAt)+'</span>';
-    if(guide.submittedAt) timestampHtml+='<span class="muted">제출 '+fmtGuideTimestamp(guide.submittedAt)+'</span>';
+    var timestampHtml='<span class="muted">최근 ?�??'+fmtGuideTimestamp(savedAt)+'</span>';
+    if(guide.submittedAt) timestampHtml+='<span class="muted">?�출 '+fmtGuideTimestamp(guide.submittedAt)+'</span>';
     var link=location.origin+"/?guide="+encodeURIComponent(guide.id);
     var summary=guideSummary(answers);
-    var summaryHtml=summary.length?summary.map(function(item){return '<div class="guide-summary-row"><strong>'+esc(item.label)+'</strong><span>'+esc(item.value)+'</span></div>';}).join(""):'<div class="muted">아직 요약할 정보가 없습니다.</div>';
+    var summaryHtml=summary.length?summary.map(function(item){return '<div class="guide-summary-row"><strong>'+esc(item.label)+'</strong><span>'+esc(item.value)+'</span></div>';}).join(""):'<div class="muted">?�직 ?�약???�보가 ?�습?�다.</div>';
     var answerFields=[
-      ["concern","현재 매장의 가장 큰 고민"],["goal","최우선 마케팅 목표"],["priorityMenu","우선 홍보 메뉴"],
-      ["currentCustomers","현재 주요 고객"],["desiredCustomers","유치하고 싶은 고객"],["strengths","매장 핵심 강점"],
-      ["story","꼭 알리고 싶은 이야기"],["contentTone","원하는 콘텐츠 분위기"],["avoidExpressions","피하고 싶은 표현"],
-      ["materialStatus","보유 사진·영상 자료 상태"],["approverName","검수 및 승인 담당자 이름"],
-      ["approverContact","검수 및 승인 담당자 연락 수단"],["operatingNotes","운영 시 주의사항"]
+      ["concern","?�재 매장??가????고�?"],["goal","최우??마�???목표"],["priorityMenu","?�선 ?�보 메뉴"],
+      ["currentCustomers","?�재 주요 고객"],["desiredCustomers","?�치?�고 ?��? 고객"],["strengths","매장 ?�심 강점"],
+      ["story","�??�리�??��? ?�야�?],["contentTone","?�하??콘텐�?분위�?],["avoidExpressions","?�하�??��? ?�현"],
+      ["materialStatus","보유 ?�진·?�상 ?�료 ?�태"],["approverName","검??�??�인 ?�당???�름"],
+      ["approverContact","검??�??�인 ?�당???�락 ?�단"],["operatingNotes","?�영 ??주의?�항"]
     ];
     var answersHtml=answerFields.map(function(field){
       var value=String(answers[field[0]]==null?"":answers[field[0]]).trim();
-      return '<div class="guide-answer-row"><strong>'+esc(field[1])+'</strong><span>'+(value?esc(value):'<span class="muted">답변 없음</span>')+'</span></div>';
+      return '<div class="guide-answer-row"><strong>'+esc(field[1])+'</strong><span>'+(value?esc(value):'<span class="muted">?��? ?�음</span>')+'</span></div>';
     }).join("");
     var followUps=guideFollowUps(answers);
-    var followUpHtml=followUps.length?'<ul class="guide-followups">'+followUps.map(function(item){return '<li>'+esc(item)+'</li>';}).join("")+'</ul>':'<div class="muted">추가로 확인할 내용이 없습니다.</div>';
+    var followUpHtml=followUps.length?'<ul class="guide-followups">'+followUps.map(function(item){return '<li>'+esc(item)+'</li>';}).join("")+'</ul>':'<div class="muted">추�?�??�인???�용???�습?�다.</div>';
     var review=guideReview&&typeof guideReview==="object"?guideReview:{};
     var reviewStatus=["unreviewed","reviewing","reviewed"].indexOf(review.status)>=0?review.status:"unreviewed";
     var reviewReadFailed=guideReviewLoadState==="error";
     var disabled=reviewReadFailed?' disabled':'';
-    var reviewLoadError=reviewReadFailed?'<div class="empty-state" style="margin-bottom:12px;"><div class="es-title">검토 정보를 불러오지 못했습니다</div><div class="es-sub">기존 검토 내용을 보호하기 위해 저장을 잠시 막았습니다.</div><button class="btn btn-ghost btn-sm" id="btn-retry-guide">다시 불러오기</button></div>':"";
+    var reviewLoadError=reviewReadFailed?'<div class="empty-state" style="margin-bottom:12px;"><div class="es-title">검???�보�?불러?��? 못했?�니??/div><div class="es-sub">기존 검???�용??보호?�기 ?�해 ?�?�을 ?�시 막았?�니??</div><button class="btn btn-ghost btn-sm" id="btn-retry-guide">?�시 불러?�기</button></div>':"";
     return '<div class="panel fade-in">'+
-      '<div class="guide-manage-head"><div><h3 class="panel-title">정보 안내문</h3><div class="guide-status-line"><span class="guide-status-pill">'+statusLabels[status]+'</span>'+timestampHtml+'</div></div></div>'+
+      '<div class="guide-manage-head"><div><h3 class="panel-title">?�보 ?�내�?/h3><div class="guide-status-line"><span class="guide-status-pill">'+statusLabels[status]+'</span>'+timestampHtml+'</div></div></div>'+
       '<div class="guide-link-box"><code>'+esc(link)+'</code><div class="guide-link-actions"><button class="btn btn-plain btn-sm" id="btn-copy-guide">링크 복사</button><button class="btn btn-ghost btn-sm" id="btn-preview-guide">미리보기</button></div></div>'+
-      '<div class="guide-dashboard-grid"><section class="guide-dashboard-card"><h4>핵심 정보 요약</h4>'+summaryHtml+'</section><section class="guide-dashboard-card"><h4>추가 확인 필요</h4>'+followUpHtml+'</section></div>'+
-      '<details class="guide-source"><summary>원문 답변 보기</summary><div class="guide-source-body">'+answersHtml+'</div></details>'+
-      '<section class="guide-dashboard-card"><h4>내부 검토</h4>'+reviewLoadError+'<div class="guide-review-fields"><label>검토 상태<select id="guide-review-status"'+disabled+'><option value="unreviewed"'+(reviewStatus==="unreviewed"?' selected':'')+'>미확인</option><option value="reviewing"'+(reviewStatus==="reviewing"?' selected':'')+'>확인 중</option><option value="reviewed"'+(reviewStatus==="reviewed"?' selected':'')+'>확인 완료</option></select></label><label>내부 메모<textarea id="guide-review-memo"'+disabled+' placeholder="팀 내부에서만 볼 메모를 남겨주세요.">'+esc(review.memo||"")+'</textarea></label></div><div class="guide-review-actions"><button class="btn btn-primary btn-sm" id="btn-save-guide-review"'+disabled+'>검토 내용 저장</button></div></section>'+
+      '<div class="guide-dashboard-grid"><section class="guide-dashboard-card"><h4>?�심 ?�보 ?�약</h4>'+summaryHtml+'</section><section class="guide-dashboard-card"><h4>추�? ?�인 ?�요</h4>'+followUpHtml+'</section></div>'+
+      '<details class="guide-source"><summary>?�문 ?��? 보기</summary><div class="guide-source-body">'+answersHtml+'</div></details>'+
+      '<section class="guide-dashboard-card"><h4>?��? 검??/h4>'+reviewLoadError+'<div class="guide-review-fields"><label>검???�태<select id="guide-review-status"'+disabled+'><option value="unreviewed"'+(reviewStatus==="unreviewed"?' selected':'')+'>미확??/option><option value="reviewing"'+(reviewStatus==="reviewing"?' selected':'')+'>?�인 �?/option><option value="reviewed"'+(reviewStatus==="reviewed"?' selected':'')+'>?�인 ?�료</option></select></label><label>?��? 메모<textarea id="guide-review-memo"'+disabled+' placeholder="?� ?��??�서�?�?메모�??�겨주세??">'+esc(review.memo||"")+'</textarea></label></div><div class="guide-review-actions"><button class="btn btn-primary btn-sm" id="btn-save-guide-review"'+disabled+'>검???�용 ?�??/button></div></section>'+
       '</div>';
   }
   async function issueGuideForClient(client){
@@ -2437,9 +2436,9 @@
   function bindGuidePanel(client,guide,guideReview,guideLoadState,guideReviewLoadState){
     var issue=document.getElementById("btn-issue-guide");
     if(issue) issue.onclick=async function(){
-      issue.disabled=true; issue.textContent="발급 중…";
+      issue.disabled=true; issue.textContent="발급 중�?;
       var issued=await issueGuideForClient(client);
-      if(!issued){ issue.disabled=false; issue.textContent="설문 링크 발급"; showToast("안내문 발급에 실패했습니다"); return; }
+      if(!issued){ issue.disabled=false; issue.textContent="?�문 링크 발급"; showToast("?�내�?발급???�패?�습?�다"); return; }
       state.currentGuide=issued;
       var issuedReview=await readS("guide-review:"+issued.id);
       if(issuedReview.status==="found"&&issuedReview.value&&issuedReview.value.guideId===issued.id&&issuedReview.value.clientId===issued.clientId&&["unreviewed","reviewing","reviewed"].indexOf(issuedReview.value.status)>=0&&typeof issuedReview.value.memo==="string"){
@@ -2454,7 +2453,7 @@
       }
       state.currentGuideLoadState="ready";
       renderClientWorkspace(client);
-      showToast("설문 링크를 발급했습니다");
+      showToast("?�문 링크�?발급?�습?�다");
     };
     var retry=document.getElementById("btn-retry-guide");
     if(retry) retry.onclick=function(){ selectClientWorkspaceTab(client,"guide"); };
@@ -2466,11 +2465,11 @@
     if(preview) preview.onclick=function(){ window.open(link,"_blank","noopener,noreferrer"); };
     var saveReview=document.getElementById("btn-save-guide-review");
     if(saveReview&&guideReviewLoadState!=="error") saveReview.onclick=async function(){
-      saveReview.disabled=true; saveReview.textContent="저장 중…";
+      saveReview.disabled=true; saveReview.textContent="?�??중�?;
       var saved=await saveGuideReview(guide,guideReview);
-      if(!saved){ saveReview.disabled=false; saveReview.textContent="검토 내용 저장"; showToast("검토 내용 저장에 실패했습니다"); return; }
+      if(!saved){ saveReview.disabled=false; saveReview.textContent="검???�용 ?�??; showToast("검???�용 ?�?�에 ?�패?�습?�다"); return; }
       renderClientWorkspace(client);
-      showToast("검토 내용을 저장했습니다");
+      showToast("검???�용???�?�했?�니??);
     };
   }
   async function selectClientWorkspaceTab(client,tab){
@@ -2548,12 +2547,12 @@
     var content="";
     if(activeTab==="calendar") content=calendarPanel(cl);
     if(activeTab==="checklist") content=checklistPanel(cl, tasks, done);
-    if(activeTab==="reports") content='<div class="panel fade-in"><div class="panel-head"><h3 class="panel-title">리포트</h3><span class="count muted">'+state.reports.filter(function(r){return r.clientId===cl.id;}).length+'건</span></div><div class="report-actions" style="margin-bottom:16px"><button class="btn btn-primary btn-sm" id="btn-new-weekly">+ 주간 리포트</button><button class="btn btn-ghost btn-sm" id="btn-new-monthly">+ 월간 리포트</button></div>'+reportRows(cl)+revenueTrendPanel(cl.id,state.reports,state.month)+"</div>";
+    if(activeTab==="reports") content='<div class="panel fade-in"><div class="panel-head"><h3 class="panel-title">리포??/h3><span class="count muted">'+state.reports.filter(function(r){return r.clientId===cl.id;}).length+'�?/span></div><div class="report-actions" style="margin-bottom:16px"><button class="btn btn-primary btn-sm" id="btn-new-weekly">+ 주간 리포??/button><button class="btn btn-ghost btn-sm" id="btn-new-monthly">+ ?�간 리포??/button></div>'+reportRows(cl)+revenueTrendPanel(cl.id,state.reports,state.month)+"</div>";
     if(activeTab==="contracts") content=contractsPanel(cl);
     if(activeTab==="guide") content=informationGuidePanel(cl,state.currentGuide,state.currentGuideReview,state.currentGuideLoadState,state.currentGuideReviewLoadState);
-    app.innerHTML='<div class="report-top"><button class="back-btn" id="btn-back">←</button><div class="report-actions"><button class="btn btn-plain btn-sm" id="btn-renew">재계약 처리</button><button class="btn btn-plain btn-sm" id="btn-edit-client">정보 수정</button></div></div>'+
-      '<div class="detail-head fade-in"><div class="dh-tagrow"><span class="status-pill">'+(cl.contractType==="renewal"?"재계약":"신규")+'</span></div><h2 class="dh-name">'+esc(cl.name)+'</h2><div class="dh-meta"><span>'+esc(cl.industry||"")+'</span><span>시작 '+esc(cl.startDate||"미등록")+'</span></div></div>'+
-      '<div class="detail-tabs"><button class="detail-tab '+(activeTab==="calendar"?"active":"")+'" data-client-tab="calendar">일정 달력</button><button class="detail-tab '+(activeTab==="checklist"?"active":"")+'" data-client-tab="checklist">업무 체크리스트 <small>'+done+'/'+tasks.length+'</small></button><button class="detail-tab '+(activeTab==="reports"?"active":"")+'" data-client-tab="reports">리포트</button><button class="detail-tab '+(activeTab==="contracts"?"active":"")+'" data-client-tab="contracts">계약서</button><button class="detail-tab '+(activeTab==="guide"?"active":"")+'" data-client-tab="guide">정보 안내문</button></div>'+content;
+    app.innerHTML='<div class="report-top"><button class="back-btn" id="btn-back">??/button><div class="report-actions"><button class="btn btn-plain btn-sm" id="btn-renew">?�계??처리</button><button class="btn btn-plain btn-sm" id="btn-edit-client">?�보 ?�정</button></div></div>'+
+      '<div class="detail-head fade-in"><div class="dh-tagrow"><span class="status-pill">'+(cl.contractType==="renewal"?"?�계??:"?�규")+'</span></div><h2 class="dh-name">'+esc(cl.name)+'</h2><div class="dh-meta"><span>'+esc(cl.industry||"")+'</span><span>?�작 '+esc(cl.startDate||"미등�?)+'</span></div></div>'+
+      '<div class="detail-tabs"><button class="detail-tab '+(activeTab==="calendar"?"active":"")+'" data-client-tab="calendar">?�정 ?�력</button><button class="detail-tab '+(activeTab==="checklist"?"active":"")+'" data-client-tab="checklist">?�무 체크리스??<small>'+done+'/'+tasks.length+'</small></button><button class="detail-tab '+(activeTab==="reports"?"active":"")+'" data-client-tab="reports">리포??/button><button class="detail-tab '+(activeTab==="contracts"?"active":"")+'" data-client-tab="contracts">계약??/button><button class="detail-tab '+(activeTab==="guide"?"active":"")+'" data-client-tab="guide">?�보 ?�내�?/button></div>'+content;
     document.getElementById("btn-back").onclick=function(){ state.view="dashboard"; render(); };
     document.getElementById("btn-edit-client").onclick=function(){ state.editingClient=cl; state.view="clientForm"; render(); };
     document.getElementById("btn-renew").onclick=function(){ markRenewal(cl.id); };
@@ -2566,11 +2565,11 @@
     var anchor=cl.startDate ? new Date(cl.startDate+"T12:00:00") : new Date();
     var selected=state.calendarMonth || monthKey(anchor), sp=selected.split("-"), y=+sp[0], m=+sp[1]-1;
     var first=new Date(y,m,1), days=new Date(y,m+1,0).getDate(), blanks=first.getDay();
-    var labels=["일","월","화","수","목","금","토"].map(function(x){ return '<div class="calendar-weekday">'+x+'</div>'; }).join("");
+    var labels=["??,"??,"??,"??,"�?,"�?,"??].map(function(x){ return '<div class="calendar-weekday">'+x+'</div>'; }).join("");
     var grid=Array(blanks+1).join('<div></div>');
     for(var d=1;d<=days;d++){ var date=new Date(y,m,d), key=isoDate(date), dateState=calendarDateState(cl,key), period=dateState.period, periodClass=calendarPeriodClass(period), unfinished=calendarDateHasUnfinishedTasks(cl,key,cl.checklist), note=(cl.dailyNotes||{})[key], classes=["calendar-day"]; if(periodClass) classes.push(periodClass); if(unfinished) classes.push("has-unfinished"); if(note) classes.push("has-note"); if(dateState.isWeekend) classes.push("is-weekend"); if(dateState.isOutsideCycle) classes.push("is-outside-cycle"); if(dateState.isEndedCycle) classes.push("is-ended-cycle"); grid+='<button class="'+classes.join(" ")+'" data-day="'+key+'"><span class="date">'+d+'</span>'+(period?'<span class="period">'+periodLabel(period)+'</span>':"")+'</button>'; }
     var unassigned=calendarUnassignedTasks(cl.checklist);
-    return '<div class="panel fade-in"><div class="panel-head"><div><h3 class="panel-title">'+y+'년 '+(m+1)+'월 일정 달력</h3><p class="panel-hint">날짜를 눌러 배정된 업무를 확인하고 특이사항을 기록하세요.</p></div><div class="report-actions"><button class="btn btn-ghost btn-sm" data-calendar-month="prev">‹ 이전</button><button class="btn btn-ghost btn-sm" data-calendar-month="next">다음 ›</button></div></div><div class="calendar-grid">'+labels+grid+'</div>'+(unassigned.length?'<div class="set-card" style="margin-top:16px"><h4>일정 미배정 업무</h4><div class="muted">아직 주차가 정해지지 않아 달력 날짜에는 배치되지 않았습니다.</div>'+unassigned.map(function(t){return '<div class="day-task">'+(t.done?"✓ ":"○ ")+esc(t.text)+'</div>';}).join("")+'</div>':"")+'</div>';
+    return '<div class="panel fade-in"><div class="panel-head"><div><h3 class="panel-title">'+y+'??'+(m+1)+'???�정 ?�력</h3><p class="panel-hint">?�짜�??�러 배정???�무�??�인?�고 ?�이?�항??기록?�세??</p></div><div class="report-actions"><button class="btn btn-ghost btn-sm" data-calendar-month="prev">???�전</button><button class="btn btn-ghost btn-sm" data-calendar-month="next">?�음 ??/button></div></div><div class="calendar-grid">'+labels+grid+'</div>'+(unassigned.length?'<div class="set-card" style="margin-top:16px"><h4>?�정 미배???�무</h4><div class="muted">?�직 주차가 ?�해지지 ?�아 ?�력 ?�짜?�는 배치?��? ?�았?�니??</div>'+unassigned.map(function(t){return '<div class="day-task">'+(t.done?"??":"??")+esc(t.text)+'</div>';}).join("")+'</div>':"")+'</div>';
   }
   function checklistTaskPeriod(client,task){
     if(!task) return "";
@@ -2617,12 +2616,12 @@
       var openKey=section.key||"unassigned";
       var configured=state.checklistWeeksOpen&&Object.prototype.hasOwnProperty.call(state.checklistWeeksOpen,openKey);
       var open=configured ? state.checklistWeeksOpen[openKey] : (section.key===firstOpenKey || section.key==="");
-      var rows=open ? '<div class="check-section-body">'+section.tasks.map(function(t){ var label=t.day ? t.day+"일차" : periodLabel(t.week); return '<div class="check-row '+(t.done?"done":"")+'"><button class="check-box '+(t.done?"on":"")+'" data-toggle-work="'+esc(t.id)+'">✓</button><span class="check-week">'+esc(label)+'</span><span class="check-text">'+esc(t.text)+'</span><button class="check-del" data-del-work="'+esc(t.id)+'">×</button></div>'; }).join("")+'</div>' : "";
-      return '<div class="check-section"><button class="check-section-head" data-toggle-check-section="'+esc(openKey)+'" aria-expanded="'+(open?"true":"false")+'"><span class="check-section-title"><span class="check-section-arrow">›</span>'+esc(section.label)+'</span><span class="check-section-count">'+section.done+' / '+section.tasks.length+' 완료</span></button>'+rows+'</div>';
-    }).join("") : '<div class="muted">세트를 적용하거나 업무를 직접 추가하면 실행 목록이 만들어집니다.</div>';
-    var toggleLabel=state.setCollectionOpen ? "세트 닫기" : "체크리스트 세트";
+      var rows=open ? '<div class="check-section-body">'+section.tasks.map(function(t){ var label=t.day ? t.day+"?�차" : periodLabel(t.week); return '<div class="check-row '+(t.done?"done":"")+'"><button class="check-box '+(t.done?"on":"")+'" data-toggle-work="'+esc(t.id)+'">??/button><span class="check-week">'+esc(label)+'</span><span class="check-text">'+esc(t.text)+'</span><button class="check-del" data-del-work="'+esc(t.id)+'">×</button></div>'; }).join("")+'</div>' : "";
+      return '<div class="check-section"><button class="check-section-head" data-toggle-check-section="'+esc(openKey)+'" aria-expanded="'+(open?"true":"false")+'"><span class="check-section-title"><span class="check-section-arrow">??/span>'+esc(section.label)+'</span><span class="check-section-count">'+section.done+' / '+section.tasks.length+' ?�료</span></button>'+rows+'</div>';
+    }).join("") : '<div class="muted">?�트�??�용?�거???�무�?직접 추�??�면 ?�행 목록??만들?�집?�다.</div>';
+    var toggleLabel=state.setCollectionOpen ? "?�트 ?�기" : "체크리스???�트";
     var setPanel=state.setCollectionOpen ? checklistSetCollectionPanel() : "";
-    return '<div class="panel fade-in"><div class="panel-head"><h3 class="panel-title">현재 업체 업무</h3><div class="checklist-head-actions"><span class="count muted">'+done+' / '+tasks.length+' 완료</span><button class="btn btn-plain btn-sm" id="btn-toggle-sets" aria-expanded="'+(state.setCollectionOpen?"true":"false")+'">'+toggleLabel+'</button></div></div>'+taskHtml+'<div class="check-add"><input id="new-work-text" type="text" placeholder="업무를 직접 추가하세요" /><select id="new-work-week"><option value="">미배정</option><option value="1">1주차</option><option value="2">2주차</option><option value="3">3주차</option><option value="4">4주차</option><option value="closing">마무리</option></select><button class="btn btn-ghost btn-sm" data-add-task>추가</button></div></div>'+setPanel;
+    return '<div class="panel fade-in"><div class="panel-head"><h3 class="panel-title">?�재 ?�체 ?�무</h3><div class="checklist-head-actions"><span class="count muted">'+done+' / '+tasks.length+' ?�료</span><button class="btn btn-plain btn-sm" id="btn-toggle-sets" aria-expanded="'+(state.setCollectionOpen?"true":"false")+'">'+toggleLabel+'</button></div></div>'+taskHtml+'<div class="check-add"><input id="new-work-text" type="text" placeholder="?�무�?직접 추�??�세?? /><select id="new-work-week"><option value="">미배??/option><option value="1">1주차</option><option value="2">2주차</option><option value="3">3주차</option><option value="4">4주차</option><option value="closing">마무�?/option></select><button class="btn btn-ghost btn-sm" data-add-task>추�?</button></div></div>'+setPanel;
   }
   function checklistSetCollectionPanel(){
     if(state.checklistSetDraft) return checklistSetEditorPanel();
@@ -2630,22 +2629,22 @@
     var body=sets.length ? sets.map(function(s){
       var daily=(s.items||[]).filter(function(i){return dailyPeriod(Number(i.day));}).length;
       var legacy=(s.items||[]).length-daily;
-      var detail=daily+"개 일별 업무"+(legacy?" · "+legacy+"개 기존 주차 업무":"")+(s.excludeWeekends===false?" · 주말 포함":" · 주말 제외");
-      return '<div class="set-card"><h4>'+esc(s.name)+'</h4><div class="muted">'+esc(s.description||"설명 없음")+' · '+detail+'</div><button class="btn btn-ghost btn-sm" data-apply-set="'+esc(s.id)+'" style="margin-top:10px">현재 업체에 적용</button><button class="btn btn-plain btn-sm" data-edit-set="'+esc(s.id)+'" style="margin-top:10px">수정</button></div>';
-    }).join("") : '<div class="set-empty"><strong>아직 만든 세트가 없습니다</strong><p>30일 동안 반복해서 사용할 업무를 날짜별로 정리해 보세요.</p><button class="btn btn-primary btn-sm" id="btn-empty-new-set">첫 세트 만들기</button></div>';
-    return '<div class="panel fade-in"><div class="panel-head set-collection-head"><div><h3 class="panel-title">체크리스트 세트</h3><p class="panel-hint">필요할 때 업체에 적용할 30일 업무 모음입니다.</p></div><button class="btn btn-primary btn-sm" id="btn-new-set">+ 새 세트</button></div>'+body+'</div>';
+      var detail=daily+"�??�별 ?�무"+(legacy?" · "+legacy+"�?기존 주차 ?�무":"")+(s.excludeWeekends===false?" · 주말 ?�함":" · 주말 ?�외");
+      return '<div class="set-card"><h4>'+esc(s.name)+'</h4><div class="muted">'+esc(s.description||"?�명 ?�음")+' · '+detail+'</div><button class="btn btn-ghost btn-sm" data-apply-set="'+esc(s.id)+'" style="margin-top:10px">?�재 ?�체???�용</button><button class="btn btn-plain btn-sm" data-edit-set="'+esc(s.id)+'" style="margin-top:10px">?�정</button></div>';
+    }).join("") : '<div class="set-empty"><strong>?�직 만든 ?�트가 ?�습?�다</strong><p>30???�안 반복?�서 ?�용???�무�??�짜별로 ?�리??보세??</p><button class="btn btn-primary btn-sm" id="btn-empty-new-set">�??�트 만들�?/button></div>';
+    return '<div class="panel fade-in"><div class="panel-head set-collection-head"><div><h3 class="panel-title">체크리스???�트</h3><p class="panel-hint">?�요?????�체???�용??30???�무 모음?�니??</p></div><button class="btn btn-primary btn-sm" id="btn-new-set">+ ???�트</button></div>'+body+'</div>';
   }
   function checklistSetEditorPanel(){
     var draft=state.checklistSetDraft, period=state.checklistSetPeriod||"1";
-    var nav='<div class="set-period-nav" aria-label="세트 기간"><button class="'+(period==="1"?"active":"")+'" data-set-period="1">1주차</button><button class="'+(period==="2"?"active":"")+'" data-set-period="2">2주차</button><button class="'+(period==="3"?"active":"")+'" data-set-period="3">3주차</button><button class="'+(period==="4"?"active":"")+'" data-set-period="4">4주차</button><button class="'+(period==="closing"?"active":"")+'" data-set-period="closing">마무리</button></div>';
+    var nav='<div class="set-period-nav" aria-label="?�트 기간"><button class="'+(period==="1"?"active":"")+'" data-set-period="1">1주차</button><button class="'+(period==="2"?"active":"")+'" data-set-period="2">2주차</button><button class="'+(period==="3"?"active":"")+'" data-set-period="3">3주차</button><button class="'+(period==="4"?"active":"")+'" data-set-period="4">4주차</button><button class="'+(period==="closing"?"active":"")+'" data-set-period="closing">마무�?/button></div>';
     var legacy=checklistSetLegacyRows(draft,period), days="";
     var excludeWeekends=draft.excludeWeekends!==false;
     checklistSetPeriodDays(period,excludeWeekends).forEach(function(day,index){
-      var weekdayLabels=["월","화","수","목","금","토","일"];
-      var label=period==="closing" ? "마무리 "+(index+1)+"일차" : (excludeWeekends ? weekdayLabels[index] : day+"일차");
+      var weekdayLabels=["??,"??,"??,"�?,"�?,"??,"??];
+      var label=period==="closing" ? "마무�?"+(index+1)+"?�차" : (excludeWeekends ? weekdayLabels[index] : day+"?�차");
       days+=checklistSetDayCard(draft,day,'data-set-day="'+day+'"',label);
     });
-    return '<div class="panel fade-in"><div class="panel-head"><div><h3 class="panel-title">'+(draft.id?"체크리스트 세트 수정":"새 체크리스트 세트")+'</h3><p class="panel-hint">주차별 월·화·수·목·금에 필요한 업무를 여러 개 넣을 수 있습니다.</p></div></div><div class="set-editor-meta"><label>세트 이름<input id="set-editor-name" type="text" value="'+esc(draft.name||"")+'" placeholder="예: 신규 업체 운영 세트" /></label><label>설명<input id="set-editor-description" type="text" value="'+esc(draft.description||"")+'" placeholder="이 세트의 용도를 적어주세요" /></label><label class="toggle-row"><input id="set-editor-exclude-weekends" type="checkbox" '+(excludeWeekends?"checked":"")+' /> 주말 제외 업무일 기준</label></div>'+nav+legacy+'<div class="set-day-grid">'+days+'</div><div class="set-editor-actions"><button class="btn btn-plain btn-sm" id="btn-cancel-set-editor">취소</button><button class="btn btn-primary btn-sm" id="btn-save-set-editor">세트 저장</button></div></div>';
+    return '<div class="panel fade-in"><div class="panel-head"><div><h3 class="panel-title">'+(draft.id?"체크리스???�트 ?�정":"??체크리스???�트")+'</h3><p class="panel-hint">주차�??�·화·?�·목·금에 ?�요???�무�??�러 �??�을 ???�습?�다.</p></div></div><div class="set-editor-meta"><label>?�트 ?�름<input id="set-editor-name" type="text" value="'+esc(draft.name||"")+'" placeholder="?? ?�규 ?�체 ?�영 ?�트" /></label><label>?�명<input id="set-editor-description" type="text" value="'+esc(draft.description||"")+'" placeholder="???�트???�도�??�어주세?? /></label><label class="toggle-row"><input id="set-editor-exclude-weekends" type="checkbox" '+(excludeWeekends?"checked":"")+' /> 주말 ?�외 ?�무??기�?</label></div>'+nav+legacy+'<div class="set-day-grid">'+days+'</div><div class="set-editor-actions"><button class="btn btn-plain btn-sm" id="btn-cancel-set-editor">취소</button><button class="btn btn-primary btn-sm" id="btn-save-set-editor">?�트 ?�??/button></div></div>';
   }
   function checklistSetDayCard(draft,day,dayAttr,label){
     var rows="", dayItems=[];
@@ -2654,17 +2653,17 @@
     });
     dayItems.forEach(function(entry,position){
       var index=entry.index, item=entry.item, order=position+1;
-      rows+='<div class="set-task-row"><input type="text" data-set-item-text="'+index+'" value="'+esc(item.text||"")+'" placeholder="'+day+'일차 업무" /><div class="set-task-row-actions"><button type="button" class="row-move" data-move-set-task="'+index+'" data-move-direction="-1" aria-label="'+day+'일차 '+order+'번째 업무 위로 이동"'+(position===0?' disabled':'')+'>↑</button><button type="button" class="row-move" data-move-set-task="'+index+'" data-move-direction="1" aria-label="'+day+'일차 '+order+'번째 업무 아래로 이동"'+(position===dayItems.length-1?' disabled':'')+'>↓</button><button type="button" class="row-remove" data-remove-set-task="'+index+'" aria-label="'+day+'일차 '+order+'번째 업무 삭제">×</button></div></div>';
+      rows+='<div class="set-task-row"><input type="text" data-set-item-text="'+index+'" value="'+esc(item.text||"")+'" placeholder="'+day+'?�차 ?�무" /><div class="set-task-row-actions"><button type="button" class="row-move" data-move-set-task="'+index+'" data-move-direction="-1" aria-label="'+day+'?�차 '+order+'번째 ?�무 ?�로 ?�동"'+(position===0?' disabled':'')+'>??/button><button type="button" class="row-move" data-move-set-task="'+index+'" data-move-direction="1" aria-label="'+day+'?�차 '+order+'번째 ?�무 ?�래�??�동"'+(position===dayItems.length-1?' disabled':'')+'>??/button><button type="button" class="row-remove" data-remove-set-task="'+index+'" aria-label="'+day+'?�차 '+order+'번째 ?�무 ??��">×</button></div></div>';
     });
-    return '<section class="set-day-card" '+dayAttr+'><div class="set-day-head"><strong>'+esc(label||day+"일차")+'</strong><button class="btn btn-ghost btn-sm" data-add-set-task data-set-day-new="'+day+'">+ 업무</button></div>'+(rows||'<div class="set-day-empty">등록된 업무가 없습니다.</div>')+'</section>';
+    return '<section class="set-day-card" '+dayAttr+'><div class="set-day-head"><strong>'+esc(label||day+"?�차")+'</strong><button class="btn btn-ghost btn-sm" data-add-set-task data-set-day-new="'+day+'">+ ?�무</button></div>'+(rows||'<div class="set-day-empty">?�록???�무가 ?�습?�다.</div>')+'</section>';
   }
   function checklistSetLegacyRows(draft,period){
     var rows="";
     (draft.items||[]).forEach(function(item,index){
       if(item.day || String(item.week||"")!==period) return;
-      rows+='<div class="set-task-row"><input type="text" data-set-item-text="'+index+'" value="'+esc(item.text||"")+'" placeholder="기존 주차 업무" /><button class="row-remove" data-remove-set-task="'+index+'" aria-label="기존 주차 업무 삭제">×</button></div>';
+      rows+='<div class="set-task-row"><input type="text" data-set-item-text="'+index+'" value="'+esc(item.text||"")+'" placeholder="기존 주차 ?�무" /><button class="row-remove" data-remove-set-task="'+index+'" aria-label="기존 주차 ?�무 ??��">×</button></div>';
     });
-    return rows ? '<div class="set-legacy"><h4>기존 주차 단위 업무</h4><p>이전 방식으로 만든 항목입니다. 업체에 적용할 때도 주차 정보가 그대로 유지됩니다.</p>'+rows+'</div>' : "";
+    return rows ? '<div class="set-legacy"><h4>기존 주차 ?�위 ?�무</h4><p>?�전 방식?�로 만든 ??��?�니?? ?�체???�용???�도 주차 ?�보가 그�?�??��??�니??</p>'+rows+'</div>' : "";
   }
   function bindCalendarPanel(cl){ app.querySelectorAll("[data-day]").forEach(function(b){ b.onclick=function(){ openDayModal(cl,b.getAttribute("data-day")); }; }); app.querySelectorAll("[data-calendar-month]").forEach(function(b){b.onclick=function(){var base=state.calendarMonth || monthKey(cl.startDate?new Date(cl.startDate+"T12:00:00"):new Date()); state.calendarMonth=calendarMonthShift(base,b.getAttribute("data-calendar-month")==="prev"?-1:1); renderClientWorkspace(cl);};}); }
   function bindContractsPanel(cl){
@@ -2685,7 +2684,7 @@
       var id=b.getAttribute("data-open-contract");
       var contract=await getS("contract:"+id);
       if(!contract) contract=(state.contracts||[]).filter(function(item){ return item.id===id; })[0];
-      if(!contract){ showToast("계약서를 찾을 수 없습니다"); return; }
+      if(!contract){ showToast("계약?��? 찾을 ???�습?�다"); return; }
       state.currentContract=Object.assign(blankContract(),contract);
       state.view="contractForm";
       render();
@@ -2702,9 +2701,9 @@
     app.querySelectorAll("[data-toggle-check-section]").forEach(function(b){ b.onclick=function(){ var key=b.getAttribute("data-toggle-check-section"); state.checklistWeeksOpen=state.checklistWeeksOpen||{}; state.checklistWeeksOpen[key]=b.getAttribute("aria-expanded")!=="true"; renderClientWorkspace(cl); }; });
     app.querySelectorAll("[data-toggle-work]").forEach(function(b){ b.onclick=function(){ var id=b.getAttribute("data-toggle-work"); (cl.checklist||[]).forEach(function(t){ if(t.id===id)t.done=!t.done; }); saveClientAndRefresh(cl); }; });
     app.querySelectorAll("[data-del-work]").forEach(function(b){ b.onclick=function(){ var id=b.getAttribute("data-del-work"); cl.checklist=(cl.checklist||[]).filter(function(t){return t.id!==id;}); saveClientAndRefresh(cl); }; });
-    var add=document.querySelector("[data-add-task]"); if(add) add.onclick=function(){ var text=document.getElementById("new-work-text").value.trim(); if(!text){showToast("업무 내용을 입력하세요");return;} cl.checklist=cl.checklist||[]; cl.checklist.push({id:uid("ck"),text:text,week:document.getElementById("new-work-week").value,done:false}); saveClientAndRefresh(cl); };
+    var add=document.querySelector("[data-add-task]"); if(add) add.onclick=function(){ var text=document.getElementById("new-work-text").value.trim(); if(!text){showToast("?�무 ?�용???�력?�세??);return;} cl.checklist=cl.checklist||[]; cl.checklist.push({id:uid("ck"),text:text,week:document.getElementById("new-work-week").value,done:false}); saveClientAndRefresh(cl); };
     var toggle=document.getElementById("btn-toggle-sets"); if(toggle) toggle.onclick=function(){ setChecklistCollectionOpen(!state.setCollectionOpen); renderClientWorkspace(cl); };
-    app.querySelectorAll("[data-apply-set]").forEach(function(b){ b.onclick=function(){ var set=state.checklistSets.filter(function(s){return s.id===b.getAttribute("data-apply-set");})[0]; if(!set)return; cl.excludeWeekends=set.excludeWeekends!==false; cl.checklist=(cl.checklist||[]).concat(cloneChecklistSet(set,function(){return uid("ck");})); saveClientAndRefresh(cl); showToast("체크리스트 세트를 적용했습니다"); }; });
+    app.querySelectorAll("[data-apply-set]").forEach(function(b){ b.onclick=function(){ var set=state.checklistSets.filter(function(s){return s.id===b.getAttribute("data-apply-set");})[0]; if(!set)return; cl.excludeWeekends=set.excludeWeekends!==false; cl.checklist=(cl.checklist||[]).concat(cloneChecklistSet(set,function(){return uid("ck");})); saveClientAndRefresh(cl); showToast("체크리스???�트�??�용?�습?�다"); }; });
     [document.getElementById("btn-new-set"),document.getElementById("btn-empty-new-set")].forEach(function(create){ if(create) create.onclick=function(){ openChecklistSetEditor(); }; });
     app.querySelectorAll("[data-edit-set]").forEach(function(b){ b.onclick=function(){ openChecklistSetEditor(b.getAttribute("data-edit-set")); }; });
     app.querySelectorAll("[data-set-period]").forEach(function(b){ b.onclick=function(){ syncChecklistSetEditor(); state.checklistSetPeriod=b.getAttribute("data-set-period"); renderClientWorkspace(cl); }; });
@@ -2720,22 +2719,22 @@
     app.querySelectorAll("[data-open-report]").forEach(function(b){b.onclick=function(){openReport(b.getAttribute("data-open-report"));};});
     app.querySelectorAll("[data-edit-revenue]").forEach(function(b){b.onclick=async function(){
       var id=b.getAttribute("data-edit-revenue"), rep=await getS("report:"+id);
-      if(!rep){ showToast("리포트를 찾을 수 없습니다"); return; }
+      if(!rep){ showToast("리포?��? 찾을 ???�습?�다"); return; }
       rep.type=rep.type==="weekly"?"weekly":"monthly";
       state.editingBase=rep; state.view="edit"; render();
     };});
-    app.querySelectorAll("[data-del-report]").forEach(function(b){b.onclick=function(){var id=b.getAttribute("data-del-report"); confirmDialog("리포트를 삭제할까요?", "삭제한 리포트는 되돌릴 수 없습니다.", "삭제", function(){deleteReport(id);});};});
+    app.querySelectorAll("[data-del-report]").forEach(function(b){b.onclick=function(){var id=b.getAttribute("data-del-report"); confirmDialog("리포?��? ??��?�까??", "??��??리포?�는 ?�돌�????�습?�다.", "??��", function(){deleteReport(id);});};});
   }
   function openDayModal(cl,key){
     var period=checklistPeriod(cl,key), tasks=calendarTasksForDate(cl,key,cl.checklist), unassigned=calendarUnassignedTasks(cl.checklist);
     var existing=(cl.dailyNotes||{})[key]||"";
     var layer=document.createElement("div"); layer.id="day-modal-layer"; layer.className="modal-layer"; layer.style.cssText="position:fixed;inset:0;background:rgba(15,23,42,.42);display:flex;align-items:center;justify-content:center;padding:20px;z-index:110";
-    layer.innerHTML='<div class="modal day-modal"><h3>'+esc(key)+' '+(period?"· "+periodLabel(period):"")+'</h3><p>이 날짜에 확인할 업체 업무입니다. 완료 상태는 체크리스트 화면에서 관리합니다.</p><div>'+ (tasks.length?tasks.map(function(t){return '<div class="day-task '+(t.done?"done":"")+'">'+(t.done?"✓ ":"○ ")+esc(t.text)+'</div>';}).join(""):'<div class="muted">배정된 업무가 없습니다.</div>') +(unassigned.length?'<div class="day-task"><b>일정 미배정 업무</b></div>'+unassigned.map(function(t){return '<div class="day-task '+(t.done?"done":"")+'">'+(t.done?"✓ ":"○ ")+esc(t.text)+'</div>';}).join(""):"")+'</div><label style="display:block;margin:18px 0 7px;font-size:13px;font-weight:800">특이사항 메모</label><textarea id="daily-note" class="day-note" placeholder="그날의 특이사항을 남겨주세요.">'+esc(existing)+'</textarea><div class="modal-actions" style="margin-top:12px"><button class="btn btn-plain" id="day-close">닫기</button><button class="btn btn-primary" id="day-save">메모 저장</button></div></div>';
+    layer.innerHTML='<div class="modal day-modal"><h3>'+esc(key)+' '+(period?"· "+periodLabel(period):"")+'</h3><p>???�짜???�인???�체 ?�무?�니?? ?�료 ?�태??체크리스???�면?�서 관리합?�다.</p><div>'+ (tasks.length?tasks.map(function(t){return '<div class="day-task '+(t.done?"done":"")+'">'+(t.done?"??":"??")+esc(t.text)+'</div>';}).join(""):'<div class="muted">배정???�무가 ?�습?�다.</div>') +(unassigned.length?'<div class="day-task"><b>?�정 미배???�무</b></div>'+unassigned.map(function(t){return '<div class="day-task '+(t.done?"done":"")+'">'+(t.done?"??":"??")+esc(t.text)+'</div>';}).join(""):"")+'</div><label style="display:block;margin:18px 0 7px;font-size:13px;font-weight:800">?�이?�항 메모</label><textarea id="daily-note" class="day-note" placeholder="그날???�이?�항???�겨주세??">'+esc(existing)+'</textarea><div class="modal-actions" style="margin-top:12px"><button class="btn btn-plain" id="day-close">?�기</button><button class="btn btn-primary" id="day-save">메모 ?�??/button></div></div>';
     document.body.appendChild(layer); document.getElementById("day-close").onclick=function(){layer.remove();}; document.getElementById("day-save").onclick=async function(){cl.dailyNotes=cl.dailyNotes||{}; var note=document.getElementById("daily-note").value.trim(); if(note)cl.dailyNotes[key]=note; else delete cl.dailyNotes[key]; await saveClientAndRefresh(cl); layer.remove();};
   }
   function openChecklistSetEditor(id){
     var set=id ? state.checklistSets.filter(function(s){return s.id===id;})[0] : null;
-    if(id && !set){ showToast("체크리스트 세트를 찾을 수 없습니다"); return; }
+    if(id && !set){ showToast("체크리스???�트�?찾을 ???�습?�다"); return; }
     state.setCollectionOpen=true;
     state.checklistSetPeriod="1";
     state.checklistSetDraft={
@@ -2763,7 +2762,7 @@
   async function saveChecklistSetEditor(cl){
     syncChecklistSetEditor();
     var draft=state.checklistSetDraft;
-    if(!draft || !draft.name.trim()){ showToast("세트 이름을 입력하세요"); return; }
+    if(!draft || !draft.name.trim()){ showToast("?�트 ?�름???�력?�세??); return; }
     var items=checklistSetItemsForSave(draft.items);
     var saved={id:draft.id||uid("set"),name:draft.name.trim(),description:draft.description.trim(),excludeWeekends:draft.excludeWeekends!==false,items:items};
     var existing=state.checklistSets.findIndex(function(set){return set.id===saved.id;});
@@ -2771,7 +2770,7 @@
     await saveChecklistSets();
     state.checklistSetDraft=null;
     renderClientWorkspace(cl);
-    showToast("체크리스트 세트를 저장했습니다");
+    showToast("체크리스???�트�??�?�했?�니??);
   }
   function renderClientDetail(cl){
     return renderClientWorkspace(cl);
@@ -2784,7 +2783,7 @@
     var cells="";
     for(var i=1;i<=wk;i++){
       var st=pm[i]||"none";
-      var label= st==="done"?"완료": st==="doing"?"진행":"—";
+      var label= st==="done"?"?�료": st==="doing"?"진행":"??;
       cells+='<button class="week-cell '+(st!=="none"?st:"")+(i===cur?" current":"")+'" data-week="'+i+'">'+
              '<span class="wc-label">'+i+'주차</span><span class="wc-state">'+label+'</span></button>';
     }
@@ -2793,13 +2792,13 @@
     var checkHtml = checklist.length
       ? checklist.map(function(t){
           return '<div class="check-row '+(t.done?"done":"")+'">'+
-            '<button class="check-box '+(t.done?"on":"")+'" data-toggle-task="'+esc(t.id)+'">✓</button>'+
+            '<button class="check-box '+(t.done?"on":"")+'" data-toggle-task="'+esc(t.id)+'">??/button>'+
             (t.week?'<span class="check-week">'+esc(t.week)+'주차</span>':'')+
             '<span class="check-text">'+esc(t.text)+'</span>'+
-            '<button class="check-del" data-del-task="'+esc(t.id)+'">✕</button>'+
+            '<button class="check-del" data-del-task="'+esc(t.id)+'">??/button>'+
           '</div>';
         }).join("")
-      : '<div class="muted">등록된 업무가 없습니다. 아래에서 추가하십시오.</div>';
+      : '<div class="muted">?�록???�무가 ?�습?�다. ?�래?�서 추�??�십?�오.</div>';
     var doneTasks=checklist.filter(function(t){ return t.done; }).length;
 
     var weekOpts='<option value="">주차</option>';
@@ -2811,33 +2810,33 @@
       ? myReports.map(function(r){
           return '<div class="report-row">'+
             '<div class="rr-main" data-open-report="'+esc(r.id)+'">'+
-              '<div class="rr-title"><span class="rc-type-badge '+(r.type==="weekly"?"weekly":"monthly")+'">'+(r.type==="weekly"?"주간":"월간")+'</span>'+esc(r.period||"")+'</div>'+
-              '<div class="rr-date">'+fmtDate(r.updatedAt)+' 저장</div>'+
+              '<div class="rr-title"><span class="rc-type-badge '+(r.type==="weekly"?"weekly":"monthly")+'">'+(r.type==="weekly"?"주간":"?�간")+'</span>'+esc(r.period||"")+'</div>'+
+              '<div class="rr-date">'+fmtDate(r.updatedAt)+' ?�??/div>'+
             '</div>'+
-            '<div class="rr-actions"><button class="btn btn-danger btn-sm" data-del-report="'+esc(r.id)+'">삭제</button></div>'+
+            '<div class="rr-actions"><button class="btn btn-danger btn-sm" data-del-report="'+esc(r.id)+'">??��</button></div>'+
           '</div>';
         }).join("")
-      : '<div class="muted">작성된 리포트가 없습니다.</div>';
+      : '<div class="muted">?�성??리포?��? ?�습?�다.</div>';
 
     var tags="";
-    if(cl.contractType==="renewal") tags+='<span class="status-pill">재계약</span>';
-    else tags+='<span class="status-pill">신규</span>';
-    if(cl.status==="paused") tags+='<span class="status-pill">일시중지</span>';
+    if(cl.contractType==="renewal") tags+='<span class="status-pill">?�계??/span>';
+    else tags+='<span class="status-pill">?�규</span>';
+    if(cl.status==="paused") tags+='<span class="status-pill">?�시중�?</span>';
     if(cl.status==="ended") tags+='<span class="status-pill">종료</span>';
 
     var metaItems=[];
     if(cl.industry) metaItems.push(esc(cl.industry));
-    if(cl.manager) metaItems.push("담당 "+esc(cl.manager));
-    if(cl.fee) metaItems.push("월 "+Number(toNum(cl.fee)||0).toLocaleString("ko-KR")+"원");
-    if(cl.startDate) metaItems.push("시작 "+esc(cl.startDate));
+    if(cl.manager) metaItems.push("?�당 "+esc(cl.manager));
+    if(cl.fee) metaItems.push("??"+Number(toNum(cl.fee)||0).toLocaleString("ko-KR")+"??);
+    if(cl.startDate) metaItems.push("?�작 "+esc(cl.startDate));
     if(end) metaItems.push("만료 "+end.getFullYear()+"."+String(end.getMonth()+1).padStart(2,"0"));
 
     app.innerHTML=
       '<div class="report-top">'+
-        '<button class="back-btn" id="btn-back">←</button>'+
+        '<button class="back-btn" id="btn-back">??/button>'+
         '<div class="report-actions">'+
-          '<button class="btn btn-plain btn-sm" id="btn-renew">재계약 처리</button>'+
-          '<button class="btn btn-plain btn-sm" id="btn-edit-client">정보 수정</button>'+
+          '<button class="btn btn-plain btn-sm" id="btn-renew">?�계??처리</button>'+
+          '<button class="btn btn-plain btn-sm" id="btn-edit-client">?�보 ?�정</button>'+
         '</div>'+
       '</div>'+
       '<div class="detail-head fade-in">'+
@@ -2848,34 +2847,34 @@
 
       '<div class="panel fade-in">'+
         '<div class="panel-head">'+
-          '<h3 class="panel-title">'+esc(monthLabel(mk))+' 주차별 진행</h3>'+
-          '<span class="count muted">'+prog.done+' / '+prog.total+' 완료</span>'+
+          '<h3 class="panel-title">'+esc(monthLabel(mk))+' 주차�?진행</h3>'+
+          '<span class="count muted">'+prog.done+' / '+prog.total+' ?�료</span>'+
         '</div>'+
         '<div class="week-strip">'+cells+'</div>'+
-        '<p class="panel-hint" style="margin-top:12px;margin-bottom:0;">주차 칸을 누르면 미시작 → 진행 → 완료 순으로 바뀝니다.</p>'+
+        '<p class="panel-hint" style="margin-top:12px;margin-bottom:0;">주차 칸을 ?�르�?미시????진행 ???�료 ?�으�?바뀝니??</p>'+
       '</div>'+
 
       '<div class="panel fade-in">'+
         '<div class="panel-head">'+
-          '<h3 class="panel-title">업무 체크리스트</h3>'+
-          '<span class="count muted">'+doneTasks+' / '+checklist.length+' 완료</span>'+
+          '<h3 class="panel-title">?�무 체크리스??/h3>'+
+          '<span class="count muted">'+doneTasks+' / '+checklist.length+' ?�료</span>'+
         '</div>'+
         '<div id="checklist-body">'+checkHtml+'</div>'+
         '<div class="check-add">'+
-          '<input type="text" id="new-task" placeholder="예: 키워드 순위 점검" />'+
+          '<input type="text" id="new-task" placeholder="?? ?�워???�위 ?��?" />'+
           '<select id="new-task-week">'+weekOpts+'</select>'+
-          '<button class="btn btn-ghost btn-sm" id="btn-add-task">추가</button>'+
+          '<button class="btn btn-ghost btn-sm" id="btn-add-task">추�?</button>'+
         '</div>'+
       '</div>'+
 
       '<div class="panel fade-in">'+
         '<div class="panel-head">'+
-          '<h3 class="panel-title">리포트</h3>'+
-          '<span class="count muted">'+myReports.length+'건</span>'+
+          '<h3 class="panel-title">리포??/h3>'+
+          '<span class="count muted">'+myReports.length+'�?/span>'+
         '</div>'+
         '<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">'+
-          '<button class="btn btn-primary btn-sm" id="btn-new-weekly">+ 주간 리포트</button>'+
-          '<button class="btn btn-ghost btn-sm" id="btn-new-monthly">+ 월간 리포트</button>'+
+          '<button class="btn btn-primary btn-sm" id="btn-new-weekly">+ 주간 리포??/button>'+
+          '<button class="btn btn-ghost btn-sm" id="btn-new-monthly">+ ?�간 리포??/button>'+
         '</div>'+
         reportsHtml+
       '</div>'+
@@ -2896,7 +2895,7 @@
     function addTask(){
       var input=document.getElementById("new-task");
       var text=input.value.trim();
-      if(!text){ showToast("업무 내용을 입력하십시오"); return; }
+      if(!text){ showToast("?�무 ?�용???�력?�십?�오"); return; }
       var week=document.getElementById("new-task-week").value;
       cl.checklist=cl.checklist||[];
       cl.checklist.push({ id:uid("ck"), text:text, done:false, week:week });
@@ -2927,7 +2926,7 @@
       b.addEventListener("click", function(){
         var rid=b.getAttribute("data-del-report");
         var meta=state.reports.filter(function(r){ return r.id===rid; })[0]||{};
-        confirmDialog("리포트를 삭제할까요?", (meta.period||"")+" 리포트가 삭제됩니다. 이 작업은 되돌릴 수 없습니다.", "삭제", function(){ deleteReport(rid); });
+        confirmDialog("리포?��? ??��?�까??", (meta.period||"")+" 리포?��? ??��?�니?? ???�업?� ?�돌�????�습?�다.", "??��", function(){ deleteReport(rid); });
       });
     });
   }
@@ -2953,7 +2952,7 @@
     document.getElementById("renewal-start-date").value=defaultDate;
     dateStep.hidden=false;
     setStep.hidden=true;
-    setOptions.innerHTML='<button type="button" data-renewal-set="" class="active">세트 없이 시작</button>'+(state.checklistSets||[]).map(function(set){
+    setOptions.innerHTML='<button type="button" data-renewal-set="" class="active">?�트 ?�이 ?�작</button>'+(state.checklistSets||[]).map(function(set){
       return '<button type="button" data-renewal-set="'+esc(set.id)+'">'+esc(set.name)+'</button>';
     }).join("");
     modal.classList.add("show");
@@ -2970,7 +2969,7 @@
     document.getElementById("btn-confirm-renewal").onclick=async function(){
       var startDate=document.getElementById("renewal-start-date").value;
       if(!isMondayDate(startDate)){
-        showToast("재계약 시작일은 월요일만 선택할 수 있습니다.");
+        showToast("?�계???�작?��? ?�요?�만 ?�택?????�습?�다.");
         return;
       }
       var selectedSetId=state.renewalSelectedSetId||"";
@@ -2980,7 +2979,7 @@
       if(renewed.renewals.indexOf(state.month)===-1) renewed.renewals.push(state.month);
       renewed.status="active";
       var saved=await setS("client:"+client.id,renewed);
-      if(!saved){ showToast("재계약 저장에 실패했습니다"); return; }
+      if(!saved){ showToast("?�계???�?�에 ?�패?�습?�다"); return; }
       var index=state.clients.filter(function(item){ return item.id!==renewed.id; });
       index.push({ id:renewed.id, name:renewed.name, contractType:renewed.contractType, renewalCount:renewed.renewalCount, startDate:renewed.startDate, status:renewed.status, updatedAt:renewed.updatedAt });
       var indexSaved=await setP("clients-index",index);
@@ -3005,34 +3004,34 @@
       period: type==="weekly"
         ? monthLabel(state.month)+" "+(currentWeekOf(state.month)||1)+"주차"
         : monthLabel(state.month),
-      channels:[{ name:"플레이스", metrics:[{},{}] }] };
+      channels:[{ name:"?�레?�스", metrics:[{},{}] }] };
     state.editingBase=base; state.view="edit"; render();
   }
 
   function rowTpl(ph,val){
     return '<div class="row"><input type="text" class="row-input" placeholder="'+esc(ph)+'" value="'+esc(val||"")+'" />'+
-      '<button type="button" class="row-remove" data-action="remove-row">✕</button></div>';
+      '<button type="button" class="row-remove" data-action="remove-row">??/button></div>';
   }
   function metricRowTpl(m){
     m=m||{};
     return '<div class="metric-row">'+
-      '<input type="text" class="m-label" placeholder="지표명 (예: 노출)" value="'+esc(m.label||"")+'" />'+
-      '<input type="text" class="m-value" placeholder="이번 값" value="'+esc(m.value||"")+'" />'+
-      '<input type="text" class="m-unit" placeholder="단위" value="'+esc(m.unit||"")+'" />'+
-      '<input type="text" class="m-compare" placeholder="비교 값" value="'+esc(m.compareValue||"")+'" />'+
-      '<input type="text" class="m-comparelabel" placeholder="비교 기준" value="'+esc(m.compareLabel||"")+'" />'+
-      '<button type="button" class="row-remove" data-action="remove-row">✕</button></div>';
+      '<input type="text" class="m-label" placeholder="지?�명 (?? ?�출)" value="'+esc(m.label||"")+'" />'+
+      '<input type="text" class="m-value" placeholder="?�번 �? value="'+esc(m.value||"")+'" />'+
+      '<input type="text" class="m-unit" placeholder="?�위" value="'+esc(m.unit||"")+'" />'+
+      '<input type="text" class="m-compare" placeholder="비교 �? value="'+esc(m.compareValue||"")+'" />'+
+      '<input type="text" class="m-comparelabel" placeholder="비교 기�?" value="'+esc(m.compareLabel||"")+'" />'+
+      '<button type="button" class="row-remove" data-action="remove-row">??/button></div>';
   }
   function channelBlockTpl(ch){
     ch=ch||{};
     var ms=ch.metrics&&ch.metrics.length?ch.metrics:[{}];
     return '<div class="channel-block">'+
       '<div class="channel-block-head">'+
-        '<input type="text" class="channel-name" placeholder="채널명 (예: 인스타그램)" value="'+esc(ch.name||"")+'" />'+
-        '<button type="button" class="row-remove" data-action="remove-channel">✕</button>'+
+        '<input type="text" class="channel-name" placeholder="채널�?(?? ?�스?�그램)" value="'+esc(ch.name||"")+'" />'+
+        '<button type="button" class="row-remove" data-action="remove-channel">??/button>'+
       '</div>'+
       '<div class="channel-metrics">'+ms.map(metricRowTpl).join("")+'</div>'+
-      '<button type="button" class="add-row-btn" data-action="add-metric">+ 지표 추가</button>'+
+      '<button type="button" class="add-row-btn" data-action="add-metric">+ 지??추�?</button>'+
     '</div>';
   }
 
@@ -3040,12 +3039,12 @@
     base=base||{};
     base.type = base.type==="weekly"?"weekly":"monthly";
     var type=base.type;
-    var channels=base.channels&&base.channels.length?base.channels:[{name:"플레이스",metrics:[{},{}]}];
+    var channels=base.channels&&base.channels.length?base.channels:[{name:"?�레?�스",metrics:[{},{}]}];
     var names=channels.map(function(c){return c.name;});
-    var quick=["플레이스","인스타그램","당근마켓","카카오맵","구글"].filter(function(n){ return names.indexOf(n)===-1; });
+    var quick=["?�레?�스","?�스?�그램","?�근마켓","카카?�맵","구�?"].filter(function(n){ return names.indexOf(n)===-1; });
     var quickHtml='<div class="channel-quickadd">'+
       quick.map(function(n){ return '<button type="button" class="qa-chip" data-quickchannel="'+esc(n)+'">+ '+esc(n)+'</button>'; }).join("")+
-      '<button type="button" class="qa-chip" data-quickchannel="">+ 직접 입력</button></div>';
+      '<button type="button" class="qa-chip" data-quickchannel="">+ 직접 ?�력</button></div>';
     var chHtml='<div id="channels-container">'+channels.map(channelBlockTpl).join("")+'</div>';
     var storedRevenue=revenueForReport(base);
     function revenueFieldValue(key){
@@ -3056,19 +3055,19 @@
     var clientId=base.clientId||(state.currentClient?state.currentClient.id:null);
     var weeklyAuto=clientId&&reportMonth ? revenueSummary(state.reports,clientId,reportMonth).weeklyTotal : null;
     var revenueForm=type==="weekly"
-      ? '<div class="fsection revenue-form-section"><div class="fsec-num">02</div><h3 class="fsec-title">매출 정보 <span class="optional-label">선택</span></h3><p class="fsec-hint">입력한 금액은 이 리포트와 업체 매출 흐름에 함께 표시됩니다.</p><div class="field"><label>이번 주 매출</label><input type="text" id="f-revenue-weekly" inputmode="numeric" autocomplete="off" placeholder="예: 1,250,000" value="'+esc(revenueFieldValue("weekly"))+'" /></div></div>'
-      : '<div class="fsection revenue-form-section"><div class="fsec-num">02</div><h3 class="fsec-title">매출 정보 <span class="optional-label">선택</span></h3><p class="fsec-hint">주간 리포트 금액은 자동 합산되며, 필요할 때 확정 금액으로 조정할 수 있습니다.</p><div class="revenue-auto"><span>주간 리포트 자동 합계</span><strong>'+(weeklyAuto===null?'입력된 금액 없음':formatRevenueWon(weeklyAuto))+'</strong></div><div class="two-col"><div class="field"><label>지난달 매출</label><input type="text" id="f-revenue-previous" inputmode="numeric" autocomplete="off" placeholder="예: 2,500,000" value="'+esc(revenueFieldValue("previousMonth"))+'" /></div><div class="field"><label>이번 달 확정 매출</label><input type="text" id="f-revenue-override" inputmode="numeric" autocomplete="off" placeholder="자동 합계와 다를 때만 입력" value="'+esc(revenueFieldValue("monthlyOverride"))+'" /></div></div></div>';
+      ? '<div class="fsection revenue-form-section"><div class="fsec-num">02</div><h3 class="fsec-title">매출 ?�보 <span class="optional-label">?�택</span></h3><p class="fsec-hint">?�력??금액?� ??리포?��? ?�체 매출 ?�름???�께 ?�시?�니??</p><div class="field"><label>?�번 �?매출</label><input type="text" id="f-revenue-weekly" inputmode="numeric" autocomplete="off" placeholder="?? 1,250,000" value="'+esc(revenueFieldValue("weekly"))+'" /></div></div>'
+      : '<div class="fsection revenue-form-section"><div class="fsec-num">02</div><h3 class="fsec-title">매출 ?�보 <span class="optional-label">?�택</span></h3><p class="fsec-hint">주간 리포??금액?� ?�동 ?�산?�며, ?�요?????�정 금액?�로 조정?????�습?�다.</p><div class="revenue-auto"><span>주간 리포???�동 ?�계</span><strong>'+(weeklyAuto===null?'?�력??금액 ?�음':formatRevenueWon(weeklyAuto))+'</strong></div><div class="two-col"><div class="field"><label>지?�달 매출</label><input type="text" id="f-revenue-previous" inputmode="numeric" autocomplete="off" placeholder="?? 2,500,000" value="'+esc(revenueFieldValue("previousMonth"))+'" /></div><div class="field"><label>?�번 ???�정 매출</label><input type="text" id="f-revenue-override" inputmode="numeric" autocomplete="off" placeholder="?�동 ?�계?� ?��? ?�만 ?�력" value="'+esc(revenueFieldValue("monthlyOverride"))+'" /></div></div></div>';
 
     var basic=
       '<div class="fsection">'+
         '<div class="fsec-num">01</div>'+
-        '<h3 class="fsec-title">기본 정보</h3>'+
-        '<p class="fsec-hint">'+(type==="weekly"?"이번 주":"이번 달")+' 목표를 입력하십시오.</p>'+
+        '<h3 class="fsec-title">기본 ?�보</h3>'+
+        '<p class="fsec-hint">'+(type==="weekly"?"?�번 �?:"?�번 ??)+' 목표�??�력?�십?�오.</p>'+
         '<div class="two-col">'+
-          '<div class="field"><label>업체명</label><input type="text" id="f-client" value="'+esc(base.client||"")+'" /></div>'+
-          '<div class="field"><label>기간</label><input type="text" id="f-period" placeholder="'+(type==="weekly"?"예: 2026년 8월 2주차":"예: 2026년 8월")+'" value="'+esc(base.period||"")+'" /></div>'+
+          '<div class="field"><label>?�체�?/label><input type="text" id="f-client" value="'+esc(base.client||"")+'" /></div>'+
+          '<div class="field"><label>기간</label><input type="text" id="f-period" placeholder="'+(type==="weekly"?"?? 2026??8??2주차":"?? 2026??8??)+'" value="'+esc(base.period||"")+'" /></div>'+
         '</div>'+
-        '<div class="field"><label>'+(type==="weekly"?"이번 주 목표":"이번 달 목표")+'</label><textarea id="f-goal" rows="2" placeholder="'+(type==="weekly"?"예: 주말 방문 예약 전환 확인":"예: 플레이스 유입 증대")+'">'+esc(base.goal||"")+'</textarea></div>'+
+        '<div class="field"><label>'+(type==="weekly"?"?�번 �?목표":"?�번 ??목표")+'</label><textarea id="f-goal" rows="2" placeholder="'+(type==="weekly"?"?? 주말 방문 ?�약 ?�환 ?�인":"?? ?�레?�스 ?�입 증�?")+'">'+esc(base.goal||"")+'</textarea></div>'+
       '</div>';
 
     var body;
@@ -3077,26 +3076,26 @@
       var results=base.results&&base.results.length?base.results:[""];
       var nw=base.next_week&&base.next_week.length?base.next_week:[""];
       body=basic+revenueForm+
-        '<div class="fsection"><div class="fsec-num">03</div><h3 class="fsec-title">이번 주 핵심 숫자</h3>'+
-          '<p class="fsec-hint">채널별로 이번 주 지표와 지난주 대비 값을 입력하십시오.</p>'+quickHtml+chHtml+'</div>'+
-        '<div class="fsection"><div class="fsec-num">04</div><h3 class="fsec-title">외부 변수</h3>'+
-          '<p class="fsec-hint">프로모션, 공휴일, 경쟁사 이벤트 등 숫자에 영향을 줬을 요인을 기재하십시오.</p>'+
-          '<div class="field"><textarea id="f-external" rows="2" placeholder="예: 연휴로 주말 문의가 증가한 것으로 보인다">'+esc(base.external||"")+'</textarea></div></div>'+
-        '<div class="fsection"><div class="fsec-num">05</div><h3 class="fsec-title">이번 주 테스트</h3>'+
-          '<p class="fsec-hint">이번 주 새로 시도한 것을 입력하십시오.</p>'+
-          '<div id="rows-tests">'+tests.map(function(v){return rowTpl("예: 예약 버튼 문구 변경",v);}).join("")+'</div>'+
-          '<button type="button" class="add-row-btn" data-add="rows-tests">+ 테스트 항목 추가</button></div>'+
+        '<div class="fsection"><div class="fsec-num">03</div><h3 class="fsec-title">?�번 �??�심 ?�자</h3>'+
+          '<p class="fsec-hint">채널별로 ?�번 �?지?��? 지?�주 ?��?값을 ?�력?�십?�오.</p>'+quickHtml+chHtml+'</div>'+
+        '<div class="fsection"><div class="fsec-num">04</div><h3 class="fsec-title">?��? 변??/h3>'+
+          '<p class="fsec-hint">?�로모션, 공휴?? 경쟁???�벤?????�자???�향??줬을 ?�인??기재?�십?�오.</p>'+
+          '<div class="field"><textarea id="f-external" rows="2" placeholder="?? ?�휴�?주말 문의가 증�???것으�?보인??>'+esc(base.external||"")+'</textarea></div></div>'+
+        '<div class="fsection"><div class="fsec-num">05</div><h3 class="fsec-title">?�번 �??�스??/h3>'+
+          '<p class="fsec-hint">?�번 �??�로 ?�도??것을 ?�력?�십?�오.</p>'+
+          '<div id="rows-tests">'+tests.map(function(v){return rowTpl("?? ?�약 버튼 문구 변�?,v);}).join("")+'</div>'+
+          '<button type="button" class="add-row-btn" data-add="rows-tests">+ ?�스????�� 추�?</button></div>'+
         '<div class="fsection"><div class="fsec-num">06</div><h3 class="fsec-title">결과</h3>'+
-          '<p class="fsec-hint">확인된 사실 위주로 결과를 입력하십시오.</p>'+
-          '<div id="rows-results">'+results.map(function(v){return rowTpl("예: 버튼 클릭률이 소폭 상승했다",v);}).join("")+'</div>'+
-          '<button type="button" class="add-row-btn" data-add="rows-results">+ 결과 추가</button></div>'+
-        '<div class="fsection"><div class="fsec-num">07</div><h3 class="fsec-title">다음 주 행동</h3>'+
-          '<p class="fsec-hint">다음 주에 무엇을 할지 정리하십시오.</p>'+
-          '<div id="rows-nextweek">'+nw.map(function(v){return rowTpl("예: 문구 테스트 1주 더 유지",v);}).join("")+'</div>'+
-          '<button type="button" class="add-row-btn" data-add="rows-nextweek">+ 행동 항목 추가</button></div>'+
-        '<div class="fsection"><div class="fsec-num">08</div><h3 class="fsec-title">전달 메모 <span class="optional-label">선택</span></h3>'+
-          '<p class="fsec-hint">리포트 맨 아래에 함께 전달하고 싶은 내용을 자유롭게 적어주세요.</p>'+
-          '<div class="field"><textarea id="f-delivery-memo" rows="4" placeholder="예: 이번 주는 리뷰 답글 확인을 먼저 부탁드립니다.">'+esc(base.deliveryMemo||"")+'</textarea></div></div>';
+          '<p class="fsec-hint">?�인???�실 ?�주�?결과�??�력?�십?�오.</p>'+
+          '<div id="rows-results">'+results.map(function(v){return rowTpl("?? 버튼 ?�릭률이 ?�폭 ?�승?�다",v);}).join("")+'</div>'+
+          '<button type="button" class="add-row-btn" data-add="rows-results">+ 결과 추�?</button></div>'+
+        '<div class="fsection"><div class="fsec-num">07</div><h3 class="fsec-title">?�음 �??�동</h3>'+
+          '<p class="fsec-hint">?�음 주에 무엇???��? ?�리?�십?�오.</p>'+
+          '<div id="rows-nextweek">'+nw.map(function(v){return rowTpl("?? 문구 ?�스??1�????��?",v);}).join("")+'</div>'+
+          '<button type="button" class="add-row-btn" data-add="rows-nextweek">+ ?�동 ??�� 추�?</button></div>'+
+        '<div class="fsection"><div class="fsec-num">08</div><h3 class="fsec-title">?�달 메모 <span class="optional-label">?�택</span></h3>'+
+          '<p class="fsec-hint">리포??�??�래???�께 ?�달?�고 ?��? ?�용???�유�?�� ?�어주세??</p>'+
+          '<div class="field"><textarea id="f-delivery-memo" rows="4" placeholder="?? ?�번 주는 리뷰 ?��? ?�인??먼�? 부?�드립니??">'+esc(base.deliveryMemo||"")+'</textarea></div></div>';
     } else {
       var ad=base.actions_done&&base.actions_done.length?base.actions_done:[""];
       var fa=base.facts&&base.facts.length?base.facts:[""];
@@ -3107,58 +3106,58 @@
       var sp=nx.stop&&nx.stop.length?nx.stop:[""];
       var sc=nx.scale&&nx.scale.length?nx.scale:[""];
       body=basic+revenueForm+
-        '<div class="fsection"><div class="fsec-num">03</div><h3 class="fsec-title">무엇을 실행했는가</h3>'+
-          '<p class="fsec-hint">이번 달 진행한 작업을 항목별로 입력하십시오.</p>'+
-          '<div id="rows-actions">'+ad.map(function(v){return rowTpl("예: 소재 3종 교체",v);}).join("")+'</div>'+
-          '<button type="button" class="add-row-btn" data-add="rows-actions">+ 실행 항목 추가</button></div>'+
-        '<div class="fsection"><div class="fsec-num">04</div><h3 class="fsec-title">어떤 숫자가 달라졌는가</h3>'+
-          '<p class="fsec-hint">채널별로 지표와 비교값을 입력하십시오. 비교 대상이 있어야 증감을 판단할 수 있습니다.</p>'+quickHtml+chHtml+'</div>'+
-        '<div class="fsection"><div class="fsec-num">05 · 06</div><h3 class="fsec-title">사실과 해석 구분하기</h3>'+
-          '<p class="fsec-hint">사실은 데이터가 보여준 것이고, 해석은 아직 확정되지 않은 가능성입니다.</p>'+
+        '<div class="fsection"><div class="fsec-num">03</div><h3 class="fsec-title">무엇???�행?�는가</h3>'+
+          '<p class="fsec-hint">?�번 ??진행???�업????��별로 ?�력?�십?�오.</p>'+
+          '<div id="rows-actions">'+ad.map(function(v){return rowTpl("?? ?�재 3�?교체",v);}).join("")+'</div>'+
+          '<button type="button" class="add-row-btn" data-add="rows-actions">+ ?�행 ??�� 추�?</button></div>'+
+        '<div class="fsection"><div class="fsec-num">04</div><h3 class="fsec-title">?�떤 ?�자가 ?�라졌는가</h3>'+
+          '<p class="fsec-hint">채널별로 지?��? 비교값을 ?�력?�십?�오. 비교 ?�?�이 ?�어??증감???�단?????�습?�다.</p>'+quickHtml+chHtml+'</div>'+
+        '<div class="fsection"><div class="fsec-num">05 · 06</div><h3 class="fsec-title">?�실�??�석 구분?�기</h3>'+
+          '<p class="fsec-hint">?�실?� ?�이?��? 보여준 것이�? ?�석?� ?�직 ?�정?��? ?��? 가?�성?�니??</p>'+
           '<div class="two-col">'+
-            '<div><label style="display:block;font-size:12.5px;font-weight:700;color:var(--ink-600);margin-bottom:6px;">사실</label>'+
-              '<div id="rows-facts">'+fa.map(function(v){return rowTpl("예: 유입이 18% 증가했다",v);}).join("")+'</div>'+
-              '<button type="button" class="add-row-btn" data-add="rows-facts">+ 사실 추가</button></div>'+
-            '<div><label style="display:block;font-size:12.5px;font-weight:700;color:var(--ink-600);margin-bottom:6px;">해석</label>'+
-              '<div id="rows-interps">'+ip.map(function(v){return rowTpl("예: 소재 변경이 영향을 줬을 수 있다",v);}).join("")+'</div>'+
-              '<button type="button" class="add-row-btn" data-add="rows-interps">+ 해석 추가</button></div>'+
+            '<div><label style="display:block;font-size:12.5px;font-weight:700;color:var(--ink-600);margin-bottom:6px;">?�실</label>'+
+              '<div id="rows-facts">'+fa.map(function(v){return rowTpl("?? ?�입??18% 증�??�다",v);}).join("")+'</div>'+
+              '<button type="button" class="add-row-btn" data-add="rows-facts">+ ?�실 추�?</button></div>'+
+            '<div><label style="display:block;font-size:12.5px;font-weight:700;color:var(--ink-600);margin-bottom:6px;">?�석</label>'+
+              '<div id="rows-interps">'+ip.map(function(v){return rowTpl("?? ?�재 변경이 ?�향??줬을 ???�다",v);}).join("")+'</div>'+
+              '<button type="button" class="add-row-btn" data-add="rows-interps">+ ?�석 추�?</button></div>'+
           '</div></div>'+
-        '<div class="fsection"><div class="fsec-num">07</div><h3 class="fsec-title">확실하지 않은 부분</h3>'+
-          '<p class="fsec-hint">단정할 수 없는 부분을 명확히 기재하십시오.</p>'+
-          '<div class="field"><textarea id="f-uncertain" rows="3" placeholder="예: 두 변경이 동시에 진행되어 어떤 요인이 더 컸는지는 단정하기 어렵다">'+esc(base.uncertain||"")+'</textarea></div></div>'+
-        '<div class="fsection"><div class="fsec-num">08</div><h3 class="fsec-title">다음 달 무엇을 할 것인가</h3>'+
-          '<p class="fsec-hint">실행 항목을 유지 · 수정 · 중단 · 확대 중 하나로 분류하십시오.</p>'+
-          '<div class="subgroup"><div class="subgroup-title"><span class="dot dot-keep"></span>유지 — 현재 방식 그대로 계속한다</div>'+
-            '<div id="rows-keep">'+kp.map(function(v){return rowTpl("예: 주말 입찰가 상향 유지",v);}).join("")+'</div>'+
-            '<button type="button" class="add-row-btn" data-add="rows-keep">+ 유지 항목 추가</button></div>'+
-          '<div class="subgroup"><div class="subgroup-title"><span class="dot dot-fix"></span>수정 — 일부를 바꿔 재테스트한다</div>'+
-            '<div id="rows-fix">'+fx.map(function(v){return rowTpl("예: 반응 낮은 소재 교체",v);}).join("")+'</div>'+
-            '<button type="button" class="add-row-btn" data-add="rows-fix">+ 수정 항목 추가</button></div>'+
-          '<div class="subgroup"><div class="subgroup-title"><span class="dot dot-stop"></span>중단 — 계속할 이유가 부족하다</div>'+
-            '<div id="rows-stop">'+sp.map(function(v){return rowTpl("예: 심야 시간대 노출 중단",v);}).join("")+'</div>'+
-            '<button type="button" class="add-row-btn" data-add="rows-stop">+ 중단 항목 추가</button></div>'+
-          '<div class="subgroup"><div class="subgroup-title"><span class="dot dot-scale"></span>확대 — 예산이나 범위를 늘려본다</div>'+
-            '<div id="rows-scale">'+sc.map(function(v){return rowTpl("예: 인접 상권으로 범위 확장",v);}).join("")+'</div>'+
-            '<button type="button" class="add-row-btn" data-add="rows-scale">+ 확대 항목 추가</button></div>'+
+        '<div class="fsection"><div class="fsec-num">07</div><h3 class="fsec-title">?�실?��? ?��? 부�?/h3>'+
+          '<p class="fsec-hint">?�정?????�는 부분을 명확??기재?�십?�오.</p>'+
+          '<div class="field"><textarea id="f-uncertain" rows="3" placeholder="?? ??변경이 ?�시??진행?�어 ?�떤 ?�인????컸는지???�정?�기 ?�렵??>'+esc(base.uncertain||"")+'</textarea></div></div>'+
+        '<div class="fsection"><div class="fsec-num">08</div><h3 class="fsec-title">?�음 ??무엇????것인가</h3>'+
+          '<p class="fsec-hint">?�행 ??��???��? · ?�정 · 중단 · ?��? �??�나�?분류?�십?�오.</p>'+
+          '<div class="subgroup"><div class="subgroup-title"><span class="dot dot-keep"></span>?��? ???�재 방식 그�?�?계속?�다</div>'+
+            '<div id="rows-keep">'+kp.map(function(v){return rowTpl("?? 주말 ?�찰가 ?�향 ?��?",v);}).join("")+'</div>'+
+            '<button type="button" class="add-row-btn" data-add="rows-keep">+ ?��? ??�� 추�?</button></div>'+
+          '<div class="subgroup"><div class="subgroup-title"><span class="dot dot-fix"></span>?�정 ???��?�?바꿔 ?�테?�트?�다</div>'+
+            '<div id="rows-fix">'+fx.map(function(v){return rowTpl("?? 반응 ??? ?�재 교체",v);}).join("")+'</div>'+
+            '<button type="button" class="add-row-btn" data-add="rows-fix">+ ?�정 ??�� 추�?</button></div>'+
+          '<div class="subgroup"><div class="subgroup-title"><span class="dot dot-stop"></span>중단 ??계속???�유가 부족하??/div>'+
+            '<div id="rows-stop">'+sp.map(function(v){return rowTpl("?? ?�야 ?�간?� ?�출 중단",v);}).join("")+'</div>'+
+            '<button type="button" class="add-row-btn" data-add="rows-stop">+ 중단 ??�� 추�?</button></div>'+
+          '<div class="subgroup"><div class="subgroup-title"><span class="dot dot-scale"></span>?��? ???�산?�나 범위�??�려본다</div>'+
+            '<div id="rows-scale">'+sc.map(function(v){return rowTpl("?? ?�접 ?�권?�로 범위 ?�장",v);}).join("")+'</div>'+
+            '<button type="button" class="add-row-btn" data-add="rows-scale">+ ?��? ??�� 추�?</button></div>'+
         '</div>'+
         '<div class="fsection"><div class="fsec-num">09</div><h3 class="fsec-title">메모</h3>'+
-          '<p class="fsec-hint">다음 리포트에서 다뤄볼 방향성이나 아이디어를 남겨두십시오.</p>'+
-          '<div class="field"><textarea id="f-memo" rows="4" placeholder="예: 다음 달에는 예약 연동 효과를 별도로 확인해볼 것">'+esc(base.memo||"")+'</textarea></div></div>';
+          '<p class="fsec-hint">?�음 리포?�에???�뤄�?방향?�이???�이?�어�??�겨?�십?�오.</p>'+
+          '<div class="field"><textarea id="f-memo" rows="4" placeholder="?? ?�음 ?�에???�약 ?�동 ?�과�?별도�??�인?�볼 �?>'+esc(base.memo||"")+'</textarea></div></div>';
     }
 
     app.innerHTML=
       '<div class="topbar">'+
-        '<div class="brand"><span class="brand-mark"></span>업체 관리 대시보드</div>'+
-        '<button class="btn btn-text" id="btn-back">← 돌아가기</button>'+
+        '<div class="brand"><span class="brand-mark"></span>?�체 관�??�?�보??/div>'+
+        '<button class="btn btn-text" id="btn-back">???�아가�?/button>'+
       '</div>'+
       '<div class="type-toggle">'+
-        '<button type="button" data-type="monthly" class="'+(type==="monthly"?"active":"")+'">월간 리포트</button>'+
-        '<button type="button" data-type="weekly" class="'+(type==="weekly"?"active":"")+'">주간 리포트</button>'+
+        '<button type="button" data-type="monthly" class="'+(type==="monthly"?"active":"")+'">?�간 리포??/button>'+
+        '<button type="button" data-type="weekly" class="'+(type==="weekly"?"active":"")+'">주간 리포??/button>'+
       '</div>'+
       '<div class="form-card fade-in" data-report-type="'+type+'">'+body+
         '<div class="form-actions">'+
           '<button class="btn btn-plain" id="btn-cancel">취소</button>'+
-          '<button class="btn btn-primary" id="btn-save">리포트 저장</button>'+
+          '<button class="btn btn-primary" id="btn-save">리포???�??/button>'+
         '</div>'+
       '</div>';
 
@@ -3204,7 +3203,7 @@
       if(nm){
         var dup=null;
         cont.querySelectorAll(".channel-name").forEach(function(i){ if(!dup&&i.value.trim()===nm) dup=i; });
-        if(dup){ dup.focus(); showToast("이미 추가된 채널입니다"); return; }
+        if(dup){ dup.focus(); showToast("?��? 추�???채널?�니??); return; }
       }
       cont.insertAdjacentHTML("beforeend", channelBlockTpl({name:nm}));
       var last=cont.lastElementChild.querySelector(".channel-name");
@@ -3215,7 +3214,7 @@
     if(rc){
       var c2=document.getElementById("channels-container");
       if(c2.children.length>1) rc.closest(".channel-block").remove();
-      else showToast("최소 1개 채널은 유지해야 합니다");
+      else showToast("최소 1�?채널?� ?��??�야 ?�니??);
       return;
     }
     var am=e.target.closest('[data-action="add-metric"]');
@@ -3224,13 +3223,13 @@
     if(rr){
       var row=rr.closest(".row, .metric-row"), par=row.parentElement;
       if(par.children.length>1) row.remove();
-      else showToast("최소 1개 항목은 유지해야 합니다");
+      else showToast("최소 1�???��?� ?��??�야 ?�니??);
       return;
     }
     var ab=e.target.closest("[data-add]");
     if(ab){
       var t=document.getElementById(ab.getAttribute("data-add"));
-      t.insertAdjacentHTML("beforeend", rowTpl("내용을 입력하세요",""));
+      t.insertAdjacentHTML("beforeend", rowTpl("?�용???�력?�세??,""));
       return;
     }
   }
@@ -3255,16 +3254,16 @@
           compareLabel:r.querySelector(".m-comparelabel").value.trim() });
       });
       if(!name&&ms.length===0) return;
-      out.push({ name:name||"미지정 채널", metrics:ms });
+      out.push({ name:name||"미�???채널", metrics:ms });
     });
     return out;
   }
 
   async function saveReport(){
     var ce=document.getElementById("f-client"), pe=document.getElementById("f-period");
-    if(!ce||!pe){ showToast("폼을 다시 불러온 뒤 시도하십시오"); return; }
+    if(!ce||!pe){ showToast("?�을 ?�시 불러?????�도?�십?�오"); return; }
     var client=ce.value.trim(), period=pe.value.trim();
-    if(!client||!period){ showToast("업체명과 기간을 입력하십시오"); return; }
+    if(!client||!period){ showToast("?�체명과 기간???�력?�십?�오"); return; }
 
     var type=document.querySelector(".form-card").getAttribute("data-report-type");
     var revenue={}, hasRevenueInputs=false, revenueFields=type==="weekly"
@@ -3286,7 +3285,7 @@
     }
 
     var btn=document.getElementById("btn-save");
-    btn.disabled=true; btn.textContent="저장 중…";
+    btn.disabled=true; btn.textContent="?�??중�?;
     try{
       var b=state.editingBase||{};
       var reportClientId=b.clientId || (state.currentClient?state.currentClient.id:null);
@@ -3337,16 +3336,16 @@
       await setP("reports-index", idx);
 
       state.currentReport=rep; state.summaryMode=false; state.view="report";
-      showToast("리포트가 저장되었습니다"); render();
+      showToast("리포?��? ?�?�되?�습?�다"); render();
     }catch(err){
-      console.error(err); showToast("저장에 실패했습니다. 다시 시도하십시오");
-      btn.disabled=false; btn.textContent="리포트 저장";
+      console.error(err); showToast("?�?�에 ?�패?�습?�다. ?�시 ?�도?�십?�오");
+      btn.disabled=false; btn.textContent="리포???�??;
     }
   }
 
   async function openReport(id){
     var r=await getS("report:"+id);
-    if(!r){ showToast("리포트를 찾을 수 없습니다"); return; }
+    if(!r){ showToast("리포?��? 찾을 ???�습?�다"); return; }
     r.type = r.type==="weekly"?"weekly":"monthly";
     state.currentReport=r; state.summaryMode=false; state.view="report"; render();
   }
@@ -3355,7 +3354,7 @@
     await delS("report:"+id);
     state.reports=state.reports.filter(function(r){ return r.id!==id; });
     await setP("reports-index", state.reports);
-    showToast("리포트가 삭제되었습니다");
+    showToast("리포?��? ??��?�었?�니??);
     if(state.currentReport&&state.currentReport.id===id) state.currentReport=null;
     state.view = state.currentClient ? "clientDetail" : "dashboard";
     render();
@@ -3365,25 +3364,25 @@
   function deltaChip(m){
     var d=computeDelta(m.value,m.compareValue);
     if(!d) return m.compareLabel?'<div class="mc-compare-only">'+esc(m.compareLabel)+'</div>':"";
-    var arrow=d.dir==="up"?"▲":d.dir==="down"?"▼":"–";
+    var arrow=d.dir==="up"?"??:d.dir==="down"?"??:"??;
     return '<div class="mc-delta '+d.dir+'">'+arrow+' '+Math.abs(d.pct).toFixed(1)+'% <span style="font-weight:600;opacity:.85;">'+esc(m.compareLabel||"비교")+'</span></div>';
   }
   function metricCard(m){
     var n=toNum(m.value);
-    return '<div class="metric-card"><div class="mc-label">'+esc(m.label||"지표")+'</div>'+
+    return '<div class="metric-card"><div class="mc-label">'+esc(m.label||"지??)+'</div>'+
       '<div><span class="mc-value" data-count-to="'+(isNaN(n)?"":n)+'">'+(isNaN(n)?esc(m.value||"-"):"0")+'</span>'+
       '<span class="mc-unit">'+esc(m.unit||"")+'</span></div>'+deltaChip(m)+'</div>';
   }
   function channelsHtml(chs){
     var list=(chs||[]).filter(function(c){ return c.metrics&&c.metrics.length; });
-    if(!list.length) return '<div class="muted">등록된 지표가 없습니다</div>';
+    if(!list.length) return '<div class="muted">?�록??지?��? ?�습?�다</div>';
     return list.map(function(c){
       return '<div class="channel-report-block"><div class="channel-report-name">'+esc(c.name||"채널")+'</div>'+
         '<div class="metrics-grid">'+c.metrics.map(metricCard).join("")+'</div></div>';
     }).join("");
   }
   function quadHtml(k,cls,dot,title,items){
-    var body=items&&items.length?'<ul>'+items.map(function(v){return '<li>· '+esc(v)+'</li>';}).join("")+'</ul>':'<div class="quad-empty">해당 없음</div>';
+    var body=items&&items.length?'<ul>'+items.map(function(v){return '<li>· '+esc(v)+'</li>';}).join("")+'</ul>':'<div class="quad-empty">?�당 ?�음</div>';
     return '<div class="quad '+cls+'"><div class="quad-head '+k+'"><span class="dot '+dot+'"></span>'+title+'</div>'+body+'</div>';
   }
 
@@ -3394,58 +3393,58 @@
     var s=state.summaryMode, nx=rep.next||{};
     var cnt={ keep:(nx.keep||[]).length, fix:(nx.fix||[]).length, stop:(nx.stop||[]).length, scale:(nx.scale||[]).length };
     var mh=channelsHtml(rep.channels);
-    var ah=(rep.actions_done||[]).length?'<ul class="checklist">'+rep.actions_done.map(function(a){return '<li><span class="check-ico">✓</span>'+esc(a)+'</li>';}).join("")+'</ul>':'<div class="muted">기록된 실행 항목이 없습니다</div>';
-    var fh=(rep.facts||[]).length?'<ul class="fi-list">'+rep.facts.map(function(f){return '<li>'+esc(f)+'</li>';}).join("")+'</ul>':'<div class="fi-caption">사실이 기록되지 않았습니다</div>';
-    var ih=(rep.interpretations||[]).length?'<ul class="fi-list">'+rep.interpretations.map(function(f){return '<li>'+esc(f)+'</li>';}).join("")+'</ul>':'<div class="fi-caption">해석이 기록되지 않았습니다</div>';
+    var ah=(rep.actions_done||[]).length?'<ul class="checklist">'+rep.actions_done.map(function(a){return '<li><span class="check-ico">??/span>'+esc(a)+'</li>';}).join("")+'</ul>':'<div class="muted">기록???�행 ??��???�습?�다</div>';
+    var fh=(rep.facts||[]).length?'<ul class="fi-list">'+rep.facts.map(function(f){return '<li>'+esc(f)+'</li>';}).join("")+'</ul>':'<div class="fi-caption">?�실??기록?��? ?�았?�니??/div>';
+    var ih=(rep.interpretations||[]).length?'<ul class="fi-list">'+rep.interpretations.map(function(f){return '<li>'+esc(f)+'</li>';}).join("")+'</ul>':'<div class="fi-caption">?�석??기록?��? ?�았?�니??/div>';
     var quad='<div class="quad-grid">'+
-      quadHtml("keep","quad-keep","dot-keep","유지",nx.keep)+
-      quadHtml("fix","quad-fix","dot-fix","수정",nx.fix)+
+      quadHtml("keep","quad-keep","dot-keep","?��?",nx.keep)+
+      quadHtml("fix","quad-fix","dot-fix","?�정",nx.fix)+
       quadHtml("stop","quad-stop","dot-stop","중단",nx.stop)+
-      quadHtml("scale","quad-scale","dot-scale","확대",nx.scale)+'</div>';
-    var memo=rep.memo?'<div class="rsection fade-in"><div class="rsec-num">09</div><div class="rsec-title">메모 · 다음 방향성</div><div class="memo-box">'+esc(rep.memo)+'</div></div>':"";
+      quadHtml("scale","quad-scale","dot-scale","?��?",nx.scale)+'</div>';
+    var memo=rep.memo?'<div class="rsection fade-in"><div class="rsec-num">09</div><div class="rsec-title">메모 · ?�음 방향??/div><div class="memo-box">'+esc(rep.memo)+'</div></div>':"";
 
     var body;
     if(s){
-      body='<div class="rsection fade-in"><div class="rsec-title">핵심 지표</div>'+mh+'</div>'+
-        '<div class="rsection fade-in"><div class="rsec-title">다음 달 액션</div>'+quad+
-        '<div class="summary-line">유지 <b>'+cnt.keep+'</b> · 수정 <b>'+cnt.fix+'</b> · 중단 <b>'+cnt.stop+'</b> · 확대 <b>'+cnt.scale+'</b> — 이 리포트를 읽은 뒤에는 다음 달에 무엇을 해야 하는지가 남아야 합니다.</div></div>'+memo;
+      body='<div class="rsection fade-in"><div class="rsec-title">?�심 지??/div>'+mh+'</div>'+
+        '<div class="rsection fade-in"><div class="rsec-title">?�음 ???�션</div>'+quad+
+        '<div class="summary-line">?��? <b>'+cnt.keep+'</b> · ?�정 <b>'+cnt.fix+'</b> · 중단 <b>'+cnt.stop+'</b> · ?��? <b>'+cnt.scale+'</b> ????리포?��? ?��? ?�에???�음 ?�에 무엇???�야 ?�는지가 ?�아???�니??</div></div>'+memo;
     } else {
-      body='<div class="rsection fade-in"><div class="rsec-num">02</div><div class="rsec-title">무엇을 실행했는가</div>'+ah+'</div>'+
-        '<div class="rsection fade-in"><div class="rsec-num">03</div><div class="rsec-title">어떤 숫자가 달라졌는가</div>'+mh+'</div>'+
-        '<div class="rsection fade-in"><div class="rsec-num">04 · 05</div><div class="rsec-title">사실과 해석</div>'+
+      body='<div class="rsection fade-in"><div class="rsec-num">02</div><div class="rsec-title">무엇???�행?�는가</div>'+ah+'</div>'+
+        '<div class="rsection fade-in"><div class="rsec-num">03</div><div class="rsec-title">?�떤 ?�자가 ?�라졌는가</div>'+mh+'</div>'+
+        '<div class="rsection fade-in"><div class="rsec-num">04 · 05</div><div class="rsec-title">?�실�??�석</div>'+
           '<div class="fact-interp">'+
-            '<div><div class="fi-col-title"><span class="fi-badge fact">사실</span></div>'+fh+'</div>'+
-            '<div><div class="fi-col-title"><span class="fi-badge interp">해석</span></div>'+ih+'<div class="fi-caption">해석은 확정된 사실이 아니며, 추가 확인이 필요할 수 있습니다.</div></div>'+
+            '<div><div class="fi-col-title"><span class="fi-badge fact">?�실</span></div>'+fh+'</div>'+
+            '<div><div class="fi-col-title"><span class="fi-badge interp">?�석</span></div>'+ih+'<div class="fi-caption">?�석?� ?�정???�실???�니�? 추�? ?�인???�요?????�습?�다.</div></div>'+
           '</div></div>'+
-        (rep.uncertain?'<div class="rsection fade-in"><div class="rsec-num">06</div><div class="rsec-title">확실하지 않은 부분</div><div class="uncertain-box">'+esc(rep.uncertain)+'</div></div>':"")+
-        '<div class="rsection fade-in"><div class="rsec-num">07</div><div class="rsec-title">다음 달 액션</div>'+quad+'</div>'+
+        (rep.uncertain?'<div class="rsection fade-in"><div class="rsec-num">06</div><div class="rsec-title">?�실?��? ?��? 부�?/div><div class="uncertain-box">'+esc(rep.uncertain)+'</div></div>':"")+
+        '<div class="rsection fade-in"><div class="rsec-num">07</div><div class="rsec-title">?�음 ???�션</div>'+quad+'</div>'+
         memo+shareCard(rep);
     }
     body=reportRevenueSection(rep,state.reports)+body;
-    paintReport(rep, "월간 리포트"+(s?" · 요약":""), body, true);
+    paintReport(rep, "?�간 리포??+(s?" · ?�약":""), body, true);
   }
 
   function renderWeekly(rep){
     var mh=channelsHtml(rep.channels);
-    var th=(rep.tests||[]).length?'<ul class="checklist">'+rep.tests.map(function(a){return '<li><span class="check-ico">✓</span>'+esc(a)+'</li>';}).join("")+'</ul>':'<div class="muted">기록된 테스트가 없습니다</div>';
-    var rh=(rep.results||[]).length?'<ul class="fi-list">'+rep.results.map(function(a){return '<li>'+esc(a)+'</li>';}).join("")+'</ul>':'<div class="fi-caption">기록된 결과가 없습니다</div>';
-    var nh=(rep.next_week||[]).length?'<ul class="checklist">'+rep.next_week.map(function(a){return '<li><span class="check-ico">→</span>'+esc(a)+'</li>';}).join("")+'</ul>':'<div class="muted">기록된 행동 항목이 없습니다</div>';
-    var deliveryMemo=rep.deliveryMemo?'<div class="rsection fade-in"><div class="rsec-title">전달 메모</div><div class="memo-box">'+esc(rep.deliveryMemo)+'</div></div>':"";
-    var body=reportRevenueSection(rep,state.reports)+'<div class="rsection fade-in"><div class="rsec-title">이번 주 핵심 숫자</div>'+mh+'</div>'+
-      (rep.external?'<div class="rsection fade-in"><div class="rsec-title">외부 변수</div><div class="extvar-box">'+esc(rep.external)+'</div></div>':"")+
-      '<div class="rsection fade-in"><div class="rsec-title">이번 주 테스트</div>'+th+'</div>'+
+    var th=(rep.tests||[]).length?'<ul class="checklist">'+rep.tests.map(function(a){return '<li><span class="check-ico">??/span>'+esc(a)+'</li>';}).join("")+'</ul>':'<div class="muted">기록???�스?��? ?�습?�다</div>';
+    var rh=(rep.results||[]).length?'<ul class="fi-list">'+rep.results.map(function(a){return '<li>'+esc(a)+'</li>';}).join("")+'</ul>':'<div class="fi-caption">기록??결과가 ?�습?�다</div>';
+    var nh=(rep.next_week||[]).length?'<ul class="checklist">'+rep.next_week.map(function(a){return '<li><span class="check-ico">??/span>'+esc(a)+'</li>';}).join("")+'</ul>':'<div class="muted">기록???�동 ??��???�습?�다</div>';
+    var deliveryMemo=rep.deliveryMemo?'<div class="rsection fade-in"><div class="rsec-title">?�달 메모</div><div class="memo-box">'+esc(rep.deliveryMemo)+'</div></div>':"";
+    var body=reportRevenueSection(rep,state.reports)+'<div class="rsection fade-in"><div class="rsec-title">?�번 �??�심 ?�자</div>'+mh+'</div>'+
+      (rep.external?'<div class="rsection fade-in"><div class="rsec-title">?��? 변??/div><div class="extvar-box">'+esc(rep.external)+'</div></div>':"")+
+      '<div class="rsection fade-in"><div class="rsec-title">?�번 �??�스??/div>'+th+'</div>'+
       '<div class="rsection fade-in"><div class="rsec-title">결과</div>'+rh+'</div>'+
-      '<div class="rsection fade-in"><div class="rsec-title">다음 주 행동</div>'+nh+'</div>'+
+      '<div class="rsection fade-in"><div class="rsec-title">?�음 �??�동</div>'+nh+'</div>'+
       deliveryMemo+shareCard(rep);
-    paintReport(rep, "주간 리포트", body, false);
+    paintReport(rep, "주간 리포??, body, false);
   }
 
   function shareCard(rep){
     if (state.readOnly) return "";
     var link = location.origin + "/?report=" + encodeURIComponent(rep.id);
     return '<div class="rsection fade-in" style="padding:0;background:none;box-shadow:none;">'+
-      '<div class="share-card"><div class="share-title">이 리포트 공유하기</div>'+
-      '<div class="share-sub">이 링크를 전달하면 비밀번호 없이 리포트만 열람할 수 있습니다.</div>'+
+      '<div class="share-card"><div class="share-title">??리포??공유?�기</div>'+
+      '<div class="share-sub">??링크�??�달?�면 비�?번호 ?�이 리포?�만 ?�람?????�습?�다.</div>'+
       '<div class="share-box"><code>'+esc(link)+'</code><button data-copy="'+esc(link)+'">링크 복사</button></div></div></div>';
   }
 
@@ -3454,20 +3453,20 @@
     var ro = state.readOnly;
     app.innerHTML=
       '<div class="report-top">'+
-        (ro?'<div class="brand"><span class="brand-mark"></span>리포트</div>':'<button class="back-btn" id="btn-back">←</button>')+
+        (ro?'<div class="brand"><span class="brand-mark"></span>리포??/div>':'<button class="back-btn" id="btn-back">??/button>')+
         '<div class="report-actions">'+
           (withToggle?('<div class="mode-toggle">'+
-            '<button data-mode="full" class="'+(s?"":"active")+'">전체보기</button>'+
-            '<button data-mode="summary" class="'+(s?"active":"")+'">요약보기</button></div>'):"")+
-          (ro?"":'<button class="btn btn-plain btn-sm" id="btn-edit-report">수정</button>'+
-               '<button class="btn btn-danger btn-sm" id="btn-del-report">삭제</button>')+
+            '<button data-mode="full" class="'+(s?"":"active")+'">?�체보기</button>'+
+            '<button data-mode="summary" class="'+(s?"active":"")+'">?�약보기</button></div>'):"")+
+          (ro?"":'<button class="btn btn-plain btn-sm" id="btn-edit-report">?�정</button>'+
+               '<button class="btn btn-danger btn-sm" id="btn-del-report">??��</button>')+
         '</div>'+
       '</div>'+
       '<div class="report-header fade-in">'+
         '<span class="status-pill">'+pill+'</span>'+
         '<h2 class="rh-client">'+esc(rep.client||"")+'</h2>'+
         '<p class="rh-period">'+esc(rep.period||"")+'</p>'+
-        (rep.goal?('<div class="rh-goal-label">'+(rep.type==="weekly"?"이번 주 목표":"이번 달 목표")+'</div><div class="rh-goal">'+esc(rep.goal)+'</div>'):"")+
+        (rep.goal?('<div class="rh-goal-label">'+(rep.type==="weekly"?"?�번 �?목표":"?�번 ??목표")+'</div><div class="rh-goal">'+esc(rep.goal)+'</div>'):"")+
       '</div>'+body;
 
     var backEl = document.getElementById("btn-back");
@@ -3480,7 +3479,7 @@
     });
     var delEl = document.getElementById("btn-del-report");
     if (delEl) delEl.addEventListener("click", function(){
-      confirmDialog("리포트를 삭제할까요?", (rep.period||"")+" 리포트가 삭제됩니다. 이 작업은 되돌릴 수 없습니다.", "삭제", function(){ deleteReport(rep.id); });
+      confirmDialog("리포?��? ??��?�까??", (rep.period||"")+" 리포?��? ??��?�니?? ???�업?� ?�돌�????�습?�다.", "??��", function(){ deleteReport(rep.id); });
     });
     app.querySelectorAll(".mode-toggle button").forEach(function(b){
       b.addEventListener("click", function(){ state.summaryMode=b.getAttribute("data-mode")==="summary"; render(); });
