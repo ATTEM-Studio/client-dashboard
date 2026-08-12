@@ -160,6 +160,7 @@ vm.runInNewContext([
   functionSource('blankClient'),
   functionSource('formValue'),
   functionSource('formValueOr'),
+  functionSource('signatureValueFromCanvas'),
   functionSource('collectContractFromForm'),
   functionSource('saveContractFromForm')
 ].join('\n'), saveSandbox);
@@ -225,6 +226,7 @@ vm.runInNewContext([
   functionSource('blankContract'),
   functionSource('formValue'),
   functionSource('formValueOr'),
+  functionSource('signatureValueFromCanvas'),
   functionSource('collectContractFromForm')
 ].join('\n'), publicCollectSandbox);
 const collectedPublic = publicCollectSandbox.collectContractFromForm({
@@ -245,6 +247,38 @@ assert.strictEqual(collectedPublic.productName, 'Locked Plan', 'public signature
 assert.strictEqual(collectedPublic.fee, '770000', 'public signature save must preserve locked fee');
 assert.strictEqual(collectedPublic.businessNumber, '222-22-22222');
 assert.strictEqual(collectedPublic.signatureDataUrl, 'data:image/png;base64,publicsigned');
+
+const preservedSignatureSandbox = Object.assign({}, saveSandbox, {
+  document: {
+    getElementById(id) {
+      const values = {
+        'contract-signer': { value: 'Owner' },
+        'contract-signature': {
+          dataset: { signatureDirty: '0' },
+          toDataURL: () => 'data:image/png;base64,blank-white-canvas'
+        }
+      };
+      return values[id];
+    }
+  }
+});
+vm.runInNewContext([
+  functionSource('blankContract'),
+  functionSource('formValue'),
+  functionSource('formValueOr'),
+  functionSource('signatureValueFromCanvas'),
+  functionSource('collectContractFromForm')
+].join('\n'), preservedSignatureSandbox);
+const unchangedSignature = preservedSignatureSandbox.collectContractFromForm({
+  id: 'contract_public',
+  signatureDataUrl: 'data:image/png;base64,existing-signed'
+});
+assert.strictEqual(unchangedSignature.signatureDataUrl, 'data:image/png;base64,existing-signed',
+  'opening a signed original without drawing again must preserve the saved signature');
+assert.match(html, /restoreSignatureToCanvas\(document\.getElementById\("contract-signature"\),\s*state\.currentContract\.signatureDataUrl\)/,
+  'admin original view must redraw saved signatures into the canvas');
+assert.match(html, /restoreSignatureToCanvas\(document\.getElementById\("contract-signature"\),\s*contract\.signatureDataUrl\)/,
+  'public contract view must redraw saved signatures into the canvas');
 
 saveSandbox.saveContractFromForm().then(() => {
   const contractWrite = saveSandbox.secureWrites.find((write) => write.key === 'contract:ct_new');
