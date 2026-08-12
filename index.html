@@ -1689,8 +1689,9 @@
     var active=clients.filter(function(c){ return c.status==="active"; });
     var newCount=clients.filter(function(c){ return c.status!=="ended" && c.contractType!=="renewal"; }).length;
     var renewCount=clients.filter(function(c){ return c.status!=="ended" && c.contractType==="renewal"; }).length;
-    var totalCells=0, doneCells=0;
-    active.forEach(function(c){ var p=progressOf(c,mk); totalCells+=p.total; doneCells+=p.done; });
+    var renewalDue=active.filter(function(c){ var end=contractEndKey(c); return end && monthKey(end)===mk; });
+    var renewalDone=renewalDue.filter(function(c){ return c.contractType==="renewal"; });
+    var totalCells=renewalDue.length, doneCells=renewalDone.length;
     var pct= totalCells? Math.round(doneCells/totalCells*100) : 0;
 
     var statsHtml=
@@ -1700,7 +1701,7 @@
         '<div class="stat-card"><div class="stat-label">재계약 업체</div><div class="stat-value">'+renewCount+'<span class="stat-unit">곳</span></div><div class="stat-sub">현재 재계약 기준</div></div>'+
         '<div class="stat-card accent"><div class="stat-label">이번 달 진행률</div><div class="stat-value">'+pct+'<span class="stat-unit">%</span></div>'+
           '<div class="progress-track"><div class="progress-fill" style="width:'+pct+'%"></div></div>'+
-          '<div class="stat-sub">'+doneCells+' / '+totalCells+' 주차 완료</div></div>'+
+          '<div class="stat-sub">'+doneCells+' / '+totalCells+'곳 재계약 완료</div></div>'+
       '</div>';
 
     var listHtml;
