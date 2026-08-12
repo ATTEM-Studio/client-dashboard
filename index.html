@@ -2052,7 +2052,11 @@
     var typeLabel=contract.contractType==="renewal"?"재계약 "+(contract.renewalCount||1)+"회차":"신규";
     var productLabel=contract.productType==="custom"?"새로 생성":"광고비용";
     var paymentLabel=contract.paymentMethod==="transfer"?"계좌이체":"카드";
-    function row(label,value){ return '<div class="contract-readonly-row"><span class="contract-readonly-label">'+esc(label)+'</span><span class="contract-readonly-value">'+esc(value||"-")+'</span></div>'; }
+    function row(label,value){
+      var display=value||"-";
+      if(value!==null && value!==undefined && /금액|공급가|매출|광고비/.test(String(label)) && /^\s*\d[\d,]*\s*$/.test(String(value))) display=Number(String(value).replace(/,/g,"")).toLocaleString("ko-KR")+"원";
+      return '<div class="contract-readonly-row"><span class="contract-readonly-label">'+esc(label)+'</span><span class="contract-readonly-value">'+esc(display)+'</span></div>';
+    }
     if(submitted){
       return '<div class="public-guide public-contract"><div class="public-guide-head"><div class="public-guide-brand"><span class="brand-mark"></span>계약 신청서</div><p class="public-guide-kicker">CONTRACT</p><h1>계약서 제출이 완료되었습니다</h1><p class="public-guide-intro">아래 계약 정보와 저장된 서명을 함께 확인할 수 있습니다.</p><span class="contract-signed-status">✓ 서명 저장 완료</span></div>'+
       '<div class="guide-form">'+

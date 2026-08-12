@@ -3,6 +3,7 @@ const fs = require('fs');
 const vm = require('vm');
 
 const html = fs.readFileSync('index.html', 'utf8');
+assert.match(html, /toLocaleString\("ko-KR"\)\+"원"/, 'contract monetary values should use comma formatting');
 
 function functionSource(name) {
   const match = html.match(new RegExp(
