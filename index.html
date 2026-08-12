@@ -1160,18 +1160,15 @@
   function showClientInfoModal(client){
     if(!client) return;
     var layer=document.getElementById("modal-layer"), body=document.getElementById("modal-body"), confirm=document.getElementById("modal-confirm"), cancel=document.getElementById("modal-cancel");
-    var rows=[
-      ["업체명",client.name], ["업종",client.industry],
-      ["계약 구분",contractLabel(client)], ["재계약 회차",client.contractType==="renewal"?String(client.renewalCount||1)+"회차":"신규"],
-      ["시작일",client.startDate], ["계약 기간",client.contractMonths?String(client.contractMonths)+"개월":"미입력"],
-      ["월 금액",client.fee?formatRevenueWon(client.fee):"미입력"], ["담당자",client.manager],
-      ["연락처",client.contact], ["이메일",client.email]
-    ];
+    var progress=thirtyDayProgress(client.startDate);
+    var progressText=progress.state==="missing"?"시작일 미입력":(progress.state==="upcoming"?"시작 전":progress.elapsed+"일 / 30일");
+    var rows=[["계약 구분",contractLabel(client)],["회차",client.contractType==="renewal"?String(client.renewalCount||1)+"회차":"신규"],["진행 사항",progressText],["시작일",client.startDate||"미입력"]];
     document.getElementById("modal-title").textContent="업체 정보";
-    body.innerHTML='<div class="client-info-grid">'+rows.map(function(row){return '<div class="client-info-item"><span class="client-info-label">'+esc(row[0])+'</span><span class="client-info-value">'+esc(row[1]||"미입력")+'</span></div>';}).join("")+'</div>';
+    body.innerHTML='<div class="client-info-grid">'+rows.map(function(row){return '<div class="client-info-item"><span class="client-info-label">'+esc(row[0])+'</span><span class="client-info-value">'+esc(row[1]||"미입력")+'</span></div>';}).join("")+'</div><button type="button" class="btn btn-primary btn-block" id="btn-client-info-open">업체 상세로 이동</button>';
     layer.classList.add("show","client-info-modal");
     confirm.hidden=true; cancel.textContent="닫기";
     _confirmCb=null;
+    document.getElementById("btn-client-info-open").onclick=function(){ closeModal(); openClient(client.id); };
   }
 
   /* ============ storage ============ */
