@@ -21,7 +21,7 @@ module.exports=async function(req,res){
   const start=isoDate(body&&body.startDate,new Date(Date.now()-365*86400000).toISOString().slice(0,10));
   const timeUnit=['date','week','month'].includes(body&&body.timeUnit)?body.timeUnit:'date';
   try{
-    const upstream=await fetch('https://openapi.naver.com/v1/datalab/search',{method:'POST',headers:{'Content-Type':'application/json','X-Naver-Client-Id':clientId,'X-Naver-Client-Secret':clientSecret},body:JSON.stringify({startDate:start,endDate:isoDate(body&&body.endDate,end),timeUnit,keywordGroups:[{groupName:keyword,keywords:[keyword]}]})});
+    const upstream=await fetch('https://naverapihub.apigw.ntruss.com/search-trend/v1/search',{method:'POST',headers:{'Content-Type':'application/json','X-NCP-APIGW-API-KEY-ID':clientId,'X-NCP-APIGW-API-KEY':clientSecret},body:JSON.stringify({startDate:start,endDate:isoDate(body&&body.endDate,end),timeUnit,keywordGroups:[{groupName:keyword,keywords:[keyword]}]})});
     const data=await upstream.json().catch(()=>({}));
     return res.status(upstream.status).json(data);
   }catch(e){return res.status(502).json({error:'네이버 데이터랩 API에 연결하지 못했습니다.'});}
