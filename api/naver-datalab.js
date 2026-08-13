@@ -23,8 +23,14 @@ module.exports=async function(req,res){
   try{
     const payload={startDate:start,endDate:isoDate(body&&body.endDate,end),timeUnit,keywordGroups:[{groupName:keyword,keywords:[keyword]}]};
     const headers={'Content-Type':'application/json','X-NCP-APIGW-API-KEY-ID':clientId,'X-NCP-APIGW-API-KEY':clientSecret};
-    let upstream=await fetch('https://naverapihub.apigw.ntruss.com/search-trend/v1/search',{method:'POST',headers,body:JSON.stringify(payload)});
-    if(upstream.status===404||upstream.status===401) upstream=await fetch('https://naveropenapi.apigw.ntruss.com/datalab/v1/search',{method:'POST',headers,body:JSON.stringify(payload)});
+    const attempts=[
+      ['https://naverapihub.apigw.ntruss.com/search-trend/v1/search',headers],
+      ['https://naveropenapi.apigw.ntruss.com/datalab/v1/search',headers],
+      ['https://openapi.naver.com/v1/datalab/search',{'Content-Type':'application/json','X-Naver-Client-Id':clientId,'X-Naver-Client-Secret':clientSecret}],
+      ['https://naveropenapi.apigw.ntruss.com/datalab/v1/search',{'Content-Type':'application/json','X-Naver-Client-Id':clientId,'X-Naver-Client-Secret':clientSecret}]
+    ];
+    let upstream=await fetch(attempts[0][0],{method:'POST',headers:attempts[0][1],body:JSON.stringify(payload)});
+    for(let i=1;i<attempts.length&&(upstream.status===404||upstream.status===401);i++) upstream=await fetch(attempts[i][0],{method:'POST',headers:attempts[i][1],body:JSON.stringify(payload)});
     const data=await upstream.json().catch(()=>({}));
     if(!upstream.ok&&data&&typeof data.error==='object') data.error=data.error.message||data.error.details||'네이버 API 인증 또는 권한을 확인해 주세요.';
     return res.status(upstream.status).json(data);
