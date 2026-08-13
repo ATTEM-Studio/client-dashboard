@@ -4,6 +4,7 @@ const api=fs.readFileSync(path.join(__dirname,'..','api','naver-datalab.js'),'ut
 const html=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');
 function assert(ok,msg){if(!ok) throw new Error(msg);}
 assert(api.includes("naverapihub.apigw.ntruss.com/search-trend/v1/search"),'DataLab API HUB endpoint missing');
+assert(api.includes("naveropenapi.apigw.ntruss.com/datalab/v1/search"),'DataLab API HUB compatibility endpoint missing');
 assert(api.includes('NAVER_DATALAB_CLIENT_ID')&&api.includes('NAVER_DATALAB_CLIENT_SECRET'),'DataLab env vars missing');
 assert(api.includes("'X-NCP-APIGW-API-KEY-ID'")&&api.includes("'X-NCP-APIGW-API-KEY'"),'DataLab API HUB headers missing');
 assert(api.includes('keywordGroups')&&api.includes('timeUnit'),'DataLab request payload missing');

@@ -21,8 +21,12 @@ module.exports=async function(req,res){
   const start=isoDate(body&&body.startDate,new Date(Date.now()-365*86400000).toISOString().slice(0,10));
   const timeUnit=['date','week','month'].includes(body&&body.timeUnit)?body.timeUnit:'date';
   try{
-    const upstream=await fetch('https://naverapihub.apigw.ntruss.com/search-trend/v1/search',{method:'POST',headers:{'Content-Type':'application/json','X-NCP-APIGW-API-KEY-ID':clientId,'X-NCP-APIGW-API-KEY':clientSecret},body:JSON.stringify({startDate:start,endDate:isoDate(body&&body.endDate,end),timeUnit,keywordGroups:[{groupName:keyword,keywords:[keyword]}]})});
+    const payload={startDate:start,endDate:isoDate(body&&body.endDate,end),timeUnit,keywordGroups:[{groupName:keyword,keywords:[keyword]}]};
+    const headers={'Content-Type':'application/json','X-NCP-APIGW-API-KEY-ID':clientId,'X-NCP-APIGW-API-KEY':clientSecret};
+    let upstream=await fetch('https://naverapihub.apigw.ntruss.com/search-trend/v1/search',{method:'POST',headers,body:JSON.stringify(payload)});
+    if(upstream.status===404||upstream.status===401) upstream=await fetch('https://naveropenapi.apigw.ntruss.com/datalab/v1/search',{method:'POST',headers,body:JSON.stringify(payload)});
     const data=await upstream.json().catch(()=>({}));
+    if(!upstream.ok&&data&&typeof data.error==='object') data.error=data.error.message||data.error.details||'네이버 API 인증 또는 권한을 확인해 주세요.';
     return res.status(upstream.status).json(data);
   }catch(e){return res.status(502).json({error:'네이버 데이터랩 API에 연결하지 못했습니다.'});}
 };
