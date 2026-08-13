@@ -1656,11 +1656,24 @@
     syncChecklistSetEditor();
     if(state.view==="loading"){ app.innerHTML='<div style="padding:60px;text-align:center;color:#8B95A1;">불러오는 중…</div>'; return; }
     if(state.view==="dashboard") return renderDashboard();
+    if(state.view==="keywordTool") return renderKeywordTool();
     if(state.view==="clientForm") return renderClientForm(state.editingClient);
     if(state.view==="clientDetail") return renderClientDetail(state.currentClient);
     if(state.view==="contractForm") return renderContractBuilder(state.currentContract);
     if(state.view==="edit") return renderEdit(state.editingBase);
     if(state.view==="report") return renderReportView(state.currentReport);
+  }
+
+  function renderKeywordTool(){
+    app.innerHTML='<div class="topbar"><div class="brand"><span class="brand-mark"></span>분석기</div><button class="btn btn-text" id="btn-tool-back">← 돌아가기</button></div><div class="hero"><p class="eyebrow">도구</p><h1>키워드 검색량</h1><p class="panel-hint">네이버 검색광고 API로 키워드 검색량을 확인합니다.</p></div><div class="panel fade-in"><div class="panel-head"><div><h3 class="panel-title">키워드 조회</h3><p class="panel-hint">한 줄에 하나씩 입력하면 최대 10개까지 조회할 수 있습니다.</p></div><span class="tag tag-new">내부 전용</span></div><textarea id="naver-keywords" rows="5" placeholder="예: 하단지점\n카페 마케팅\n지역 광고"></textarea><div class="form-actions"><button class="btn btn-primary" id="btn-naver-search">검색량 조회</button></div><div id="naver-result" class="muted" style="margin-top:18px;">키워드를 입력하고 조회해 주세요.</div></div>';
+    document.getElementById('btn-tool-back').onclick=function(){state.view='dashboard';render();};
+    document.getElementById('btn-naver-search').onclick=async function(){
+      var btn=this, result=document.getElementById('naver-result');
+      var keywords=document.getElementById('naver-keywords').value.split(/\n|,/).map(function(v){return v.trim();}).filter(Boolean).slice(0,10);
+      if(!keywords.length){result.textContent='키워드를 입력해 주세요.';return;}
+      btn.disabled=true; result.innerHTML='<div class="empty-state"><div class="es-title">검색량을 불러오는 중입니다</div><div class="es-sub">네이버 API에 안전하게 요청하고 있습니다.</div></div>';
+      try{var res=await fetch('/api/naver-keyword',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+authToken},body:JSON.stringify({keywords:keywords})});var data=await res.json();if(!res.ok)throw new Error(data.error||'조회에 실패했습니다');var rows=(data.keywordList||[]).map(function(item){return '<tr><td>'+esc(item.relKeyword||'')+'</td><td>'+esc(item.monthlyPcQcCnt||'-')+'</td><td>'+esc(item.monthlyMobileQcCnt||'-')+'</td><td>'+esc(item.monthlyAveMobileClkCnt||'-')+'</td></tr>';}).join('');result.innerHTML=rows?'<div class="table-wrap"><table><thead><tr><th>키워드</th><th>PC 검색량</th><th>모바일 검색량</th><th>평균 클릭</th></tr></thead><tbody>'+rows+'</tbody></table></div>':'<div class="empty-state"><div class="es-title">결과가 없습니다</div></div>';}catch(e){result.innerHTML='<div class="empty-state"><div class="es-title">조회에 실패했습니다</div><div class="es-sub">'+esc(e.message)+'</div></div>';}finally{btn.disabled=false;}
+    };
   }
 
   /* ============ client helpers ============ */
@@ -1706,7 +1719,7 @@
     app.innerHTML=
       '<div class="topbar">'+
         '<div class="brand"><span class="brand-mark"></span>업체 관리 대시보드</div>'+
-        '<div class="top-actions"><button class="btn btn-primary" id="btn-new-client">+ 업체 등록</button></div>'+
+        '<div class="top-actions"><button class="btn btn-plain" id="btn-open-tools">분석기</button><button class="btn btn-primary" id="btn-new-client">+ 업체 등록</button></div>'+
       '</div>'+
       '<div class="hero">'+
         '<p class="eyebrow">'+esc(monthLabel(state.month))+' 기준</p>'+
@@ -1723,6 +1736,7 @@
     document.getElementById("btn-new-client").addEventListener("click", function(){
       state.editingClient=null; state.view="clientForm"; render();
     });
+    document.getElementById("btn-open-tools").addEventListener("click", function(){ state.view="keywordTool"; render(); });
     document.getElementById("btn-this-month").addEventListener("click", function(){
       state.month=monthKey(new Date()); render();
     });
