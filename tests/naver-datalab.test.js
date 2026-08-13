@@ -11,4 +11,8 @@ assert(api.includes('keywordGroups')&&api.includes('timeUnit'),'DataLab request 
 assert(api.includes("req.method!=='POST'")&&api.includes('401'),'DataLab auth guard missing');
 assert(html.includes('/api/naver-datalab'),'Keyword screen does not call DataLab');
 assert(html.includes('datalab-trend-card')&&html.includes('검색 관심도 추이'),'DataLab trend UI missing');
+assert(html.includes('runSingleDataLabSearch'),'Single keyword mode must have a dedicated DataLab-first search flow');
+assert(html.includes("addEventListener('click',runSingleDataLabSearch,true)"),'Single keyword search must intercept the Search Ads result flow');
+assert(html.includes('id="datalab-time-unit"')&&html.includes('id="datalab-start-date"')&&html.includes('id="datalab-end-date"'),'DataLab period controls missing');
+assert(html.includes('datalab-summary-card'),'DataLab single result summary missing');
 console.log('naver-datalab.test.js: ok');
