@@ -1,5 +1,6 @@
 const fs=require('fs');
 const path=require('path');
+const vm=require('vm');
 const api=fs.readFileSync(path.join(__dirname,'..','api','naver-datalab.js'),'utf8');
 const html=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');
 function assert(ok,msg){if(!ok) throw new Error(msg);}
@@ -15,4 +16,16 @@ assert(html.includes('runSingleDataLabSearch'),'Single keyword mode must have a 
 assert(html.includes("addEventListener('click',runSingleDataLabSearch,true)"),'Single keyword search must intercept the Search Ads result flow');
 assert(html.includes('id="datalab-time-unit"')&&html.includes('id="datalab-start-date"')&&html.includes('id="datalab-end-date"'),'DataLab period controls missing');
 assert(html.includes('datalab-summary-card'),'DataLab single result summary missing');
+assert(html.includes('function estimateKeywordVolumes('),'Estimated volume helper missing');
+assert(html.includes("Promise.all([fetch('/api/naver-keyword'"),'Single keyword mode must combine Keyword Tool and DataLab');
+assert(html.includes('월간 예상 검색량')&&html.includes('일평균 예상 검색량'),'Estimated-volume summary labels missing');
+assert(html.includes('period-volume-table'),'Estimated period-volume table missing');
+assert(html.includes('키워드 도구 월간 검색량과 데이터랩 상대 추이를 조합한 추정치'),'Estimate disclosure missing');
+const estimatorSource=html.match(/function estimateKeywordVolumes\([\s\S]*?\n    \}/);
+assert(estimatorSource,'Estimator source could not be extracted');
+const sandbox={};vm.runInNewContext(estimatorSource[0],sandbox);
+const estimates=sandbox.estimateKeywordVolumes(3000,[{period:'2026-08-01',ratio:25},{period:'2026-08-02',ratio:75}],'2026-08-01','2026-08-30');
+assert(estimates.length===2,'Estimator must preserve every trend period');
+assert(Math.abs(estimates[1].estimate-estimates[0].estimate*3)<=1,'Estimator must distribute volume in proportion to DataLab ratios within rounding tolerance');
+assert(estimates.reduce((sum,item)=>sum+item.estimate,0)===Math.round(3000*(30/30.4375)),'Estimator total must match the date-range-scaled monthly volume');
 console.log('naver-datalab.test.js: ok');
