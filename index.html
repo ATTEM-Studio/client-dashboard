@@ -40,6 +40,15 @@
   #app{ max-width:920px; margin:0 auto; padding:24px 20px 100px; }
 
   .topbar{ display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; gap:12px; }
+  .dashboard-menu{ position:relative; }
+  .dashboard-menu-toggle{ display:flex; align-items:center; gap:7px; }
+  .dashboard-menu-toggle .menu-chevron{ transition:transform .2s ease; }
+  .dashboard-menu.open .menu-chevron{ transform:rotate(180deg); }
+  .dashboard-menu-panel{ position:absolute; right:0; top:calc(100% + 8px); z-index:20; min-width:170px; padding:6px; border:1px solid var(--line); border-radius:14px; background:#fff; box-shadow:var(--shadow-pop); opacity:0; transform:translateY(-6px) scale(.98); pointer-events:none; transition:opacity .2s ease,transform .2s ease; }
+  .dashboard-menu.open .dashboard-menu-panel{ opacity:1; transform:translateY(0) scale(1); pointer-events:auto; }
+  .dashboard-menu-item{ display:flex; width:100%; align-items:center; gap:9px; border:0; border-radius:10px; padding:11px 12px; background:transparent; color:var(--ink-700); font-size:13px; font-weight:700; text-align:left; }
+  .dashboard-menu-item:hover{ background:var(--brand-light); color:var(--brand-dark); }
+  @media(max-width:480px){ .dashboard-menu-panel{ right:-4px; min-width:180px; } }
   .brand{ display:flex; align-items:center; gap:9px; font-weight:800; font-size:17px; }
   .brand-mark{ width:24px; height:24px; border-radius:8px; background:linear-gradient(135deg,var(--brand),var(--brand-dark)); position:relative; flex:none; }
   .brand-mark::after{ content:""; position:absolute; left:6px; top:11px; width:12px; height:3px; border-radius:2px; background:#fff; box-shadow:0 -5px 0 #fff; }
@@ -1732,7 +1741,7 @@
     app.innerHTML=
       '<div class="topbar">'+
         '<div class="brand"><span class="brand-mark"></span>업체 관리 대시보드</div>'+
-        '<div class="top-actions"><button class="btn btn-plain" id="btn-open-tools">분석기</button><button class="btn btn-primary" id="btn-new-client">+ 업체 등록</button></div>'+
+        '<div class="dashboard-menu" id="dashboard-menu"><button class="btn btn-primary dashboard-menu-toggle" id="btn-dashboard-menu" aria-expanded="false">메뉴 <span class="menu-chevron">⌄</span></button><div class="dashboard-menu-panel" role="menu"><button class="dashboard-menu-item" id="btn-menu-new-client" role="menuitem">＋ 업체 추가</button><button class="dashboard-menu-item" id="btn-menu-tools" role="menuitem">▥ 분석기</button></div></div>'+
       '</div>'+
       '<div class="hero">'+
         '<p class="eyebrow">'+esc(monthLabel(state.month))+' 기준</p>'+
@@ -1746,10 +1755,13 @@
       '</div>'+
       '<div id="dash-body"><div class="muted" style="padding:30px 0;text-align:center;">불러오는 중…</div></div>';
 
-    document.getElementById("btn-new-client").addEventListener("click", function(){
+    document.getElementById("btn-menu-new-client").addEventListener("click", function(){
       state.editingClient=null; state.view="clientForm"; render();
     });
-    document.getElementById("btn-open-tools").addEventListener("click", function(){ state.view="keywordTool"; render(); });
+    document.getElementById("btn-menu-tools").addEventListener("click", function(){ state.view="keywordTool"; render(); });
+    var menu=document.getElementById("dashboard-menu"), menuButton=document.getElementById("btn-dashboard-menu");
+    menuButton.addEventListener("click", function(e){ e.stopPropagation(); var open=menu.classList.toggle("open"); menuButton.setAttribute("aria-expanded",String(open)); });
+    document.addEventListener("click", function closeDashboardMenu(e){ if(menu&&!menu.contains(e.target)){ menu.classList.remove("open"); menuButton.setAttribute("aria-expanded","false"); } }, { once:true });
     document.getElementById("btn-this-month").addEventListener("click", function(){
       state.month=monthKey(new Date()); render();
     });
