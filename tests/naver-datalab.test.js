@@ -21,6 +21,7 @@ assert(html.includes("Promise.all([fetch('/api/naver-keyword'"),'Single keyword 
 assert(html.includes('월간 예상 검색량')&&html.includes('일평균 예상 검색량'),'Estimated-volume summary labels missing');
 assert(html.includes('period-volume-table'),'Estimated period-volume table missing');
 assert(html.includes('키워드 도구 월간 검색량과 데이터랩 상대 추이를 조합한 추정치'),'Estimate disclosure missing');
+assert(/function syncMode\(\)[\s\S]*?datalab-controls[\s\S]*?bulkMode\|\|relatedMode/.test(html),'Mode sync must hide DataLab date controls outside the single-keyword tab');
 const estimatorSource=html.match(/function estimateKeywordVolumes\([\s\S]*?\n    \}/);
 assert(estimatorSource,'Estimator source could not be extracted');
 const sandbox={};vm.runInNewContext(estimatorSource[0],sandbox);
