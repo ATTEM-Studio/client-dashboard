@@ -22,6 +22,11 @@ assert(html.includes('월간 예상 검색량')&&html.includes('일평균 예상
 assert(html.includes('period-volume-table'),'Estimated period-volume table missing');
 assert(html.includes('키워드 도구 월간 검색량과 데이터랩 상대 추이를 조합한 추정치'),'Estimate disclosure missing');
 assert(/function syncMode\(\)[\s\S]*?datalab-controls[\s\S]*?bulkMode\|\|relatedMode/.test(html),'Mode sync must hide DataLab date controls outside the single-keyword tab');
+assert(html.includes('<option value="year">연간</option>'),'Annual graph filter missing');
+assert(html.includes('function setDataLabDefaultRange('),'Automatic period range helper missing');
+assert(html.includes("unit==='year'?5*365:unit==='month'?365:unit==='week'?183:30"),'Expected automatic ranges are not configured');
+assert(html.includes('datalab-chart-tooltip'),'Interactive chart tooltip missing');
+assert(html.includes("addEventListener('mouseenter'")&&html.includes("addEventListener('touchstart'"),'Mouse and touch tooltip handlers missing');
 const estimatorSource=html.match(/function estimateKeywordVolumes\([\s\S]*?\n    \}/);
 assert(estimatorSource,'Estimator source could not be extracted');
 const sandbox={};vm.runInNewContext(estimatorSource[0],sandbox);
