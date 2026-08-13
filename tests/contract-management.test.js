@@ -25,6 +25,10 @@ assert.match(html, /id="contract-payment-method"/, 'contract form must include p
 assert.match(html, /id="contract-business-number"/, 'contract form must include business details');
 assert.match(html, /\?contract=/, 'contract form must expose a shareable public contract link');
 assert.match(html, /renderPublicContract/, 'public contract route renderer must exist');
+assert.match(html, /btn-print-contract/, 'contract originals must expose PDF print/save');
+assert.match(html, /data-print-contract/, 'saved contract cards must expose PDF archive action');
+assert.match(html, /archivedAt/, 'contract PDF archive timestamp must persist');
+assert.match(html, /window\.print\(\)/, 'PDF action must invoke the browser print dialog');
 assert.match(html, /mutatePublicContract/, 'browser transport must support public contract saves');
 assert.match(html, /await getS\("contract:"\+id\)/,
   'opening a saved contract original must reload the full contract document, not the lightweight index row');

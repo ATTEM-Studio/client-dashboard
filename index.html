@@ -287,6 +287,9 @@
   .revenue-trend-title{ margin:0; font-size:14.5px; font-weight:800; }
   .revenue-trend-total{ margin-top:3px; color:var(--ink-400); font-size:12px; }
   .revenue-trend-total strong{ color:var(--ink-700); font-size:14px; }
+  .revenue-chart-legend{ display:flex; gap:14px; align-items:center; margin:-4px 0 10px 58px; color:var(--ink-400); font-size:11px; }
+  .legend-dot{ display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:4px; background:var(--brand); }
+  .legend-dot.ad-dot{ background:#8B5CF6; }
   .revenue-chart{ display:grid; grid-template-columns:48px minmax(0,1fr); gap:10px; min-height:220px; }
   .revenue-y-axis{ display:flex; flex-direction:column; justify-content:space-between; padding:8px 0 28px; color:var(--ink-400); font-size:10.5px; text-align:right; }
   .revenue-bars{ display:grid; grid-template-columns:repeat(4,minmax(44px,1fr)); gap:10px; min-width:0; border-bottom:1px solid var(--line); background:repeating-linear-gradient(to bottom,var(--line) 0,var(--line) 1px,transparent 1px,transparent calc(33.333%)); }
@@ -295,6 +298,10 @@
   .revenue-bar-stack.entered{ min-height:3px; }
   .revenue-bar-value{ position:absolute; bottom:calc(100% + 5px); left:50%; transform:translateX(-50%); color:var(--ink-300); font-size:10.5px; font-weight:700; white-space:nowrap; }
   .revenue-bar{ width:100%; height:100%; min-height:3px; border-radius:8px 8px 2px 2px; background:var(--brand); }
+  .revenue-bar-slot:has(.ad-spend-stack){ flex-direction:row; align-items:flex-end; justify-content:center; gap:4px; }
+  .ad-spend-stack{ width:min(26px,34%); }
+  .ad-spend-bar{ background:#8B5CF6; }
+  .ad-spend-value{ color:#8B5CF6; }
   .revenue-bar.current{ background:var(--scale); }
   .revenue-bar.empty{ min-height:0; background:transparent; }
   .revenue-bar-week{ height:28px; padding-top:7px; color:var(--ink-400); font-size:11px; font-weight:700; }
@@ -1007,6 +1014,18 @@
   function revenueForReport(report){
     return report && report.revenue && typeof report.revenue==="object" ? report.revenue : {};
   }
+  function advertisingSpendForReport(report){
+    var total=0, found=false;
+    (report&&Array.isArray(report.channels)?report.channels:[]).forEach(function(channel){
+      (channel&&Array.isArray(channel.metrics)?channel.metrics:[]).forEach(function(metric){
+        var label=String(metric&&metric.label||"").replace(/\s/g,"").toLowerCase();
+        if(!/(총광고비|광고비|adspend|spend)/i.test(label)) return;
+        var value=parseRevenueWon(metric.value);
+        if(value!==null){ total+=value; found=true; }
+      });
+    });
+    return found?total:null;
+  }
   function reportMonthKey(period){
     var parts=/(\d{4})\s*\uB144\s*(\d{1,2})\s*\uC6D4/.exec(String(period||""));
     if(!parts) return null;
@@ -1078,10 +1097,20 @@
   function revenueTrendPanel(clientId,reports,month){
     var summary=revenueSummary(reports,clientId,month);
     if(!summary.hasRevenue) return "";
+    var adSpendByWeek=[null,null,null,null];
+    (reports||[]).forEach(function(report){
+      if(!report||report.clientId!==clientId||report.type!=="weekly"||reportMonthKey(report.period)!==month) return;
+      var match=/([1-5])\s*\uC8FC\uCC28/.exec(String(report.period||"")); if(!match) return;
+      var week=Math.min(Number(match[1]),4)-1, spend=advertisingSpendForReport(report);
+      if(spend!==null) adSpendByWeek[week]=(adSpendByWeek[week]||0)+spend;
+    });
     var values=summary.weeklyByWeek.filter(function(value){ return value!==null; });
+    var spendValues=adSpendByWeek.filter(function(value){ return value!==null; });
+    var hasAdSpend=spendValues.length>0;
     var scaleValues=values.slice();
     if(!scaleValues.length && summary.displayTotal!==null) scaleValues.push(summary.displayTotal);
     if(!scaleValues.length && summary.previousMonth!==null) scaleValues.push(summary.previousMonth);
+    scaleValues=scaleValues.concat(spendValues);
     var maxValue=scaleValues.length ? Math.max.apply(Math,scaleValues) : 0;
     var axis=revenueAxis(maxValue), currentWeek=currentWeekOf(month), currentChartWeek=Math.min(currentWeek,4);
     var axisHtml=axis.labels.slice().reverse().map(function(value){
@@ -1089,12 +1118,13 @@
     }).join("");
     var described=[];
     var bars=summary.weeklyByWeek.map(function(value,index){
-      var entered=value!==null, height=entered&&axis.max ? Math.max(2,value/axis.max*100) : 0;
+      var entered=value!==null, spend=adSpendByWeek[index], height=entered&&axis.max ? Math.max(2,value/axis.max*100) : 0, spendHeight=spend!==null&&axis.max ? Math.max(2,spend/axis.max*100) : 0;
       if(entered) described.push((index+1)+"\uC8FC\uCC28 "+formatRevenueWon(value));
       return '<div class="revenue-bar-slot">'+
         '<div class="revenue-bar-stack '+(entered?"entered":"empty")+'" style="height:'+height.toFixed(2)+'%">'+
           (entered?'<span class="revenue-bar-value">'+formatRevenueWon(value)+'</span>':"")+
           '<div class="revenue-bar '+(entered?(currentChartWeek===index+1?"current":"entered"):"empty")+'"></div></div>'+
+        (hasAdSpend?'<div class="revenue-bar-stack ad-spend-stack '+(spend!==null?"entered":"empty")+'" style="height:'+spendHeight.toFixed(2)+'%">'+(spend!==null?'<span class="revenue-bar-value ad-spend-value">'+formatRevenueWon(spend)+'</span>':"")+'<div class="revenue-bar ad-spend-bar"></div></div>':"")+
         '<span class="revenue-bar-week">'+(index+1)+'\uC8FC</span></div>';
     }).join("");
     var eligible=(reports||[]).filter(function(report){
@@ -1113,7 +1143,8 @@
     var totalLabel=summary.displayTotal!==null ? '\uC774\uBC88 \uB2EC <strong>'+formatRevenueWon(summary.displayTotal)+'</strong>' : '\uC9C0\uB09C\uB2EC <strong>'+formatRevenueWon(summary.previousMonth)+'</strong>';
     var aria=month+' \uC8FC\uCC28\uBCC4 \uB9E4\uCD9C \uB9C9\uB300 \uADF8\uB798\uD504. '+(described.length?described.join(", "):"\uC785\uB825\uB41C \uC8FC\uAC04 \uB9E4\uCD9C \uC5C6\uC74C");
     return '<section class="revenue-trend-panel">'+
-      '<div class="revenue-trend-head"><div><h4 class="revenue-trend-title">\uC8FC\uCC28\uBCC4 \uB9E4\uCD9C \uD750\uB984</h4><div class="revenue-trend-total">'+totalLabel+'</div></div>'+action+'</div>'+
+      '<div class="revenue-trend-head"><div><h4 class="revenue-trend-title">\uC8FC\uCC28\uBCC4 \uB9E4\uCD9C\u00B7\uAD11\uACE0\uBE44 \uD750\uB984</h4><div class="revenue-trend-total">'+totalLabel+'</div></div>'+action+'</div>'+
+      '<div class="revenue-chart-legend"><span><i class="legend-dot revenue-dot"></i>\uB9E4\uCD9C</span>'+(hasAdSpend?'<span><i class="legend-dot ad-dot"></i>\uAD11\uACE0\uBE44</span>':'<span class="muted">\uAD11\uACE0\uBE44 \uC785\uB825 \uC2DC \uD568\uAED8 \uD45C\uC2DC</span>')+'</div>'+
       '<div class="revenue-chart" role="img" aria-label="'+esc(aria)+'"><div class="revenue-y-axis">'+axisHtml+'</div><div class="revenue-bars">'+bars+'</div></div></section>';
   }
   function reportRevenueSection(rep,reports){
@@ -2050,7 +2081,7 @@
           '<div class="field"><label>서명자</label><input type="text" id="contract-signer" value="'+esc(contract.signerName||"")+'" placeholder="예: 홍길동" /></div>'+
           '<div class="signature-box"><canvas id="contract-signature" class="signature-canvas" width="720" height="220"></canvas><div style="margin-top:8px"><button type="button" class="btn btn-plain btn-sm" id="btn-clear-signature">서명 지우기</button></div></div>'+
         '</div>'+
-        '<div class="form-actions"><button class="btn btn-plain" id="btn-cancel">취소</button><button class="btn btn-primary" id="btn-save-contract">계약서 저장</button></div>'+
+        '<div class="form-actions"><button class="btn btn-plain" id="btn-cancel">취소</button><button class="btn btn-ghost" id="btn-print-contract" type="button">PDF 저장/인쇄</button><button class="btn btn-primary" id="btn-save-contract">계약서 저장</button></div>'+
       '</div>';
   }
   function renderPublicContract(contract){
@@ -2182,6 +2213,13 @@
       await setP("contracts-index",index);
       copyText(location.origin+"/?contract="+encodeURIComponent(state.currentContract.id));
     };
+    var printContract=document.getElementById("btn-print-contract");
+    if(printContract) printContract.onclick=async function(){
+      state.currentContract=collectContractFromForm(state.currentContract);
+      state.currentContract.archivedAt=state.currentContract.archivedAt||Date.now();
+      await setS("contract:"+state.currentContract.id,state.currentContract);
+      if(typeof window!=="undefined"&&window.print) window.print();
+    };
     document.getElementById("btn-save-contract").onclick=saveContractFromForm;
   }
   function bindContractTypeToggle(){
@@ -2307,7 +2345,7 @@
       var pseudo={ contractType:contract.contractType, renewalCount:contract.renewalCount };
       var amount=toNum(contract.fee) ? Number(toNum(contract.fee)).toLocaleString("ko-KR")+"원" : "금액 미입력";
       var signStatus=(contract.submittedAt||contract.hasSignature||contract.signatureDataUrl)?'<span class="contract-signed-status">✓ 서명 완료</span>':'<span>서명자 '+esc(contract.signerName||"미입력")+'</span>';
-      return '<div class="contract-card"><h4>'+esc(contract.clientName||client.name||"계약서")+'</h4><div class="contract-meta"><span>'+esc(contractLabel(pseudo))+'</span><span>시작 '+esc(contract.startDate||"미입력")+'</span><span>'+amount+'</span>'+signStatus+'</div><div class="contract-actions"><button class="btn btn-plain btn-sm" data-open-contract="'+esc(contract.id)+'">원본 열람</button><button class="btn btn-ghost btn-sm" data-open-contract-link="'+esc(contract.id)+'">링크 열람</button><button class="btn btn-ghost btn-sm" data-copy-contract-link="'+esc(contract.id)+'">링크 복사</button></div></div>';
+      return '<div class="contract-card"><h4>'+esc(contract.clientName||client.name||"계약서")+'</h4><div class="contract-meta"><span>'+esc(contractLabel(pseudo))+'</span><span>시작 '+esc(contract.startDate||"미입력")+'</span><span>'+amount+'</span>'+signStatus+(contract.archivedAt?'<span class="muted">PDF 보관됨</span>':"")+'</div><div class="contract-actions"><button class="btn btn-plain btn-sm" data-open-contract="'+esc(contract.id)+'">원본 열람</button><button class="btn btn-ghost btn-sm" data-open-contract-link="'+esc(contract.id)+'">링크 열람</button><button class="btn btn-ghost btn-sm" data-copy-contract-link="'+esc(contract.id)+'">링크 복사</button><button class="btn btn-ghost btn-sm" data-print-contract="'+esc(contract.id)+'">PDF 저장</button></div></div>';
     }).join("") : '<div class="set-empty"><strong>저장된 계약서가 없습니다</strong><p>계약서 생성 버튼으로 이 업체의 계약서를 남겨보세요.</p></div>';
     return '<div class="panel fade-in"><div class="panel-head"><div><h3 class="panel-title">계약서</h3><p class="panel-hint">작성·서명·저장된 계약서를 업체별로 확인합니다.</p></div><button class="btn btn-primary btn-sm" data-new-client-contract="'+esc(client&&client.id||"")+'">계약서 생성</button></div>'+rows+'</div>';
   }
@@ -2719,6 +2757,14 @@
     }; });
     app.querySelectorAll("[data-copy-contract-link]").forEach(function(b){ b.onclick=function(){
       copyText(location.origin+"/?contract="+encodeURIComponent(b.getAttribute("data-copy-contract-link")));
+    }; });
+    app.querySelectorAll("[data-print-contract]").forEach(function(b){ b.onclick=async function(){
+      var id=b.getAttribute("data-print-contract"), contract=await getS("contract:"+id);
+      if(!contract){ showToast("계약서를 찾을 수 없습니다"); return; }
+      contract.archivedAt=contract.archivedAt||Date.now();
+      await setS("contract:"+id,contract);
+      var row=(state.contracts||[]).find(function(item){return item.id===id;}); if(row) row.archivedAt=contract.archivedAt;
+      if(typeof window!=="undefined"&&window.print) window.print();
     }; });
   }
   function bindChecklistPanel(cl){

@@ -18,6 +18,8 @@ assert.strictEqual(sandbox.parseRevenueWon(''), null);
 assert.strictEqual(sandbox.parseRevenueWon('-1'), null);
 assert.strictEqual(sandbox.parseRevenueWon('12.5'), null);
 assert.strictEqual(sandbox.parseRevenueWon('9007199254740992'), null, 'unsafe integers are invalid');
+assert.strictEqual(sandbox.advertisingSpendForReport({ channels:[{metrics:[{label:'총광고비',value:'1,200,000'}]}] }), 1200000);
+assert.strictEqual(sandbox.advertisingSpendForReport({ channels:[{metrics:[{label:'CTR',value:'2'}]}] }), null);
 
 assert.strictEqual(sandbox.reportMonthKey('2026\uB144 8\uC6D4'), '2026-08');
 assert.strictEqual(sandbox.reportMonthKey('2026\uB144 8\uC6D4 2\uC8FC\uCC28'), '2026-08');
@@ -116,6 +118,9 @@ assert.doesNotMatch(html, /\.revenue-bar-value\{[^}]*\btop:/,
   'exact amount labels must not be pinned to the chart ceiling');
 assert.strictEqual((trend.match(/revenue-bar-slot/g) || []).length, 4, 'the trend must always use four weekly slots');
 assert.match(trend, /aria-label=/, 'the bar chart must have an accessible text label');
+assert.match(trend, /revenue-chart-legend/, 'integrated chart must include a legend');
+const integratedTrend = sandbox.revenueTrendPanel('c1', trendReports.map((report) => Object.assign({}, report, { channels:[{ metrics:[{ label:'총광고비', value:'500000' }] }] })), '2026-08');
+assert.match(integratedTrend, /ad-spend-bar/, 'integrated chart must render advertising spend bars when entered');
 assert.doesNotMatch(trend, /onclick|<svg|<path|trend-line/i,
   'the approved trend is bar-only and must not use click-to-reveal behavior');
 
