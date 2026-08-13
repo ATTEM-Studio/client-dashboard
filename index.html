@@ -169,6 +169,7 @@
   .keyword-summary-card{padding:14px 15px;border:1px solid var(--line);border-radius:14px;background:#fff}
   .keyword-summary-card span{display:block;color:var(--ink-400);font-size:11px;font-weight:700;margin-bottom:5px}
   .keyword-summary-card strong{font-size:20px;letter-spacing:-.02em}
+  #naver-keywords{min-height:48px;height:48px;resize:none}
   @media(max-width:640px){.keyword-summary{grid-template-columns:repeat(2,1fr)}}
   .client-status-row{ display:grid; grid-template-columns:minmax(0,1.4fr) .9fr .9fr .8fr; gap:8px; align-items:center; padding:11px 12px; border:1px solid var(--line); border-radius:10px; background:#fff; font-size:12px; }
   .client-status-row.season{ background:#FFF7E8; border-color:#F4C36A; }
@@ -736,8 +737,10 @@
         approverName:"", approverContact:"", operatingNotes:""
       }
     };
-    var trendObserver=new MutationObserver(function(){var root=document.getElementById('naver-result');var trend=root&&root.querySelector('.datalab-trend-card');if(trend&&trend.parentNode)trend.parentNode.insertBefore(trend,trend.parentNode.firstChild);if(!bulkMode&&!relatedMode&&root){Array.from(root.querySelectorAll('*')).forEach(function(el){if(el.children.length===0&&el.textContent.trim()==='연관 검색어'&&el.parentNode&&el.parentNode.parentNode)el.parentNode.parentNode.remove();});var table=root.querySelector('table');if(table&&!root.querySelector('.keyword-summary')){var cells=table.querySelectorAll('tbody tr:first-child td');if(cells.length>=4){var summary=document.createElement('div');summary.className='keyword-summary';[['PC 검색량',cells[1].textContent],['모바일 검색량',cells[2].textContent],['총 검색량',String((parseInt(cells[1].textContent.replace(/[^0-9]/g,''),10)||0)+(parseInt(cells[2].textContent.replace(/[^0-9]/g,''),10)||0))],['평균 클릭',cells[3].textContent]].forEach(function(item){summary.innerHTML+='<div class="keyword-summary-card"><span>'+item[0]+'</span><strong>'+esc(item[1])+'</strong></div>';});table.parentNode.parentNode.insertBefore(summary,table.parentNode);}}}});
+    var trendObserver=new MutationObserver(function(){var root=document.getElementById('naver-result');var trend=root&&root.querySelector('.datalab-trend-card');if(trend&&trend.parentNode)trend.parentNode.insertBefore(trend,trend.parentNode.firstChild);if(!bulkMode&&!relatedMode&&root){Array.from(root.querySelectorAll('*')).forEach(function(el){if(el.children.length===0&&el.textContent.trim()==='연관 검색어'){var box=el.closest('div[style]')||el.parentNode;if(box)box.remove();}});var table=root.querySelector('table');if(table&&!root.querySelector('.keyword-summary')){var cells=table.querySelectorAll('tbody tr:first-child td');if(cells.length>=4){var summary=document.createElement('div');summary.className='keyword-summary';[['PC 검색량',cells[1].textContent],['모바일 검색량',cells[2].textContent],['총 검색량',String((parseInt(cells[1].textContent.replace(/[^0-9]/g,''),10)||0)+(parseInt(cells[2].textContent.replace(/[^0-9]/g,''),10)||0))],['평균 클릭',cells[3].textContent]].forEach(function(item){summary.innerHTML+='<div class="keyword-summary-card"><span>'+item[0]+'</span><strong>'+esc(item[1])+'</strong></div>';});table.parentNode.parentNode.insertBefore(summary,table.parentNode);}}}});
     trendObserver.observe(document.getElementById('naver-result'),{childList:true,subtree:true});
+    var singleResultObserver=new MutationObserver(function(){if(!bulkMode&&!relatedMode){var rows=document.querySelectorAll('#naver-result table tbody tr');Array.from(rows).slice(1).forEach(function(row){row.style.display='none';});}});
+    singleResultObserver.observe(document.getElementById('naver-result'),{childList:true,subtree:true});
   }
   function newGuideReview(guide){
     return {guideId:guide.id,clientId:guide.clientId,status:"unreviewed",memo:""};
