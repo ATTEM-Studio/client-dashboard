@@ -296,9 +296,13 @@ async function verifyChecklistHandlerReconcilesAllVisibleControls() {
       return true;
     }
   };
-  const root = { querySelectorAll: () => controls };
+  const root = {
+    querySelectorAll: (selector) => selector === '[data-toggle-work],[data-day-toggle-work]' ? controls : [],
+    querySelector: () => null
+  };
   vm.runInNewContext([
     functionSource('syncChecklistTaskControls'),
+    functionSource('reconcileClientTask3View'),
     functionSource('toggleClientChecklistTask')
   ].join('\n'), sandbox);
 
@@ -367,17 +371,163 @@ async function verifyNoteFailureStaysWithItsOriginLayer() {
     },
     document: { getElementById: () => newLayer }
   };
-  vm.runInNewContext(functionSource('saveDayNoteWithFeedback'), sandbox);
+  vm.runInNewContext([
+    functionSource('reconcileClientTask3View'),
+    functionSource('saveDayNoteWithFeedback')
+  ].join('\n'), sandbox);
   await sandbox.saveDayNoteWithFeedback(client, '2026-08-14', oldTextarea, oldLayer, {});
   assert.strictEqual(newTextarea.value, 'new modal note',
     'a failed note save from a closed modal must not mutate a newly opened modal');
   assert.strictEqual(client.dailyNotes['2026-08-14'], 'old note');
 }
 
+function makeMixedFailureHarness(id) {
+  const key = '2026-08-14';
+  const storedAtStart = {
+    id,
+    name: 'Mixed Failure Client',
+    updatedAt: 1,
+    checklist: [{ id: 'day-task', day: 1, done: false }],
+    dailyNotes: { [key]: 'old note' }
+  };
+  let stored = copy(storedAtStart);
+  const client = copy(storedAtStart);
+  const workspaceControl = makeTaskControl('day-task');
+  const dayControl = makeTaskControl('day-task');
+  dayControl.getAttribute = (name) => name === 'data-day-toggle-work' ? 'day-task' : null;
+  const totalCount = { textContent: '1 / 1 완료' };
+  const sectionCount = { textContent: '1 / 1 완료' };
+  const section = {
+    querySelectorAll: (selector) => selector === '[data-toggle-work]' ? [workspaceControl] : [],
+    querySelector: (selector) => selector === '.check-section-count' ? sectionCount : null
+  };
+  const appRoot = {
+    isConnected: true,
+    querySelectorAll: (selector) => {
+      if (selector === '[data-toggle-work],[data-day-toggle-work]') return [workspaceControl];
+      if (selector === '.check-section') return [section];
+      return [];
+    },
+    querySelector: (selector) => selector === '.checklist-head-actions .count' ? totalCount : null
+  };
+  const noteInput = { value: 'old note', isConnected: true };
+  const layer = {
+    id: 'day-modal-layer',
+    isConnected: true,
+    querySelectorAll: (selector) => selector === '[data-toggle-work],[data-day-toggle-work]' ? [dayControl] : [],
+    querySelector: () => null
+  };
+  const sandbox = {
+    state: {
+      clients: [{ id, name: storedAtStart.name, updatedAt: storedAtStart.updatedAt }],
+      currentClient: client,
+      view: 'clientDetail'
+    },
+    app: appRoot,
+    document: { getElementById: (elementId) => elementId === 'day-modal-layer' ? layer : null },
+    Date: { now: () => 400 },
+    readS: async () => ({ status: 'found', value: copy(stored) }),
+    setS: async (storageKey, value) => { stored = copy(value); return true; },
+    setP: async () => false,
+    delS: async () => { throw new Error('a confirmed stored client must be restored, not deleted'); },
+    render: () => { throw new Error('mixed Task 3 failures must not rerender the workspace'); },
+    setAsyncVisualState: () => {},
+    showToast: () => {},
+    setChecklistTaskVisualState: (target, task, control) => { control.checked = task.done; }
+  };
+  vm.runInNewContext([
+    'var _clientSaveQueue=Promise.resolve(), _clientSaveVersions={}, _clientSaveBaselines={}, _saveFeedbackTokens=new WeakMap();',
+    functionSource('copyClientForSave'),
+    functionSource('clientIndexEntry'),
+    functionSource('reconcileClientSave'),
+    functionSource('persistClientSnapshot'),
+    functionSource('saveClientAndRefresh'),
+    functionSource('saveClientWithFeedback'),
+    functionSource('syncChecklistTaskControls'),
+    functionSource('reconcileClientTask3View'),
+    functionSource('toggleClientChecklistTask'),
+    functionSource('saveDayNoteWithFeedback')
+  ].join('\n'), sandbox);
+  return {
+    key,
+    storedAtStart,
+    getStored: () => stored,
+    client,
+    workspaceControl,
+    dayControl,
+    totalCount,
+    sectionCount,
+    noteInput,
+    layer,
+    sandbox,
+    taskContext: { root: layer, layer, noteInput, noteKey: key }
+  };
+}
+
+function assertMixedFailureReconciled(harness) {
+  assert.strictEqual(harness.client.checklist[0].done, false, 'the model task must match the confirmed baseline');
+  assert.strictEqual(harness.client.dailyNotes[harness.key], 'old note', 'the model note must match the confirmed baseline');
+  assert.strictEqual(harness.getStored().checklist[0].done, false, 'client storage must be compensated to the confirmed task');
+  assert.strictEqual(harness.getStored().dailyNotes[harness.key], 'old note', 'client storage must retain the confirmed note');
+  assert.strictEqual(harness.sandbox._clientSaveBaselines[harness.client.id], undefined,
+    'the settled queue baseline must not retain optimistic state');
+  assert.strictEqual(harness.workspaceControl.checked, false, 'the visible checklist control must match the reconciled model');
+  assert.strictEqual(harness.dayControl.checked, false, 'the visible day-task control must match the reconciled model');
+  assert.strictEqual(harness.noteInput.value, 'old note', 'the original current note input must match the reconciled model');
+  assert.strictEqual(harness.totalCount.textContent, '0 / 1 완료', 'the visible total must match the reconciled model');
+  assert.strictEqual(harness.sectionCount.textContent, '0 / 1 완료', 'the visible section total must match the reconciled model');
+}
+
+async function verifyTaskThenNoteBothFailReconcilesCurrentView() {
+  const harness = makeMixedFailureHarness('client-task-note');
+  const taskSave = harness.sandbox.toggleClientChecklistTask(
+    harness.client,
+    'day-task',
+    harness.dayControl,
+    harness.layer,
+    harness.taskContext
+  );
+  harness.noteInput.value = 'new note';
+  const noteSave = harness.sandbox.saveDayNoteWithFeedback(
+    harness.client,
+    harness.key,
+    harness.noteInput,
+    harness.layer,
+    {},
+    () => { throw new Error('a failed note save must not close the modal'); }
+  );
+  await Promise.all([taskSave, noteSave]);
+  assertMixedFailureReconciled(harness);
+}
+
+async function verifyNoteThenTaskBothFailReconcilesCurrentView() {
+  const harness = makeMixedFailureHarness('client-note-task');
+  harness.noteInput.value = 'new note';
+  const noteSave = harness.sandbox.saveDayNoteWithFeedback(
+    harness.client,
+    harness.key,
+    harness.noteInput,
+    harness.layer,
+    {},
+    () => { throw new Error('a failed note save must not close the modal'); }
+  );
+  const taskSave = harness.sandbox.toggleClientChecklistTask(
+    harness.client,
+    'day-task',
+    harness.dayControl,
+    harness.layer,
+    harness.taskContext
+  );
+  await Promise.all([noteSave, taskSave]);
+  assertMixedFailureReconciled(harness);
+}
+
 Promise.all([
   verifyChecklistHandlerReconcilesAllVisibleControls(),
   verifyFeedbackTokensKeepNewerSaveVisible(),
-  verifyNoteFailureStaysWithItsOriginLayer()
+  verifyNoteFailureStaysWithItsOriginLayer(),
+  verifyNoteThenTaskBothFailReconcilesCurrentView(),
+  verifyTaskThenNoteBothFailReconcilesCurrentView()
 ]).catch((error) => {
   console.error(error);
   process.exitCode = 1;

@@ -2981,8 +2981,41 @@
       var tasks=cl.checklist||[], done=tasks.filter(function(task){ return task.done; }).length;
       count.textContent=done+' / '+tasks.length+' 완료';
     }
+    root.querySelectorAll('.check-section').forEach(function(section){
+      var sectionTasks=[];
+      section.querySelectorAll('[data-toggle-work]').forEach(function(element){
+        var id=element.getAttribute('data-toggle-work');
+        var task=(cl.checklist||[]).filter(function(item){ return String(item.id||"")===String(id); })[0];
+        if(task)sectionTasks.push(task);
+      });
+      var sectionCount=section.querySelector&&section.querySelector('.check-section-count');
+      if(sectionCount){
+        var sectionDone=sectionTasks.filter(function(task){ return task.done; }).length;
+        sectionCount.textContent=sectionDone+' / '+sectionTasks.length+' 완료';
+      }
+    });
+  }
+  function reconcileClientTask3View(cl,context){
+    context=context||{};
+    var currentClient=typeof state==='undefined' ? null : state.currentClient;
+    if(currentClient&&currentClient!==cl&&String(currentClient.id||"")!==String(cl.id||""))return;
+    var roots=[];
+    var addRoot=function(root){
+      if(!root||root.isConnected===false||!root.querySelectorAll||roots.indexOf(root)>=0)return;
+      roots.push(root);
+    };
+    if(typeof app!=='undefined')addRoot(app);
+    var layer=context.layer;
+    var currentLayer=!!(layer&&layer.isConnected!==false&&typeof document!=='undefined'&&document.getElementById('day-modal-layer')===layer);
+    if(currentLayer)addRoot(layer);
+    if(context.root!==layer)addRoot(context.root);
+    roots.forEach(function(root){ syncChecklistTaskControls(cl,root); });
+    if(currentLayer&&context.noteInput&&context.noteInput.isConnected!==false){
+      context.noteInput.value=(cl.dailyNotes||{})[context.noteKey]||"";
+    }
   }
   async function toggleClientChecklistTask(cl,id,element,root){
+    var viewContext=Object.assign({root:root},arguments[4]||{});
     var task=(cl.checklist||[]).filter(function(item){ return String(item.id||"")===String(id); })[0];
     if(!task)return;
     var rollbackSnapshot=copyClientForSave(cl), previousDone=task.done;
@@ -2996,7 +3029,7 @@
           var currentTask=(cl.checklist||[]).filter(function(item){ return String(item.id||"")===String(id); })[0];
           if(currentTask)currentTask.done=previousDone;
         }
-        syncChecklistTaskControls(cl,root);
+        reconcileClientTask3View(cl,viewContext);
       }
     }
   }
@@ -3078,9 +3111,7 @@
         if(!reconcileClientSave(cl,error)){
           if(hadNote)cl.dailyNotes[key]=previousNote; else delete cl.dailyNotes[key];
         }
-        if(noteInput&&noteInput.isConnected!==false&&layer&&layer.isConnected!==false&&document.getElementById('day-modal-layer')===layer){
-          noteInput.value=(cl.dailyNotes||{})[key]||"";
-        }
+        reconcileClientTask3View(cl,{root:layer,layer:layer,noteInput:noteInput,noteKey:key});
       }
     }
   }
@@ -3093,9 +3124,9 @@
     document.body.appendChild(layer);
     var returnFocus=origin || document.activeElement;
     var closeModal=function(){layer.remove(); if(returnFocus&&returnFocus.focus)returnFocus.focus();};
-    if(layer.querySelectorAll)layer.querySelectorAll('[data-day-toggle-work]').forEach(function(button){button.onclick=function(){return toggleClientChecklistTask(cl,button.getAttribute('data-day-toggle-work'),button,layer);};});
-    var closeButton=layer.querySelector ? layer.querySelector("#day-close") : document.getElementById("day-close"); closeButton.onclick=closeModal; if(closeButton.focus)closeButton.focus();
     var noteInput=layer.querySelector ? layer.querySelector('#daily-note') : document.getElementById('daily-note'), saveButton=layer.querySelector ? layer.querySelector('#day-save') : document.getElementById('day-save');
+    if(layer.querySelectorAll)layer.querySelectorAll('[data-day-toggle-work]').forEach(function(button){button.onclick=function(){return toggleClientChecklistTask(cl,button.getAttribute('data-day-toggle-work'),button,layer,{root:layer,layer:layer,noteInput:noteInput,noteKey:key});};});
+    var closeButton=layer.querySelector ? layer.querySelector("#day-close") : document.getElementById("day-close"); closeButton.onclick=closeModal; if(closeButton.focus)closeButton.focus();
     saveButton.onclick=function(){return saveDayNoteWithFeedback(cl,key,noteInput,layer,saveButton,closeModal);};
   }
   function openChecklistSetEditor(id){
