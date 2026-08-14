@@ -70,4 +70,76 @@ assert.match(rendered, /data-toggle-work="day-1"/);
 assert.match(rendered, /data-del-work="day-1"/);
 assert.match(rendered, /data-add-task/);
 
+const originalSection = {
+  classList: {
+    values: new Set(['check-section', 'is-collapsed']),
+    toggle(name, force) {
+      if (force) this.values.add(name);
+      else this.values.delete(name);
+    },
+    contains(name) { return this.values.has(name); }
+  },
+  querySelector(selector) {
+    return selector === '.check-section-body-inner' ? originalBody : null;
+  }
+};
+const originalBody = {
+  attrs: { 'aria-hidden': 'true', inert: '' },
+  setAttribute(name, value) { this.attrs[name] = String(value); },
+  removeAttribute(name) { delete this.attrs[name]; },
+  hasAttribute(name) { return Object.prototype.hasOwnProperty.call(this.attrs, name); },
+  getAttribute(name) { return this.attrs[name]; }
+};
+const originalToggle = {
+  attrs: { 'data-toggle-check-section': '2', 'aria-expanded': 'false' },
+  getAttribute(name) { return this.attrs[name]; },
+  setAttribute(name, value) { this.attrs[name] = String(value); },
+  closest(selector) { return selector === '.check-section' ? originalSection : null; }
+};
+let workspaceRenderCount = 0;
+const behaviorSandbox = {
+  state: { checklistWeeksOpen: {} },
+  app: {
+    mountedSection: originalSection,
+    mountedBody: originalBody,
+    querySelectorAll(selector) {
+      return selector === '[data-toggle-check-section]' ? [originalToggle] : [];
+    },
+    querySelector() { return null; }
+  },
+  document: {
+    querySelector() { return null; },
+    getElementById() { return null; }
+  },
+  renderClientWorkspace() {
+    workspaceRenderCount += 1;
+    behaviorSandbox.app.mountedSection = { replacement: true };
+    behaviorSandbox.app.mountedBody = { replacement: true };
+  }
+};
+vm.runInNewContext(functionSource('bindChecklistPanel'), behaviorSandbox);
+behaviorSandbox.bindChecklistPanel({});
+
+const sectionRef = behaviorSandbox.app.mountedSection;
+const bodyRef = behaviorSandbox.app.mountedBody;
+originalToggle.onclick();
+assert.equal(workspaceRenderCount, 0, 'opening a week does not rerender the workspace');
+assert.equal(behaviorSandbox.app.mountedSection, sectionRef, 'the original section node persists when opening');
+assert.equal(behaviorSandbox.app.mountedBody, bodyRef, 'the original section body persists when opening');
+assert.equal(behaviorSandbox.state.checklistWeeksOpen['2'], true, 'opening persists the section state');
+assert.equal(originalToggle.getAttribute('aria-expanded'), 'true', 'opening updates aria-expanded in place');
+assert.equal(originalSection.classList.contains('is-collapsed'), false, 'opening removes the collapsed transition class');
+assert.equal(originalBody.getAttribute('aria-hidden'), 'false', 'opening exposes the section body');
+assert.equal(originalBody.hasAttribute('inert'), false, 'opening removes inert from the section body');
+
+originalToggle.onclick();
+assert.equal(workspaceRenderCount, 0, 'closing a week does not rerender the workspace');
+assert.equal(behaviorSandbox.app.mountedSection, sectionRef, 'the original section node persists when closing');
+assert.equal(behaviorSandbox.app.mountedBody, bodyRef, 'the original section body persists when closing');
+assert.equal(behaviorSandbox.state.checklistWeeksOpen['2'], false, 'closing persists the section state');
+assert.equal(originalToggle.getAttribute('aria-expanded'), 'false', 'closing updates aria-expanded in place');
+assert.equal(originalSection.classList.contains('is-collapsed'), true, 'closing restores the collapsed transition class');
+assert.equal(originalBody.getAttribute('aria-hidden'), 'true', 'closing hides the section body');
+assert.equal(originalBody.hasAttribute('inert'), true, 'closing restores inert on the section body');
+
 console.log('checklist week accordion: ok');

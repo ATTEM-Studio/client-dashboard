@@ -3236,7 +3236,14 @@
     }; });
   }
   function bindChecklistPanel(cl){
-    app.querySelectorAll("[data-toggle-check-section]").forEach(function(b){ b.onclick=function(){ var key=b.getAttribute("data-toggle-check-section"); state.checklistWeeksOpen=state.checklistWeeksOpen||{}; state.checklistWeeksOpen[key]=b.getAttribute("aria-expanded")!=="true"; renderClientWorkspace(cl); }; });
+    app.querySelectorAll("[data-toggle-check-section]").forEach(function(b){ b.onclick=function(){
+      var key=b.getAttribute("data-toggle-check-section"), open=b.getAttribute("aria-expanded")!=="true";
+      state.checklistWeeksOpen=state.checklistWeeksOpen||{}; state.checklistWeeksOpen[key]=open;
+      b.setAttribute("aria-expanded",String(open));
+      var section=b.closest(".check-section"), body=section&&section.querySelector(".check-section-body-inner");
+      if(section) section.classList.toggle("is-collapsed",!open);
+      if(body){ body.setAttribute("aria-hidden",String(!open)); if(open) body.removeAttribute("inert"); else body.setAttribute("inert",""); }
+    }; });
     app.querySelectorAll("[data-toggle-work]").forEach(function(b){ b.onclick=function(){ return toggleClientChecklistTask(cl,b.getAttribute("data-toggle-work"),b,app); }; });
     app.querySelectorAll("[data-del-work]").forEach(function(b){ b.onclick=function(){ var id=b.getAttribute("data-del-work"); cl.checklist=(cl.checklist||[]).filter(function(t){return t.id!==id;}); saveClientAndRefresh(cl); }; });
     var add=document.querySelector("[data-add-task]"); if(add) add.onclick=function(){ var text=document.getElementById("new-work-text").value.trim(); if(!text){showToast("업무 내용을 입력하세요");return;} cl.checklist=cl.checklist||[]; cl.checklist.push({id:uid("ck"),text:text,week:document.getElementById("new-work-week").value,done:false}); saveClientAndRefresh(cl); };
