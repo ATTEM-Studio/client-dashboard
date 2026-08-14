@@ -79,7 +79,7 @@ async function verifyClientSaveOrderingAndRollback() {
   const sandbox = {
     state: { clients: [{ id: 'client-1', name: 'Client', updatedAt: 1 }], view: 'clientDetail' },
     Date: { now: () => 100 },
-    getS: async () => copy(stored),
+    readS: async () => ({ status: 'found', value: copy(stored) }),
     setS: async (key, value) => {
       queuedWrites.push(copy(value));
       if (queuedWrites.length === 1) await new Promise((resolve) => { releaseFirstWrite = resolve; });
@@ -119,7 +119,7 @@ async function verifyClientSaveOrderingAndRollback() {
   const rollbackSandbox = {
     state: { clients: [{ id: 'client-2', name: 'Rollback Client', updatedAt: 1 }], view: 'clientDetail' },
     Date: { now: () => 200 },
-    getS: async () => copy(original),
+    readS: async () => ({ status: 'found', value: copy(original) }),
     setS: async (key, value) => { rollbackWrites.push(copy(value)); return true; },
     setP: async () => false,
     delS: async () => true,
@@ -140,6 +140,94 @@ async function verifyClientSaveOrderingAndRollback() {
 }
 
 verifyClientSaveOrderingAndRollback().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});
+
+async function verifyClientSaveFailureReconciliation() {
+  const feedbackStates = [];
+  const feedbackSandbox = {
+    setAsyncVisualState: (element, state) => feedbackStates.push(state),
+    saveClientAndRefresh: async () => ({ isLatest: false }),
+    showToast: () => { throw new Error('stale feedback must not show an error toast'); }
+  };
+  vm.runInNewContext(functionSource('saveClientWithFeedback'), feedbackSandbox);
+  await feedbackSandbox.saveClientWithFeedback({}, {});
+  assert.deepStrictEqual(feedbackStates, ['saving', 'idle'],
+    'a stale save completion must clear its own saving feedback');
+  feedbackStates.length = 0;
+  feedbackSandbox.saveClientAndRefresh = async () => {
+    const error = new Error('stale failure');
+    error.clientSaveIsLatest = false;
+    throw error;
+  };
+  await assert.rejects(() => feedbackSandbox.saveClientWithFeedback({}, {}), /stale failure/);
+  assert.deepStrictEqual(feedbackStates, ['saving', 'idle'],
+    'a stale failed save must also clear its own saving feedback');
+
+  const stored = { id: 'client-3', name: 'Failure Client', checklist: [{ id: 'task-3', done: false }] };
+  const twoFailureSandbox = {
+    state: { clients: [{ id: 'client-3', name: 'Failure Client', updatedAt: 1 }], view: 'clientDetail' },
+    Date: { now: () => 300 },
+    readS: async () => ({ status: 'found', value: copy(stored) }),
+    setS: async () => true,
+    setP: async () => false,
+    delS: async () => true,
+    render: () => { throw new Error('feedback save failures must not rerender the workspace'); }
+  };
+  vm.runInNewContext([
+    'var _clientSaveQueue=Promise.resolve(), _clientSaveVersions={};',
+    functionSource('copyClientForSave'),
+    functionSource('clientIndexEntry'),
+    functionSource('persistClientSnapshot'),
+    functionSource('reconcileClientSave'),
+    functionSource('saveClientAndRefresh')
+  ].join('\n'), twoFailureSandbox);
+  const client = { id: 'client-3', name: 'Failure Client', checklist: [{ id: 'task-3', done: true }] };
+  const first = twoFailureSandbox.saveClientAndRefresh(client, { refresh: false });
+  client.checklist[0].done = false;
+  const second = twoFailureSandbox.saveClientAndRefresh(client, { refresh: false });
+  const results = await Promise.allSettled([first, second]);
+  assert.strictEqual(results[0].reason.clientSaveIsLatest, false);
+  assert.strictEqual(results[1].reason.clientSaveIsLatest, true);
+  assert.strictEqual(twoFailureSandbox.reconcileClientSave(client, results[1].reason), true);
+  assert.strictEqual(client.checklist[0].done, false,
+    'the latest failed operation must reconcile optimistic data to its compensated persisted snapshot');
+
+  const readErrorWrites = [];
+  const readErrorSandbox = {
+    state: { clients: [] },
+    readS: async () => ({ status: 'error', error: new Error('offline') }),
+    setS: async () => { readErrorWrites.push('set'); return true; },
+    setP: async () => true,
+    delS: async () => { readErrorWrites.push('delete'); return true; }
+  };
+  vm.runInNewContext([
+    functionSource('clientIndexEntry'),
+    functionSource('persistClientSnapshot')
+  ].join('\n'), readErrorSandbox);
+  await assert.rejects(() => readErrorSandbox.persistClientSnapshot({ id: 'client-4' }), /prior state unavailable/);
+  assert.deepStrictEqual(readErrorWrites, [],
+    'an unconfirmed prior state must block writes and destructive compensation');
+
+  const missingWrites = [];
+  const missingSandbox = {
+    state: { clients: [] },
+    readS: async () => ({ status: 'missing' }),
+    setS: async (key, value) => { missingWrites.push(['set', copy(value)]); return true; },
+    setP: async () => false,
+    delS: async () => { missingWrites.push(['delete']); return true; }
+  };
+  vm.runInNewContext([
+    functionSource('clientIndexEntry'),
+    functionSource('persistClientSnapshot')
+  ].join('\n'), missingSandbox);
+  await assert.rejects(() => missingSandbox.persistClientSnapshot({ id: 'client-5' }), /client index save failed/);
+  assert.deepStrictEqual(missingWrites, [['set', { id: 'client-5' }], ['delete']],
+    'only a confirmed missing prior state may use deletion as compensation');
+}
+
+verifyClientSaveFailureReconciliation().catch((error) => {
   console.error(error);
   process.exitCode = 1;
 });

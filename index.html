@@ -3009,7 +3009,7 @@
   }
   function bindChecklistPanel(cl){
     app.querySelectorAll("[data-toggle-check-section]").forEach(function(b){ b.onclick=function(){ var key=b.getAttribute("data-toggle-check-section"); state.checklistWeeksOpen=state.checklistWeeksOpen||{}; state.checklistWeeksOpen[key]=b.getAttribute("aria-expanded")!=="true"; renderClientWorkspace(cl); }; });
-    app.querySelectorAll("[data-toggle-work]").forEach(function(b){ b.onclick=async function(){ var id=b.getAttribute("data-toggle-work"), task=(cl.checklist||[]).filter(function(t){return t.id===id;})[0]; if(!task)return; var previousDone=task.done; task.done=!task.done; setChecklistTaskVisualState(cl,task,b); try{ await saveClientWithFeedback(cl,b); }catch(error){ if(error.clientSaveIsLatest!==false){ task.done=previousDone; setChecklistTaskVisualState(cl,task,b); } } }; });
+    app.querySelectorAll("[data-toggle-work]").forEach(function(b){ b.onclick=async function(){ var id=b.getAttribute("data-toggle-work"), task=(cl.checklist||[]).filter(function(t){return t.id===id;})[0]; if(!task)return; var previousDone=task.done; task.done=!task.done; setChecklistTaskVisualState(cl,task,b); try{ await saveClientWithFeedback(cl,b); }catch(error){ if(error.clientSaveIsLatest!==false){ var reconciled=reconcileClientSave(cl,error), currentTask=(cl.checklist||[]).filter(function(item){return item.id===id;})[0]; if(reconciled&&currentTask)setChecklistTaskVisualState(cl,currentTask,b); else { task.done=previousDone; setChecklistTaskVisualState(cl,task,b); } } } }; });
     app.querySelectorAll("[data-del-work]").forEach(function(b){ b.onclick=function(){ var id=b.getAttribute("data-del-work"); cl.checklist=(cl.checklist||[]).filter(function(t){return t.id!==id;}); saveClientAndRefresh(cl); }; });
     var add=document.querySelector("[data-add-task]"); if(add) add.onclick=function(){ var text=document.getElementById("new-work-text").value.trim(); if(!text){showToast("업무 내용을 입력하세요");return;} cl.checklist=cl.checklist||[]; cl.checklist.push({id:uid("ck"),text:text,week:document.getElementById("new-work-week").value,done:false}); saveClientAndRefresh(cl); };
     var toggle=document.getElementById("btn-toggle-sets"); if(toggle) toggle.onclick=function(){ setChecklistCollectionOpen(!state.setCollectionOpen); renderClientWorkspace(cl); };
@@ -3044,9 +3044,9 @@
     document.body.appendChild(layer);
     var returnFocus=origin || document.activeElement;
     var closeModal=function(){layer.remove(); if(returnFocus&&returnFocus.focus)returnFocus.focus();};
-    if(layer.querySelectorAll)layer.querySelectorAll('[data-day-toggle-work]').forEach(function(button){button.onclick=async function(){var id=button.getAttribute('data-day-toggle-work'); var task=(cl.checklist||[]).filter(function(item){return String(item.id||"")===String(id);})[0]; if(!task)return; var previousDone=task.done; task.done=!task.done; setChecklistTaskVisualState(cl,task,button); try{await saveClientWithFeedback(cl,button);}catch(error){if(error.clientSaveIsLatest!==false){task.done=previousDone; setChecklistTaskVisualState(cl,task,button);}}};});
+    if(layer.querySelectorAll)layer.querySelectorAll('[data-day-toggle-work]').forEach(function(button){button.onclick=async function(){var id=button.getAttribute('data-day-toggle-work'); var task=(cl.checklist||[]).filter(function(item){return String(item.id||"")===String(id);})[0]; if(!task)return; var previousDone=task.done; task.done=!task.done; setChecklistTaskVisualState(cl,task,button); try{await saveClientWithFeedback(cl,button);}catch(error){if(error.clientSaveIsLatest!==false){var reconciled=reconcileClientSave(cl,error), currentTask=(cl.checklist||[]).filter(function(item){return String(item.id||"")===String(id);})[0];if(reconciled&&currentTask)setChecklistTaskVisualState(cl,currentTask,button);else{task.done=previousDone; setChecklistTaskVisualState(cl,task,button);}}}};});
     var closeButton=document.getElementById("day-close"); closeButton.onclick=closeModal; if(closeButton.focus)closeButton.focus();
-    document.getElementById("day-save").onclick=async function(){cl.dailyNotes=cl.dailyNotes||{}; var hadNote=Object.prototype.hasOwnProperty.call(cl.dailyNotes,key), previousNote=cl.dailyNotes[key], note=document.getElementById("daily-note").value.trim(); if(note)cl.dailyNotes[key]=note; else delete cl.dailyNotes[key]; try{await saveClientWithFeedback(cl,this); closeModal();}catch(error){if(error.clientSaveIsLatest!==false){if(hadNote)cl.dailyNotes[key]=previousNote;else delete cl.dailyNotes[key];}}};
+    document.getElementById("day-save").onclick=async function(){cl.dailyNotes=cl.dailyNotes||{}; var hadNote=Object.prototype.hasOwnProperty.call(cl.dailyNotes,key), previousNote=cl.dailyNotes[key], note=document.getElementById("daily-note").value.trim(); if(note)cl.dailyNotes[key]=note; else delete cl.dailyNotes[key]; try{await saveClientWithFeedback(cl,this); closeModal();}catch(error){if(error.clientSaveIsLatest!==false){if(reconcileClientSave(cl,error)){document.getElementById("daily-note").value=(cl.dailyNotes||{})[key]||"";}else if(hadNote)cl.dailyNotes[key]=previousNote;else delete cl.dailyNotes[key];}}};
   }
   function openChecklistSetEditor(id){
     var set=id ? state.checklistSets.filter(function(s){return s.id===id;})[0] : null;
@@ -3250,16 +3250,31 @@
   var _clientSaveQueue=Promise.resolve(), _clientSaveVersions={};
   function copyClientForSave(client){ return JSON.parse(JSON.stringify(client)); }
   function clientIndexEntry(client){ return { id:client.id, name:client.name, contractType:client.contractType, renewalCount:client.renewalCount, startDate:client.startDate, status:client.status, updatedAt:client.updatedAt }; }
+  function reconcileClientSave(client,error){
+    var snapshot=error&&error.clientSaveReconciledSnapshot;
+    if(!snapshot)return false;
+    Object.keys(client).forEach(function(key){ delete client[key]; });
+    Object.assign(client,copyClientForSave(snapshot));
+    return true;
+  }
   async function persistClientSnapshot(snapshot){
-    var key="client:"+snapshot.id, previous=await getS(key), clientSaved=await setS(key,snapshot);
-    if(!clientSaved) throw new Error("client save failed");
+    var key="client:"+snapshot.id, prior=await readS(key);
+    if(prior.status==="error") throw new Error("client prior state unavailable");
+    var previous=prior.status==="found" ? prior.value : null, clientSaved=await setS(key,snapshot);
+    if(!clientSaved){
+      var clientError=new Error("client save failed");
+      if(previous)clientError.clientSaveReconciledSnapshot=previous;
+      throw clientError;
+    }
     var index=(state.clients||[]).filter(function(item){ return item.id!==snapshot.id; });
     index.push(clientIndexEntry(snapshot));
     var clientIndexSaved=await setP("clients-index",index);
     if(!clientIndexSaved){
       var repaired=previous ? await setS(key,previous) : await delS(key);
       if(!repaired) throw new Error("client index save failed and client rollback failed");
-      throw new Error("client index save failed");
+      var indexError=new Error("client index save failed");
+      if(previous)indexError.clientSaveReconciledSnapshot=previous;
+      throw indexError;
     }
     return index;
   }
@@ -3268,12 +3283,13 @@
     try{
       var outcome=await saveClientAndRefresh(client,{refresh:false});
       if(outcome.isLatest) setAsyncVisualState(element,'saved');
+      else setAsyncVisualState(element,'idle');
       return outcome;
     }catch(error){
       if(error.clientSaveIsLatest!==false){
         setAsyncVisualState(element,'error');
         showToast('저장하지 못했습니다. 다시 시도해 주세요.');
-      }
+      }else setAsyncVisualState(element,'idle');
       throw error;
     }
   }
