@@ -21,6 +21,7 @@ assert.match(source, /aria-expanded/);
 assert.match(source, /#renewal-modal\.show \.modal\{[^}]*opacity:1/);
 assert.match(source, /layer\.className="modal-layer show"/);
 assert.match(source, /\.client-card:hover\.is-pressing\{[^}]*transform:scale\(\.97\)/);
+assert.match(source, /\.check-add input\{[^}]*min-width:0/);
 assert.match(source, /async function saveClientWithFeedback\(client,element\)/);
 assert.match(source, /setAsyncVisualState\(element,'saving'\)/);
 assert.match(source, /setAsyncVisualState\(element,'saved'\)/);
