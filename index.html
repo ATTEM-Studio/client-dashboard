@@ -1534,6 +1534,10 @@
 
   /* ============ storage ============ */
   async function readS(k){
+    if(isDemoMode()){
+      var values=ensureDemoWorkspace().values;
+      return Object.prototype.hasOwnProperty.call(values,k) ? {status:"found",value:cloneDemoValue(values[k])} : {status:"missing"};
+    }
     try{
       var r=await storageBackend.get(k,true);
       if(!r||typeof r.value!=="string") return {status:"error",error:new Error("invalid storage response")};
@@ -1548,7 +1552,7 @@
   async function setP(k,v){ if(isDemoMode()){ demoWorkspace=DemoData.saveDemoValue(localStorage,k,v); return {key:k,value:v}; } try{ return await storageBackend.set(k,JSON.stringify(v),false); }catch(e){ console.error(e); return null; } }
   async function getS(k){ if(isDemoMode()) return cloneDemoValue(ensureDemoWorkspace().values[k]); try{ var r=await storageBackend.get(k,true); return r&&r.value?JSON.parse(r.value):null; }catch(e){ return null; } }
   async function setS(k,v){ if(isDemoMode()){ demoWorkspace=DemoData.saveDemoValue(localStorage,k,v); return {key:k,value:v}; } try{ return await storageBackend.set(k,JSON.stringify(v),true); }catch(e){ console.error(e); return null; } }
-  async function delS(k){ try{ return await storageBackend.delete(k,true); }catch(e){ return null; } }
+  async function delS(k){ if(isDemoMode()){ demoWorkspace=DemoData.saveDemoValue(localStorage,k,undefined); delete demoWorkspace.values[k]; return {key:k,deleted:true}; } try{ return await storageBackend.delete(k,true); }catch(e){ return null; } }
   async function reserveGuideIssue(clientId){ try{ return await storageBackend.reserveGuideIssue(clientId); }catch(e){ console.error(e); return null; } }
   async function mutatePublicGuide(guideId,answers,submitted){ try{ return await storageBackend.mutatePublicGuide(guideId,answers,submitted); }catch(e){ console.error(e); return null; } }
   async function readPublicGuide(guideId){

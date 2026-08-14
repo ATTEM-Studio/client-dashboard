@@ -21,6 +21,23 @@ const DemoData = loadDemoData();
 const now = new Date('2026-08-17T00:00:00+09:00');
 const storage = fakeStorage();
 const seed = DemoData.createDemoSeed(now);
+const requiredDemoExports = [
+  'DEMO_STORAGE_KEY', 'DEMO_SCHEMA_VERSION', 'createDemoSeed', 'loadDemoWorkspace',
+  'saveDemoValue', 'resetDemoWorkspace'
+];
+const requiredSeedKeys = [
+  'clients-index', 'reports-index', 'contracts-index', 'contract-base-terms-template', 'checklist-sets'
+];
+
+requiredDemoExports.forEach((name) => {
+  assert.ok(Object.prototype.hasOwnProperty.call(DemoData, name), `DemoData must export ${name}`);
+});
+['createDemoSeed', 'loadDemoWorkspace', 'saveDemoValue', 'resetDemoWorkspace'].forEach((name) => {
+  assert.strictEqual(typeof DemoData[name], 'function', `DemoData.${name} must be callable`);
+});
+requiredSeedKeys.forEach((key) => {
+  assert.ok(Object.prototype.hasOwnProperty.call(seed.values, key), `the demo seed must include ${key}`);
+});
 
 assert.strictEqual(seed.version, 1, 'the browser demo workspace must use schema version 1');
 assert.strictEqual(seed.values['clients-index'].length, 3, 'the demo starts with three fictional clients');
@@ -66,8 +83,8 @@ assert.match(html, /<script src="demo-data\.js"><\/script>\s*<script>/,
   'the dashboard must load demo storage helpers before its inline application script');
 const storageStart = html.indexOf('  var workspaceMode = sessionStorage.getItem(\'rs:workspace-mode\')');
 const modeEnd = html.indexOf('\n  function authHeaders', storageStart);
-const helperStart = html.indexOf('  async function getP(', modeEnd);
-const storageEnd = html.indexOf('  async function delS(', helperStart);
+const helperStart = html.indexOf('  async function readS(', modeEnd);
+const storageEnd = html.indexOf('  async function reserveGuideIssue(', helperStart);
 assert.ok(storageStart >= 0 && modeEnd > storageStart && helperStart > modeEnd && storageEnd > helperStart,
   'mode-aware storage helpers must exist');
 const storageSource = html.slice(storageStart, modeEnd) + html.slice(helperStart, storageEnd);
@@ -79,7 +96,8 @@ const helperSandbox = {
   sessionStorage: { getItem(key) { return key === 'rs:workspace-mode' ? 'demo' : null; } },
   storageBackend: {
     async get() { fetches.push('get'); return null; },
-    async set() { fetches.push('set'); return null; }
+    async set() { fetches.push('set'); return null; },
+    async delete() { fetches.push('delete'); return null; }
   },
   console
 };
@@ -92,6 +110,14 @@ vm.runInNewContext(storageSource, helperSandbox);
     'demo reads must return a clone rather than a mutable workspace reference');
   assert.ok(await helperSandbox.setS('client:demo-write', { id: 'demo-write', demo: true }),
     'demo writes must report success without using the staff transport');
+  const found = await helperSandbox.readS('client:demo-client-moss');
+  assert.strictEqual(found.status, 'found', 'demo readS must read the browser workspace');
+  assert.strictEqual(found.value.id, 'demo-client-moss');
+  const deletion = await helperSandbox.delS('client:demo-client-moss');
+  assert.strictEqual(deletion.key, 'client:demo-client-moss', 'demo delete must identify the local value');
+  assert.strictEqual(deletion.deleted, true, 'demo delete must report a local deletion');
+  assert.strictEqual((await helperSandbox.readS('client:demo-client-moss')).status, 'missing',
+    'demo delete must remove the browser-only value');
   assert.strictEqual(fetches.length, 0, 'demo storage must not call the Redis transport');
   assert.strictEqual(DemoData.loadDemoWorkspace(browserStorage, now).values['client:demo-write'].id, 'demo-write');
   console.log('browser demo workspace storage: ok');
