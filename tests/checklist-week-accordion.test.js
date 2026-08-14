@@ -58,6 +58,8 @@ assert.match(rendered, /data-toggle-check-section="1"[^>]*aria-expanded="true"/)
 assert.match(rendered, /1주차[\s\S]*1 \/ 2 완료/);
 assert.match(rendered, /first workday[\s\S]*second workday/);
 assert.match(rendered, /data-toggle-check-section="2"[^>]*aria-expanded="false"/);
+assert.match(rendered, /check-section is-collapsed[\s\S]*?check-section-body-inner" aria-hidden="true" inert/,
+  'collapsed sections must keep their task controls out of the keyboard and accessibility trees');
 assert.doesNotMatch(rendered, /legacy second week[\s\S]*data-toggle-work="legacy-2"/,
   'collapsed week sections must hide their task rows until toggled open');
 assert.match(rendered, /data-toggle-check-section="closing"[^>]*aria-expanded="true"/);

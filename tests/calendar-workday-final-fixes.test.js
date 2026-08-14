@@ -42,9 +42,10 @@ const dayModalSandbox = {
   calendarUnassignedTasks: calendarSandbox.calendarUnassignedTasks,
   periodLabel: (period) => period,
   esc: (value) => String(value == null ? '' : value),
+  window: { innerWidth: 1000, innerHeight: 700 },
   document: {
     createElement() {
-      return { style: {}, remove() {} };
+      return { style: { setProperty(name, value) { this[name] = value; } }, remove() {} };
     },
     body: { appendChild(layer) { dayModalNodes.layer = layer; } },
     getElementById(id) {
@@ -53,7 +54,10 @@ const dayModalSandbox = {
     }
   }
 };
-vm.runInNewContext(functionSource('openDayModal'), dayModalSandbox);
+vm.runInNewContext([
+  functionSource('setModalOrigin'),
+  functionSource('openDayModal')
+].join('\n'), dayModalSandbox);
 const workdayClient = {
   startDate: '2026-08-10',
   excludeWeekends: true,
@@ -66,6 +70,11 @@ assert.doesNotMatch(dayModalNodes.layer.innerHTML, /sixth workday task/,
 dayModalSandbox.openDayModal(workdayClient, '2026-08-17');
 assert.match(dayModalNodes.layer.innerHTML, /sixth workday task/,
   'the following Monday must show the sixth workday task in the day modal');
+dayModalSandbox.openDayModal(workdayClient, '2026-08-17', {
+  getBoundingClientRect: () => ({ left: 20, top: 40, width: 30, height: 20 })
+});
+assert.strictEqual(dayModalNodes.layer.style['--motion-origin-x'], '35px');
+assert.strictEqual(dayModalNodes.layer.style['--motion-origin-y'], '50px');
 
 // Break caught: dates with no recorded management cycle must stay visually neutral.
 assert.strictEqual(
