@@ -29,6 +29,7 @@ assert(html.includes("unit==='year'?5*365:unit==='month'?365:unit==='week'?183:3
 assert(html.includes('datalab-chart-tooltip'),'Interactive chart tooltip missing');
 assert(html.includes("addEventListener('mouseenter'")&&html.includes("addEventListener('touchstart'"),'Mouse and touch tooltip handlers missing');
 assert(html.includes('metric-label')&&html.includes('metric-context')&&html.includes('metric-value')&&html.includes('metric-unit'),'Readable metric hierarchy missing');
+assert(html.includes('metric-number'),'Metric value and unit must stay grouped on mobile');
 assert(html.includes('월평균 검색량')&&html.includes('최근 1년 기준'),'Monthly average label hierarchy missing');
 assert(html.includes('주평균 검색량')&&html.includes('최근 6개월 기준'),'Weekly average label hierarchy missing');
 assert(html.includes('period-index')&&html.includes('period-index-badge'),'Readable period table styling missing');
