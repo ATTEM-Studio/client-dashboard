@@ -2969,6 +2969,37 @@
     var todayClass=checklistTaskTodayClass(cl,task);
     if(todayClass)row.classList.add(todayClass);
   }
+  function syncChecklistTaskControls(cl,root){
+    if(!root||!root.querySelectorAll)return;
+    root.querySelectorAll('[data-toggle-work],[data-day-toggle-work]').forEach(function(element){
+      var id=element.getAttribute('data-toggle-work')||element.getAttribute('data-day-toggle-work');
+      var task=(cl.checklist||[]).filter(function(item){ return String(item.id||"")===String(id); })[0];
+      if(task)setChecklistTaskVisualState(cl,task,element);
+    });
+    var count=root.querySelector&&root.querySelector('.checklist-head-actions .count');
+    if(count){
+      var tasks=cl.checklist||[], done=tasks.filter(function(task){ return task.done; }).length;
+      count.textContent=done+' / '+tasks.length+' 완료';
+    }
+  }
+  async function toggleClientChecklistTask(cl,id,element,root){
+    var task=(cl.checklist||[]).filter(function(item){ return String(item.id||"")===String(id); })[0];
+    if(!task)return;
+    var rollbackSnapshot=copyClientForSave(cl), previousDone=task.done;
+    task.done=!task.done;
+    setChecklistTaskVisualState(cl,task,element);
+    try{
+      await saveClientWithFeedback(cl,element,{rollbackSnapshot:rollbackSnapshot});
+    }catch(error){
+      if(error.clientSaveIsLatest!==false){
+        if(!reconcileClientSave(cl,error)){
+          var currentTask=(cl.checklist||[]).filter(function(item){ return String(item.id||"")===String(id); })[0];
+          if(currentTask)currentTask.done=previousDone;
+        }
+        syncChecklistTaskControls(cl,root);
+      }
+    }
+  }
   function bindCalendarPanel(cl){ app.querySelectorAll("[data-day]").forEach(function(b){ b.onclick=function(){ openDayModal(cl,b.getAttribute("data-day"),b); }; }); app.querySelectorAll("[data-calendar-month]").forEach(function(b){b.onclick=function(){var direction=b.getAttribute("data-calendar-month")==="prev"?"calendar-enter-right":"calendar-enter-left"; var base=state.calendarMonth || monthKey(cl.startDate?new Date(cl.startDate+"T12:00:00"):new Date()); state.calendarMonth=calendarMonthShift(base,b.getAttribute("data-calendar-month")==="prev"?-1:1); _calendarMotionDirection=direction; renderClientWorkspace(cl);};}); }
   function bindContractsPanel(cl){
     app.querySelectorAll("[data-new-client-contract]").forEach(function(b){ b.onclick=function(){
@@ -3009,7 +3040,7 @@
   }
   function bindChecklistPanel(cl){
     app.querySelectorAll("[data-toggle-check-section]").forEach(function(b){ b.onclick=function(){ var key=b.getAttribute("data-toggle-check-section"); state.checklistWeeksOpen=state.checklistWeeksOpen||{}; state.checklistWeeksOpen[key]=b.getAttribute("aria-expanded")!=="true"; renderClientWorkspace(cl); }; });
-    app.querySelectorAll("[data-toggle-work]").forEach(function(b){ b.onclick=async function(){ var id=b.getAttribute("data-toggle-work"), task=(cl.checklist||[]).filter(function(t){return t.id===id;})[0]; if(!task)return; var previousDone=task.done; task.done=!task.done; setChecklistTaskVisualState(cl,task,b); try{ await saveClientWithFeedback(cl,b); }catch(error){ if(error.clientSaveIsLatest!==false){ var reconciled=reconcileClientSave(cl,error), currentTask=(cl.checklist||[]).filter(function(item){return item.id===id;})[0]; if(reconciled&&currentTask)setChecklistTaskVisualState(cl,currentTask,b); else { task.done=previousDone; setChecklistTaskVisualState(cl,task,b); } } } }; });
+    app.querySelectorAll("[data-toggle-work]").forEach(function(b){ b.onclick=function(){ return toggleClientChecklistTask(cl,b.getAttribute("data-toggle-work"),b,app); }; });
     app.querySelectorAll("[data-del-work]").forEach(function(b){ b.onclick=function(){ var id=b.getAttribute("data-del-work"); cl.checklist=(cl.checklist||[]).filter(function(t){return t.id!==id;}); saveClientAndRefresh(cl); }; });
     var add=document.querySelector("[data-add-task]"); if(add) add.onclick=function(){ var text=document.getElementById("new-work-text").value.trim(); if(!text){showToast("업무 내용을 입력하세요");return;} cl.checklist=cl.checklist||[]; cl.checklist.push({id:uid("ck"),text:text,week:document.getElementById("new-work-week").value,done:false}); saveClientAndRefresh(cl); };
     var toggle=document.getElementById("btn-toggle-sets"); if(toggle) toggle.onclick=function(){ setChecklistCollectionOpen(!state.setCollectionOpen); renderClientWorkspace(cl); };
@@ -3035,6 +3066,24 @@
     };});
     app.querySelectorAll("[data-del-report]").forEach(function(b){b.onclick=function(){var id=b.getAttribute("data-del-report"); confirmDialog("리포트를 삭제할까요?", "삭제한 리포트는 되돌릴 수 없습니다.", "삭제", function(){deleteReport(id);});};});
   }
+  async function saveDayNoteWithFeedback(cl,key,noteInput,layer,button,closeModal){
+    cl.dailyNotes=cl.dailyNotes||{};
+    var rollbackSnapshot=copyClientForSave(cl), hadNote=Object.prototype.hasOwnProperty.call(cl.dailyNotes,key), previousNote=cl.dailyNotes[key], note=(noteInput&&noteInput.value||"").trim();
+    if(note)cl.dailyNotes[key]=note; else delete cl.dailyNotes[key];
+    try{
+      await saveClientWithFeedback(cl,button,{rollbackSnapshot:rollbackSnapshot});
+      if(layer&&layer.isConnected!==false&&document.getElementById('day-modal-layer')===layer&&closeModal)closeModal();
+    }catch(error){
+      if(error.clientSaveIsLatest!==false){
+        if(!reconcileClientSave(cl,error)){
+          if(hadNote)cl.dailyNotes[key]=previousNote; else delete cl.dailyNotes[key];
+        }
+        if(noteInput&&noteInput.isConnected!==false&&layer&&layer.isConnected!==false&&document.getElementById('day-modal-layer')===layer){
+          noteInput.value=(cl.dailyNotes||{})[key]||"";
+        }
+      }
+    }
+  }
   function openDayModal(cl,key,origin){
     var period=checklistPeriod(cl,key), tasks=calendarTasksForDate(cl,key,cl.checklist), unassigned=calendarUnassignedTasks(cl.checklist);
     var existing=(cl.dailyNotes||{})[key]||"";
@@ -3044,9 +3093,10 @@
     document.body.appendChild(layer);
     var returnFocus=origin || document.activeElement;
     var closeModal=function(){layer.remove(); if(returnFocus&&returnFocus.focus)returnFocus.focus();};
-    if(layer.querySelectorAll)layer.querySelectorAll('[data-day-toggle-work]').forEach(function(button){button.onclick=async function(){var id=button.getAttribute('data-day-toggle-work'); var task=(cl.checklist||[]).filter(function(item){return String(item.id||"")===String(id);})[0]; if(!task)return; var previousDone=task.done; task.done=!task.done; setChecklistTaskVisualState(cl,task,button); try{await saveClientWithFeedback(cl,button);}catch(error){if(error.clientSaveIsLatest!==false){var reconciled=reconcileClientSave(cl,error), currentTask=(cl.checklist||[]).filter(function(item){return String(item.id||"")===String(id);})[0];if(reconciled&&currentTask)setChecklistTaskVisualState(cl,currentTask,button);else{task.done=previousDone; setChecklistTaskVisualState(cl,task,button);}}}};});
-    var closeButton=document.getElementById("day-close"); closeButton.onclick=closeModal; if(closeButton.focus)closeButton.focus();
-    document.getElementById("day-save").onclick=async function(){cl.dailyNotes=cl.dailyNotes||{}; var hadNote=Object.prototype.hasOwnProperty.call(cl.dailyNotes,key), previousNote=cl.dailyNotes[key], note=document.getElementById("daily-note").value.trim(); if(note)cl.dailyNotes[key]=note; else delete cl.dailyNotes[key]; try{await saveClientWithFeedback(cl,this); closeModal();}catch(error){if(error.clientSaveIsLatest!==false){if(reconcileClientSave(cl,error)){document.getElementById("daily-note").value=(cl.dailyNotes||{})[key]||"";}else if(hadNote)cl.dailyNotes[key]=previousNote;else delete cl.dailyNotes[key];}}};
+    if(layer.querySelectorAll)layer.querySelectorAll('[data-day-toggle-work]').forEach(function(button){button.onclick=function(){return toggleClientChecklistTask(cl,button.getAttribute('data-day-toggle-work'),button,layer);};});
+    var closeButton=layer.querySelector ? layer.querySelector("#day-close") : document.getElementById("day-close"); closeButton.onclick=closeModal; if(closeButton.focus)closeButton.focus();
+    var noteInput=layer.querySelector ? layer.querySelector('#daily-note') : document.getElementById('daily-note'), saveButton=layer.querySelector ? layer.querySelector('#day-save') : document.getElementById('day-save');
+    saveButton.onclick=function(){return saveDayNoteWithFeedback(cl,key,noteInput,layer,saveButton,closeModal);};
   }
   function openChecklistSetEditor(id){
     var set=id ? state.checklistSets.filter(function(s){return s.id===id;})[0] : null;
@@ -3247,7 +3297,7 @@
     });
   }
 
-  var _clientSaveQueue=Promise.resolve(), _clientSaveVersions={};
+  var _clientSaveQueue=Promise.resolve(), _clientSaveVersions={}, _clientSaveBaselines={}, _saveFeedbackTokens=new WeakMap();
   function copyClientForSave(client){ return JSON.parse(JSON.stringify(client)); }
   function clientIndexEntry(client){ return { id:client.id, name:client.name, contractType:client.contractType, renewalCount:client.renewalCount, startDate:client.startDate, status:client.status, updatedAt:client.updatedAt }; }
   function reconcileClientSave(client,error){
@@ -3257,13 +3307,17 @@
     Object.assign(client,copyClientForSave(snapshot));
     return true;
   }
-  async function persistClientSnapshot(snapshot){
+  async function persistClientSnapshot(snapshot,baseline){
     var key="client:"+snapshot.id, prior=await readS(key);
-    if(prior.status==="error") throw new Error("client prior state unavailable");
+    if(prior.status==="error"){
+      var unavailableError=new Error("client prior state unavailable");
+      if(baseline)unavailableError.clientSaveReconciledSnapshot=copyClientForSave(baseline);
+      throw unavailableError;
+    }
     var previous=prior.status==="found" ? prior.value : null, clientSaved=await setS(key,snapshot);
     if(!clientSaved){
       var clientError=new Error("client save failed");
-      if(previous)clientError.clientSaveReconciledSnapshot=previous;
+      if(previous||baseline)clientError.clientSaveReconciledSnapshot=copyClientForSave(previous||baseline);
       throw clientError;
     }
     var index=(state.clients||[]).filter(function(item){ return item.id!==snapshot.id; });
@@ -3273,35 +3327,43 @@
       var repaired=previous ? await setS(key,previous) : await delS(key);
       if(!repaired) throw new Error("client index save failed and client rollback failed");
       var indexError=new Error("client index save failed");
-      if(previous)indexError.clientSaveReconciledSnapshot=previous;
+      if(previous||baseline)indexError.clientSaveReconciledSnapshot=copyClientForSave(previous||baseline);
       throw indexError;
     }
     return index;
   }
   async function saveClientWithFeedback(client,element){
-    setAsyncVisualState(element,'saving');
+    var options=arguments[2]||{}, token=element ? (_saveFeedbackTokens.get(element)||0)+1 : 0;
+    if(element)_saveFeedbackTokens.set(element,token);
+    var ownsFeedback=function(){ return !element||_saveFeedbackTokens.get(element)===token; };
+    if(ownsFeedback())setAsyncVisualState(element,'saving');
     try{
-      var outcome=await saveClientAndRefresh(client,{refresh:false});
-      if(outcome.isLatest) setAsyncVisualState(element,'saved');
-      else setAsyncVisualState(element,'idle');
+      var outcome=await saveClientAndRefresh(client,Object.assign({},options,{refresh:false}));
+      if(ownsFeedback()){
+        if(outcome.isLatest) setAsyncVisualState(element,'saved');
+        else setAsyncVisualState(element,'idle');
+      }
       return outcome;
     }catch(error){
       if(error.clientSaveIsLatest!==false){
-        setAsyncVisualState(element,'error');
+        if(ownsFeedback())setAsyncVisualState(element,'error');
         showToast('저장하지 못했습니다. 다시 시도해 주세요.');
-      }else setAsyncVisualState(element,'idle');
+      }else if(ownsFeedback())setAsyncVisualState(element,'idle');
       throw error;
     }
   }
   async function saveClientAndRefresh(cl,options){
     cl.updatedAt=Date.now();
-    var snapshot=copyClientForSave(cl), version=(_clientSaveVersions[cl.id]||0)+1;
-    _clientSaveVersions[cl.id]=version;
-    var operation=_clientSaveQueue.catch(function(){}).then(function(){ return persistClientSnapshot(snapshot); });
+    var clientId=cl.id;
+    if(!_clientSaveBaselines[clientId]&&options&&options.rollbackSnapshot)_clientSaveBaselines[clientId]=copyClientForSave(options.rollbackSnapshot);
+    var baseline=_clientSaveBaselines[clientId], snapshot=copyClientForSave(cl), version=(_clientSaveVersions[clientId]||0)+1;
+    _clientSaveVersions[clientId]=version;
+    var operation=_clientSaveQueue.catch(function(){}).then(function(){ return persistClientSnapshot(snapshot,baseline); });
     _clientSaveQueue=operation.catch(function(){});
     try{
-      var index=await operation, isLatest=_clientSaveVersions[cl.id]===version;
+      var index=await operation, isLatest=_clientSaveVersions[clientId]===version;
       if(isLatest){
+        delete _clientSaveBaselines[clientId];
         state.clients=index;
         state.currentClient=cl;
         if(state.view==="clientDetail" && !(options&&options.refresh===false)) render();
@@ -3309,7 +3371,11 @@
       return {version:version,isLatest:isLatest};
     }catch(error){
       error.clientSaveVersion=version;
-      error.clientSaveIsLatest=_clientSaveVersions[cl.id]===version;
+      error.clientSaveIsLatest=_clientSaveVersions[clientId]===version;
+      if(error.clientSaveIsLatest){
+        if(!error.clientSaveReconciledSnapshot&&baseline)error.clientSaveReconciledSnapshot=copyClientForSave(baseline);
+        delete _clientSaveBaselines[clientId];
+      }
       throw error;
     }
   }

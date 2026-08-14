@@ -25,7 +25,7 @@ assert.match(source, /async function saveClientWithFeedback\(client,element\)/);
 assert.match(source, /setAsyncVisualState\(element,'saving'\)/);
 assert.match(source, /setAsyncVisualState\(element,'saved'\)/);
 assert.match(source, /setAsyncVisualState\(element,'error'\)/);
-assert.match(source, /function persistClientSnapshot\(snapshot\)/);
+assert.match(source, /function persistClientSnapshot\(snapshot(?:,baseline)?\)/);
 assert.match(source, /calendar-enter-left/);
 assert.match(source, /calendar-enter-right/);
 assert.match(source, /check-section-body[^}]*overflow:hidden/);
@@ -91,7 +91,7 @@ async function verifyClientSaveOrderingAndRollback() {
     render: () => { throw new Error('single-toggle saves must not rerender the workspace'); }
   };
   vm.runInNewContext([
-    'var _clientSaveQueue=Promise.resolve(), _clientSaveVersions={};',
+    'var _clientSaveQueue=Promise.resolve(), _clientSaveVersions={}, _clientSaveBaselines={};',
     functionSource('copyClientForSave'),
     functionSource('clientIndexEntry'),
     functionSource('persistClientSnapshot'),
@@ -126,7 +126,7 @@ async function verifyClientSaveOrderingAndRollback() {
     render: () => { throw new Error('failed saves must not rerender the workspace'); }
   };
   vm.runInNewContext([
-    'var _clientSaveQueue=Promise.resolve(), _clientSaveVersions={};',
+    'var _clientSaveQueue=Promise.resolve(), _clientSaveVersions={}, _clientSaveBaselines={};',
     functionSource('copyClientForSave'),
     functionSource('clientIndexEntry'),
     functionSource('persistClientSnapshot'),
@@ -147,6 +147,7 @@ verifyClientSaveOrderingAndRollback().catch((error) => {
 async function verifyClientSaveFailureReconciliation() {
   const feedbackStates = [];
   const feedbackSandbox = {
+    _saveFeedbackTokens: new WeakMap(),
     setAsyncVisualState: (element, state) => feedbackStates.push(state),
     saveClientAndRefresh: async () => ({ isLatest: false }),
     showToast: () => { throw new Error('stale feedback must not show an error toast'); }
@@ -176,7 +177,7 @@ async function verifyClientSaveFailureReconciliation() {
     render: () => { throw new Error('feedback save failures must not rerender the workspace'); }
   };
   vm.runInNewContext([
-    'var _clientSaveQueue=Promise.resolve(), _clientSaveVersions={};',
+    'var _clientSaveQueue=Promise.resolve(), _clientSaveVersions={}, _clientSaveBaselines={};',
     functionSource('copyClientForSave'),
     functionSource('clientIndexEntry'),
     functionSource('persistClientSnapshot'),
@@ -193,6 +194,36 @@ async function verifyClientSaveFailureReconciliation() {
   assert.strictEqual(twoFailureSandbox.reconcileClientSave(client, results[1].reason), true);
   assert.strictEqual(client.checklist[0].done, false,
     'the latest failed operation must reconcile optimistic data to its compensated persisted snapshot');
+
+  const readFailureSandbox = {
+    state: { clients: [], view: 'clientDetail' },
+    Date: { now: () => 301 },
+    readS: async () => ({ status: 'error', error: new Error('offline') }),
+    setS: async () => { throw new Error('read failure must not mutate client storage'); },
+    setP: async () => { throw new Error('read failure must not mutate client index'); },
+    delS: async () => { throw new Error('read failure must not delete client storage'); },
+    render: () => { throw new Error('read failure reconciliation must not rerender the workspace'); }
+  };
+  vm.runInNewContext([
+    'var _clientSaveQueue=Promise.resolve(), _clientSaveVersions={}, _clientSaveBaselines={};',
+    functionSource('copyClientForSave'),
+    functionSource('clientIndexEntry'),
+    functionSource('persistClientSnapshot'),
+    functionSource('reconcileClientSave'),
+    functionSource('saveClientAndRefresh')
+  ].join('\n'), readFailureSandbox);
+  const readFailureClient = { id: 'client-read-failure', checklist: [{ id: 'a', done: false }, { id: 'b', done: false }] };
+  const confirmedBaseline = copy(readFailureClient);
+  readFailureClient.checklist[0].done = true;
+  const readFailureFirst = readFailureSandbox.saveClientAndRefresh(readFailureClient, { refresh: false, rollbackSnapshot: confirmedBaseline });
+  readFailureClient.checklist[1].done = true;
+  const readFailureSecond = readFailureSandbox.saveClientAndRefresh(readFailureClient, { refresh: false, rollbackSnapshot: copy(readFailureClient) });
+  const readFailureResults = await Promise.allSettled([readFailureFirst, readFailureSecond]);
+  assert.strictEqual(readFailureResults[0].reason.clientSaveIsLatest, false);
+  assert.strictEqual(readFailureResults[1].reason.clientSaveIsLatest, true);
+  assert.strictEqual(readFailureSandbox.reconcileClientSave(readFailureClient, readFailureResults[1].reason), true);
+  assert.deepStrictEqual(Array.from(readFailureClient.checklist, (task) => task.done), [false, false],
+    'two queued read failures must retain the confirmed queue baseline for latest-failure reconciliation');
 
   const readErrorWrites = [];
   const readErrorSandbox = {
@@ -228,6 +259,126 @@ async function verifyClientSaveFailureReconciliation() {
 }
 
 verifyClientSaveFailureReconciliation().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});
+
+function makeTaskControl(id) {
+  return {
+    id,
+    checked: false,
+    getAttribute: (name) => name === 'data-toggle-work' ? id : null,
+    classList: { toggle: () => {} },
+    closest: () => ({ classList: { toggle: () => {} } })
+  };
+}
+
+async function verifyChecklistHandlerReconcilesAllVisibleControls() {
+  const controls = [makeTaskControl('first'), makeTaskControl('second')];
+  let firstReject;
+  let secondReject;
+  let call = 0;
+  const client = {
+    id: 'client-handler',
+    checklist: [{ id: 'first', done: false }, { id: 'second', done: false }]
+  };
+  const sandbox = {
+    copyClientForSave: copy,
+    setChecklistTaskVisualState: (cl, task, control) => { control.checked = task.done; },
+    saveClientWithFeedback: () => new Promise((resolve, reject) => {
+      call += 1;
+      if (call === 1) firstReject = reject;
+      else secondReject = reject;
+    }),
+    reconcileClientSave: (target, error) => {
+      Object.keys(target).forEach((key) => delete target[key]);
+      Object.assign(target, copy(error.clientSaveReconciledSnapshot));
+      return true;
+    }
+  };
+  const root = { querySelectorAll: () => controls };
+  vm.runInNewContext([
+    functionSource('syncChecklistTaskControls'),
+    functionSource('toggleClientChecklistTask')
+  ].join('\n'), sandbox);
+
+  const first = sandbox.toggleClientChecklistTask(client, 'first', controls[0], root);
+  const second = sandbox.toggleClientChecklistTask(client, 'second', controls[1], root);
+  const staleError = new Error('first write failed');
+  staleError.clientSaveIsLatest = false;
+  firstReject(staleError);
+  const latestError = new Error('second write failed');
+  latestError.clientSaveIsLatest = true;
+  latestError.clientSaveReconciledSnapshot = {
+    id: 'client-handler',
+    checklist: [{ id: 'first', done: false }, { id: 'second', done: false }]
+  };
+  secondReject(latestError);
+  await Promise.allSettled([first, second]);
+  assert.deepStrictEqual(controls.map((control) => control.checked), [false, false],
+    'the actual checklist toggle handler must reconcile every visible optimistic control after the latest queued failure');
+  assert.deepStrictEqual(client.checklist.map((task) => task.done), [false, false]);
+}
+
+async function verifyFeedbackTokensKeepNewerSaveVisible() {
+  const states = [];
+  let firstResolve;
+  let secondResolve;
+  let calls = 0;
+  const element = {};
+  const sandbox = {
+    _saveFeedbackTokens: new WeakMap(),
+    setAsyncVisualState: (target, state) => states.push(state),
+    saveClientAndRefresh: () => new Promise((resolve) => {
+      calls += 1;
+      if (calls === 1) firstResolve = resolve;
+      else secondResolve = resolve;
+    }),
+    showToast: () => {}
+  };
+  vm.runInNewContext(functionSource('saveClientWithFeedback'), sandbox);
+  const first = sandbox.saveClientWithFeedback({}, element);
+  const second = sandbox.saveClientWithFeedback({}, element);
+  firstResolve({ isLatest: false });
+  await first;
+  assert.deepStrictEqual(states, ['saving', 'saving'],
+    'a stale completion on the same control must not clear the newer save feedback');
+  secondResolve({ isLatest: true });
+  await second;
+  assert.deepStrictEqual(states, ['saving', 'saving', 'saved']);
+}
+
+async function verifyNoteFailureStaysWithItsOriginLayer() {
+  const oldTextarea = { value: 'edited', isConnected: false };
+  const newTextarea = { value: 'new modal note', isConnected: true };
+  const oldLayer = { isConnected: false };
+  const newLayer = { isConnected: true };
+  const client = { id: 'client-note', dailyNotes: { '2026-08-14': 'old note' } };
+  const failure = new Error('save failed');
+  failure.clientSaveIsLatest = true;
+  failure.clientSaveReconciledSnapshot = { id: 'client-note', dailyNotes: { '2026-08-14': 'old note' } };
+  const sandbox = {
+    copyClientForSave: copy,
+    saveClientWithFeedback: async () => { throw failure; },
+    reconcileClientSave: (target, error) => {
+      Object.keys(target).forEach((key) => delete target[key]);
+      Object.assign(target, copy(error.clientSaveReconciledSnapshot));
+      return true;
+    },
+    document: { getElementById: () => newLayer }
+  };
+  vm.runInNewContext(functionSource('saveDayNoteWithFeedback'), sandbox);
+  await sandbox.saveDayNoteWithFeedback(client, '2026-08-14', oldTextarea, oldLayer, {});
+  assert.strictEqual(newTextarea.value, 'new modal note',
+    'a failed note save from a closed modal must not mutate a newly opened modal');
+  assert.strictEqual(client.dailyNotes['2026-08-14'], 'old note');
+}
+
+Promise.all([
+  verifyChecklistHandlerReconcilesAllVisibleControls(),
+  verifyFeedbackTokensKeepNewerSaveVisible(),
+  verifyNoteFailureStaysWithItsOriginLayer()
+]).catch((error) => {
   console.error(error);
   process.exitCode = 1;
 });
