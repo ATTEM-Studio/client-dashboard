@@ -175,10 +175,10 @@
   .datalab-trend-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:12px}
   .datalab-trend-head strong{font-size:15px}.datalab-trend-head span{font-size:11px;color:var(--ink-400)}
   .datalab-chart{display:block;width:100%;height:180px;background:linear-gradient(to bottom,transparent 49%,#eef2f7 50%,transparent 51%);overflow:visible}
-  .datalab-line{fill:none;stroke:#2f7df4;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
-  .datalab-dot{fill:#fff;stroke:#2f7df4;stroke-width:2}.datalab-axis{display:flex;justify-content:space-between;color:var(--ink-500);font-size:11px;font-weight:650;margin-top:8px;font-variant-numeric:tabular-nums}
+  .datalab-line{fill:none;stroke:#2f7df4;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:var(--datalab-line-length,none);transition:stroke-dashoffset var(--motion-spatial) var(--ease-out)}
+  .datalab-dot{fill:#fff;stroke:#2f7df4;stroke-width:2;transition:r var(--motion-short) var(--ease-out),fill var(--motion-short) var(--ease-out)}.datalab-axis{display:flex;justify-content:space-between;color:var(--ink-500);font-size:11px;font-weight:650;margin-top:8px;font-variant-numeric:tabular-nums}
   .datalab-note{margin-top:12px;color:var(--ink-500);font-size:11.5px;line-height:1.55}
-  .datalab-chart-wrap{position:relative}.datalab-chart-tooltip{position:absolute;z-index:4;display:none;pointer-events:none;transform:translate(-50%,-110%);padding:9px 11px;border-radius:10px;background:rgba(25,31,40,.94);color:#fff;font-size:12px;font-weight:700;line-height:1.45;box-shadow:var(--shadow-pop);white-space:nowrap}.datalab-hit{fill:transparent;stroke:transparent;cursor:pointer}.datalab-hit:hover+.datalab-dot{fill:var(--brand)}
+  .datalab-chart-wrap{position:relative}.datalab-chart-tooltip{position:absolute;z-index:4;display:none;pointer-events:none;padding:9px 11px;border-radius:10px;background:rgba(25,31,40,.94);color:#fff;font-size:12px;font-weight:700;line-height:1.45;box-shadow:var(--shadow-pop);white-space:nowrap}.datalab-hit{fill:transparent;stroke:transparent;cursor:pointer;transition:r var(--motion-short) var(--ease-out)}.datalab-hit:focus{outline:none}.datalab-hit:hover+.datalab-dot,.datalab-hit:focus+.datalab-dot,.datalab-hit.is-active+.datalab-dot{r:5px;fill:var(--brand)}
   .keyword-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:0 0 16px}
   .keyword-summary-card{padding:15px 16px;border:1px solid var(--line);border-radius:14px;background:#fff;min-width:0}
   .keyword-summary-card .metric-label{display:block;color:var(--ink-700);font-size:12px;font-weight:800;margin-bottom:3px}
@@ -369,7 +369,7 @@
   .revenue-y-axis{ display:flex; flex-direction:column; justify-content:space-between; padding:8px 0 28px; color:var(--ink-400); font-size:10.5px; text-align:right; }
   .revenue-bars{ display:grid; grid-template-columns:repeat(4,minmax(44px,1fr)); gap:10px; min-width:0; border-bottom:1px solid var(--line); background:repeating-linear-gradient(to bottom,var(--line) 0,var(--line) 1px,transparent 1px,transparent calc(33.333%)); }
   .revenue-bar-slot{ display:flex; min-width:0; flex-direction:column; justify-content:flex-end; align-items:center; position:relative; padding-top:28px; }
-  .revenue-bar-stack{ position:relative; width:min(34px,72%); flex:none; }
+  .revenue-bar-stack{ position:relative; width:min(34px,72%); flex:none; transition:height var(--motion-spatial) var(--ease-out); }
   .revenue-bar-stack.entered{ min-height:3px; }
   .revenue-bar-value{ position:absolute; bottom:calc(100% + 5px); left:50%; transform:translateX(-50%); color:var(--ink-300); font-size:10.5px; font-weight:700; white-space:nowrap; }
   .revenue-bar{ width:100%; height:100%; min-height:3px; border-radius:8px 8px 2px 2px; background:var(--brand); }
@@ -1217,10 +1217,10 @@
       var entered=value!==null, spend=adSpendByWeek[index], height=entered&&axis.max ? Math.max(2,value/axis.max*100) : 0, spendHeight=spend!==null&&axis.max ? Math.max(2,spend/axis.max*100) : 0;
       if(entered) described.push((index+1)+"\uC8FC\uCC28 "+formatRevenueWon(value));
       return '<div class="revenue-bar-slot">'+
-        '<div class="revenue-bar-stack '+(entered?"entered":"empty")+'" style="height:'+height.toFixed(2)+'%">'+
+        '<div class="revenue-bar-stack '+(entered?"entered":"empty")+'" data-motion-height="revenue:'+esc(clientId)+':'+esc(month)+':weekly:'+(index+1)+'" data-previous-value="'+height.toFixed(2)+'" data-target-value="'+height.toFixed(2)+'" style="height:'+height.toFixed(2)+'%">'+
           (entered?'<span class="revenue-bar-value">'+formatRevenueWon(value)+'</span>':"")+
           '<div class="revenue-bar '+(entered?(currentChartWeek===index+1?"current":"entered"):"empty")+'"></div></div>'+
-        (hasAdSpend?'<div class="revenue-bar-stack ad-spend-stack '+(spend!==null?"entered":"empty")+'" style="height:'+spendHeight.toFixed(2)+'%">'+(spend!==null?'<span class="revenue-bar-value ad-spend-value">'+formatRevenueWon(spend)+'</span>':"")+'<div class="revenue-bar ad-spend-bar"></div></div>':"")+
+        (hasAdSpend?'<div class="revenue-bar-stack ad-spend-stack '+(spend!==null?"entered":"empty")+'" data-motion-height="revenue:'+esc(clientId)+':'+esc(month)+':spend:'+(index+1)+'" data-previous-value="'+spendHeight.toFixed(2)+'" data-target-value="'+spendHeight.toFixed(2)+'" style="height:'+spendHeight.toFixed(2)+'%">'+(spend!==null?'<span class="revenue-bar-value ad-spend-value">'+formatRevenueWon(spend)+'</span>':"")+'<div class="revenue-bar ad-spend-bar"></div></div>':"")+
         '<span class="revenue-bar-week">'+(index+1)+'\uC8FC</span></div>';
     }).join("");
     var eligible=(reports||[]).filter(function(report){
@@ -1281,6 +1281,105 @@
   }
   function motionReduced(){
     return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  }
+  function animateValueChange(element,from,to,formatter){
+    if(!element)return;
+    from=Number(from);to=Number(to);
+    if(!isFinite(from))from=to;
+    if(!isFinite(to))to=from;
+    formatter=formatter||function(value){return String(value);};
+    element.textContent=formatter(from);
+    element.dataset.previousValue=String(from);
+    if(motionReduced()||from===to){
+      element.textContent=formatter(to);
+      element.dataset.previousValue=String(to);
+      return;
+    }
+    var started=performance.now(),duration=460,difference=to-from;
+    function frame(now){
+      var progress=Math.min(1,(now-started)/duration);
+      var eased=1-Math.pow(1-progress,3);
+      element.textContent=formatter(from+difference*eased);
+      if(progress<1)requestAnimationFrame(frame);
+      else element.dataset.previousValue=String(to);
+    }
+    requestAnimationFrame(frame);
+  }
+  var _dataMotionValues={};
+  function animateDimensionChange(element,property,from,to){
+    if(!element)return;
+    element.dataset.previousValue=String(from);
+    element.style[property]=from+'%';
+    if(motionReduced()||from===to){
+      element.style[property]=to+'%';
+      element.dataset.previousValue=String(to);
+      return;
+    }
+    void element.offsetWidth;
+    requestAnimationFrame(function(){
+      element.style[property]=to+'%';
+      element.dataset.previousValue=String(to);
+    });
+  }
+  function activateDataMotion(root){
+    if(!root)return;
+    root.querySelectorAll('[data-motion-value],[data-motion-width],[data-motion-height]').forEach(function(element){
+      var key=element.getAttribute('data-motion-value')||element.getAttribute('data-motion-width')||element.getAttribute('data-motion-height');
+      var target=Number(element.dataset.targetValue),from=Number(_dataMotionValues[key]);
+      if(!isFinite(from))from=Number(element.dataset.previousValue);
+      if(!isFinite(from))from=target;
+      _dataMotionValues[key]=target;
+      if(element.hasAttribute('data-motion-value'))animateValueChange(element,from,target,function(value){return String(Math.round(value));});
+      else animateDimensionChange(element,element.hasAttribute('data-motion-width')?'width':'height',from,target);
+    });
+  }
+  function animateDataLabLine(line){
+    if(!line||line.dataset.motionDrawn)return;
+    line.dataset.motionDrawn='true';
+    var length=line.getTotalLength?line.getTotalLength():0;
+    if(!length||motionReduced()){
+      line.style.strokeDasharray='none';
+      line.style.strokeDashoffset='0';
+      return;
+    }
+    line.style.setProperty('--datalab-line-length',String(length));
+    line.style.strokeDashoffset=String(length);
+    void line.getBoundingClientRect();
+    requestAnimationFrame(function(){line.style.strokeDashoffset='0';});
+  }
+  function bindDataLabPointTooltips(root,width,height){
+    if(!root)return;
+    var tooltip=root.querySelector('.datalab-chart-tooltip'),hits=Array.from(root.querySelectorAll('.datalab-hit'));
+    if(!tooltip)return;
+    function hide(hit){
+      if(document.activeElement===hit)return;
+      hit.classList.remove('is-active');
+      tooltip.style.display='none';
+    }
+    hits.forEach(function(hit){
+      var show=function(){
+        hits.forEach(function(point){if(point!==hit)point.classList.remove('is-active');});
+        hit.classList.add('is-active');
+        tooltip.innerHTML=esc(hit.dataset.period)+'<br>'+esc(hit.dataset.volume)+'회';
+        tooltip.style.display='block';
+        var x=Math.max(2,Math.min(98,Number(hit.getAttribute('cx'))/width*100));
+        var y=Math.max(2,Math.min(98,Number(hit.getAttribute('cy'))/height*100));
+        tooltip.style.left=x+'%';tooltip.style.top=y+'%';
+        tooltip.style.transform='translate('+(x<18?'0':x>82?'-100%':'-50%')+','+(y<28?'16px':'calc(-100% - 14px)')+')';
+      };
+      hit.addEventListener('pointerenter',show);
+      hit.addEventListener('pointerleave',function(){hide(hit);});
+      hit.addEventListener('mouseenter',show);
+      hit.addEventListener('mouseleave',function(){hide(hit);});
+      hit.addEventListener('touchstart',show,{passive:true});
+      hit.addEventListener('click',show);
+      hit.addEventListener('focus',show);
+      hit.addEventListener('blur',function(){hide(hit);});
+      hit.addEventListener('keydown',function(event){
+        if(event.key==='Enter'||event.key===' '){event.preventDefault();show();}
+        if(event.key==='Escape'){hit.blur();hide(hit);}
+      });
+    });
   }
   function restartMotion(element,className){
     if(!element)return;
@@ -1830,8 +1929,8 @@
       try{
         var responses=await Promise.all([fetch('/api/naver-keyword',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+authToken},body:JSON.stringify({keywords:[keyword]})}),fetch('/api/naver-datalab',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+authToken},body:JSON.stringify({keyword:keyword,timeUnit:unit==='year'?'month':unit,startDate:start||undefined,endDate:end||undefined})})]),keywordData=await responses[0].json(),data=await responses[1].json();if(!responses[0].ok)throw new Error(keywordData.error||'월간 검색량 조회 실패');if(!responses[1].ok)throw new Error(data.error||'데이터랩 조회 실패');
         var returned=Array.isArray(keywordData.keywordList)?keywordData.keywordList:[],exact=returned.find(function(item){return String(item.relKeyword||'').replace(/\s/g,'')===keyword.replace(/\s/g,'');})||returned[0],monthlyPc=keywordVolumeNumber(exact&&exact.monthlyPcQcCnt),monthlyMobile=keywordVolumeNumber(exact&&exact.monthlyMobileQcCnt),monthlyVolume=monthlyPc+monthlyMobile,points=data.results&&data.results[0]&&data.results[0].data||[];if(unit==='year'){var byYear={};points.forEach(function(point){var year=String(point.period).slice(0,4);if(!byYear[year])byYear[year]={period:year,ratio:0,count:0};byYear[year].ratio+=Number(point.ratio)||0;byYear[year].count++;});points=Object.keys(byYear).sort().map(function(year){return {period:year,ratio:byYear[year].ratio/byYear[year].count};});}points=points.slice().sort(function(a,b){return String(a.period).localeCompare(String(b.period));});if(!points.length)throw new Error('선택한 기간에 표시할 데이터가 없습니다.');if(!monthlyVolume)throw new Error('월간 검색량을 확인할 수 없습니다.');
-        var estimated=estimateKeywordVolumes(monthlyVolume,points,start,end),maxEstimate=Math.max.apply(null,estimated.map(function(p){return p.estimate;}))||1,w=760,h=260,left=58,right=14,top=18,bottom=34,step=(w-left-right)/Math.max(estimated.length-1,1),coords=estimated.map(function(p,i){return [left+i*step,top+(h-top-bottom)*(1-p.estimate/maxEstimate)];}),line=coords.map(function(p){return p[0].toFixed(1)+','+p[1].toFixed(1);}).join(' '),unitLabel=unit==='year'?'연간':unit==='month'?'월간':unit==='week'?'주간':'일간',dailyAverage=monthlyVolume/30.4375,weeklyAverage=monthlyVolume*12/52,grid=[1,.75,.5,.25,0].map(function(factor){var y=top+(h-top-bottom)*(1-factor),value=Math.round(maxEstimate*factor);return '<line x1="'+left+'" y1="'+y+'" x2="'+(w-right)+'" y2="'+y+'" stroke="#e8edf4"/><text x="'+(left-8)+'" y="'+(y+4)+'" text-anchor="end" fill="#718096" font-size="12" font-weight="650">'+value.toLocaleString('ko-KR')+'</text>';}).join(''),dots=coords.map(function(point,index){return '<circle class="datalab-hit" data-period="'+esc(estimated[index].period)+'" data-volume="'+estimated[index].estimate.toLocaleString('ko-KR')+'" cx="'+point[0]+'" cy="'+point[1]+'" r="14"></circle><circle class="datalab-dot" cx="'+point[0]+'" cy="'+point[1]+'" r="3"></circle>';}).join(''),rows=estimated.slice().reverse().map(function(item){return '<tr><td><span class="period-index">'+esc(item.period)+'</span></td><td style="text-align:right"><strong>'+item.estimate.toLocaleString('ko-KR')+'회</strong></td><td style="text-align:right"><span class="period-index-badge">'+item.ratio.toFixed(1)+'</span></td></tr>';}).join('');
-        result.innerHTML='<div class="datalab-trend-card"><div class="datalab-trend-head"><strong>'+esc(keyword)+' 예상 검색량 추이</strong><span>키워드 도구 + 네이버 데이터랩 · '+unitLabel+'</span></div><div class="keyword-summary"><div class="keyword-summary-card datalab-summary-card"><span class="metric-label">월간 검색량</span><span class="metric-context">현재 월 기준</span><div class="metric-number"><strong class="metric-value">'+monthlyVolume.toLocaleString('ko-KR')+'</strong><span class="metric-unit">회</span></div><div class="metric-breakdown"><b>PC '+monthlyPc.toLocaleString('ko-KR')+'</b><b>모바일 '+monthlyMobile.toLocaleString('ko-KR')+'</b></div></div><div class="keyword-summary-card datalab-summary-card"><span class="metric-label">일평균 검색량</span><span class="metric-context">월간 검색량 환산</span><div class="metric-number"><strong class="metric-value">'+Math.round(dailyAverage).toLocaleString('ko-KR')+'</strong><span class="metric-unit">회</span></div></div><div class="keyword-summary-card datalab-summary-card"><span class="metric-label">월평균 검색량</span><span class="metric-context">최근 1년 기준</span><div class="metric-number"><strong class="metric-value">'+monthlyVolume.toLocaleString('ko-KR')+'</strong><span class="metric-unit">회</span></div></div><div class="keyword-summary-card datalab-summary-card"><span class="metric-label">주평균 검색량</span><span class="metric-context">최근 6개월 기준</span><div class="metric-number"><strong class="metric-value">'+Math.round(weeklyAverage).toLocaleString('ko-KR')+'</strong><span class="metric-unit">회</span></div></div></div><div class="datalab-chart-wrap"><div class="datalab-chart-tooltip"></div><svg class="datalab-chart" style="height:260px" viewBox="0 0 '+w+' '+h+'" role="img" aria-label="'+esc(keyword)+' 예상 검색량 추이">'+grid+'<polyline class="datalab-line" points="'+line+'"></polyline>'+dots+'</svg></div><div class="datalab-axis" style="padding-left:58px"><span>'+esc(estimated[0].period)+'</span><span>'+esc(estimated[estimated.length-1].period)+'</span></div><div class="datalab-note">키워드 도구 월간 검색량과 데이터랩 상대 추이를 조합한 추정치입니다. 실제 광고 노출·클릭 수와는 다를 수 있습니다.</div></div><div class="table-wrap period-volume-table" style="margin-top:18px;max-height:420px;overflow:auto"><table><thead><tr><th>기간</th><th style="text-align:right">예상 검색량</th><th style="text-align:right">관심도 지수</th></tr></thead><tbody>'+rows+'</tbody></table></div>';var tooltip=result.querySelector('.datalab-chart-tooltip');result.querySelectorAll('.datalab-hit').forEach(function(hit){var show=function(){tooltip.innerHTML=esc(hit.dataset.period)+'<br>'+esc(hit.dataset.volume)+'회';tooltip.style.display='block';tooltip.style.left=(Number(hit.getAttribute('cx'))/w*100)+'%';tooltip.style.top=(Number(hit.getAttribute('cy'))/h*100)+'%';};hit.addEventListener('mouseenter',show);hit.addEventListener('mouseleave',function(){tooltip.style.display='none';});hit.addEventListener('touchstart',show,{passive:true});hit.addEventListener('click',show);});
+        var estimated=estimateKeywordVolumes(monthlyVolume,points,start,end),maxEstimate=Math.max.apply(null,estimated.map(function(p){return p.estimate;}))||1,w=760,h=260,left=58,right=14,top=18,bottom=34,step=(w-left-right)/Math.max(estimated.length-1,1),coords=estimated.map(function(p,i){return [left+i*step,top+(h-top-bottom)*(1-p.estimate/maxEstimate)];}),line=coords.map(function(p){return p[0].toFixed(1)+','+p[1].toFixed(1);}).join(' '),unitLabel=unit==='year'?'연간':unit==='month'?'월간':unit==='week'?'주간':'일간',dailyAverage=monthlyVolume/30.4375,weeklyAverage=monthlyVolume*12/52,grid=[1,.75,.5,.25,0].map(function(factor){var y=top+(h-top-bottom)*(1-factor),value=Math.round(maxEstimate*factor);return '<line x1="'+left+'" y1="'+y+'" x2="'+(w-right)+'" y2="'+y+'" stroke="#e8edf4"/><text x="'+(left-8)+'" y="'+(y+4)+'" text-anchor="end" fill="#718096" font-size="12" font-weight="650">'+value.toLocaleString('ko-KR')+'</text>';}).join(''),dots=coords.map(function(point,index){var label=estimated[index].period+' '+estimated[index].estimate.toLocaleString('ko-KR')+'회';return '<circle class="datalab-hit" tabindex="0" role="button" aria-label="'+esc(label)+'" aria-describedby="datalab-chart-tooltip" data-period="'+esc(estimated[index].period)+'" data-volume="'+estimated[index].estimate.toLocaleString('ko-KR')+'" cx="'+point[0]+'" cy="'+point[1]+'" r="14"></circle><circle class="datalab-dot" cx="'+point[0]+'" cy="'+point[1]+'" r="3"></circle>';}).join(''),rows=estimated.slice().reverse().map(function(item){return '<tr><td><span class="period-index">'+esc(item.period)+'</span></td><td style="text-align:right"><strong>'+item.estimate.toLocaleString('ko-KR')+'회</strong></td><td style="text-align:right"><span class="period-index-badge">'+item.ratio.toFixed(1)+'</span></td></tr>';}).join('');
+        result.innerHTML='<div class="datalab-trend-card"><div class="datalab-trend-head"><strong>'+esc(keyword)+' 예상 검색량 추이</strong><span>키워드 도구 + 네이버 데이터랩 · '+unitLabel+'</span></div><div class="keyword-summary"><div class="keyword-summary-card datalab-summary-card"><span class="metric-label">월간 검색량</span><span class="metric-context">현재 월 기준</span><div class="metric-number"><strong class="metric-value">'+monthlyVolume.toLocaleString('ko-KR')+'</strong><span class="metric-unit">회</span></div><div class="metric-breakdown"><b>PC '+monthlyPc.toLocaleString('ko-KR')+'</b><b>모바일 '+monthlyMobile.toLocaleString('ko-KR')+'</b></div></div><div class="keyword-summary-card datalab-summary-card"><span class="metric-label">일평균 검색량</span><span class="metric-context">월간 검색량 환산</span><div class="metric-number"><strong class="metric-value">'+Math.round(dailyAverage).toLocaleString('ko-KR')+'</strong><span class="metric-unit">회</span></div></div><div class="keyword-summary-card datalab-summary-card"><span class="metric-label">월평균 검색량</span><span class="metric-context">최근 1년 기준</span><div class="metric-number"><strong class="metric-value">'+monthlyVolume.toLocaleString('ko-KR')+'</strong><span class="metric-unit">회</span></div></div><div class="keyword-summary-card datalab-summary-card"><span class="metric-label">주평균 검색량</span><span class="metric-context">최근 6개월 기준</span><div class="metric-number"><strong class="metric-value">'+Math.round(weeklyAverage).toLocaleString('ko-KR')+'</strong><span class="metric-unit">회</span></div></div></div><div class="datalab-chart-wrap"><div class="datalab-chart-tooltip" id="datalab-chart-tooltip" role="tooltip"></div><svg class="datalab-chart" style="height:260px" viewBox="0 0 '+w+' '+h+'" role="img" aria-label="'+esc(keyword)+' 예상 검색량 추이">'+grid+'<polyline class="datalab-line" points="'+line+'"></polyline>'+dots+'</svg></div><div class="datalab-axis" style="padding-left:58px"><span>'+esc(estimated[0].period)+'</span><span>'+esc(estimated[estimated.length-1].period)+'</span></div><div class="datalab-note">키워드 도구 월간 검색량과 데이터랩 상대 추이를 조합한 추정치입니다. 실제 광고 노출·클릭 수와는 다를 수 있습니다.</div></div><div class="table-wrap period-volume-table" style="margin-top:18px;max-height:420px;overflow:auto"><table><thead><tr><th>기간</th><th style="text-align:right">예상 검색량</th><th style="text-align:right">관심도 지수</th></tr></thead><tbody>'+rows+'</tbody></table></div>';animateDataLabLine(result.querySelector('.datalab-line'));bindDataLabPointTooltips(result,w,h);
       }catch(error){result.innerHTML='<div class="empty-state"><div class="es-title">그래프를 불러오지 못했습니다</div><div class="es-sub">'+esc(error.message)+'</div></div>';}finally{btn.disabled=false;}
     }
     document.getElementById('btn-naver-search').addEventListener('click',runSingleDataLabSearch,true);
@@ -1945,8 +2044,8 @@
         '<div class="stat-card" id="stat-managed-clients" style="cursor:pointer"><div class="stat-label">관리 업체</div><div class="stat-value">'+active.length+'<span class="stat-unit">곳</span></div><div class="stat-sub">전체 등록 '+clients.length+'곳</div></div>'+
         '<div class="stat-card"><div class="stat-label">신규 업체</div><div class="stat-value">'+newCount+'<span class="stat-unit">곳</span></div><div class="stat-sub">현재 신규 계약 기준</div></div>'+
         '<div class="stat-card"><div class="stat-label">재계약 업체</div><div class="stat-value">'+renewCount+'<span class="stat-unit">곳</span></div><div class="stat-sub">현재 재계약 기준</div></div>'+
-        '<div class="stat-card accent"><div class="stat-label">이번 달 진행률</div><div class="stat-value">'+pct+'<span class="stat-unit">%</span></div>'+
-          '<div class="progress-track"><div class="progress-fill" style="width:'+pct+'%"></div></div>'+
+        '<div class="stat-card accent"><div class="stat-label">이번 달 진행률</div><div class="stat-value"><span data-motion-value="dashboard:'+esc(mk)+':monthly-progress" data-previous-value="'+pct+'" data-target-value="'+pct+'">'+pct+'</span><span class="stat-unit">%</span></div>'+
+          '<div class="progress-track"><div class="progress-fill" data-motion-width="dashboard:'+esc(mk)+':monthly-progress-fill" data-previous-value="'+pct+'" data-target-value="'+pct+'" style="width:'+pct+'%"></div></div>'+
           '<div class="stat-sub">'+doneCells+' / '+totalCells+'곳 재계약 완료</div></div>'+
       '</div>';
 
@@ -1973,7 +2072,7 @@
               '<div class="day-progress-copy"><strong>'+
                 (day.state==="upcoming"?"시작 전":day.week+"주차 · "+day.elapsed+"일 / 30일")+
               '</strong><span>'+(day.state==="complete"?"30일 완료":day.remaining+"일 남음")+'</span></div>'+
-              '<div class="day-progress-track"><div class="day-progress-fill" style="width:'+day.percent+'%"></div></div>'+
+              '<div class="day-progress-track"><div class="day-progress-fill" data-motion-width="dashboard-day:'+esc(c.id)+'" data-previous-value="'+day.percent+'" data-target-value="'+day.percent+'" style="width:'+day.percent+'%"></div></div>'+
               '<div class="day-progress-weeks"><span>1주차<small>1일–7일</small></span><span>2주차<small>8일–14일</small></span><span>3주차<small>15일–21일</small></span><span>4주차<small>22일–28일</small></span><span>5주차<small>29일–30일</small></span></div>'+
             '</div>';
         var tags='<span class="tag '+(c.contractType==="renewal"?'tag-renew':'tag-new')+'">'+esc(contractLabel(c))+'</span>';
@@ -2002,6 +2101,7 @@
     }
 
     body.innerHTML=statsHtml+listHtml;
+    if(typeof activateDataMotion==="function")activateDataMotion(body);
 
     var statCards=[document.getElementById("stat-managed-clients"),document.querySelector(".stats-grid .stat-card:nth-child(2)"),document.querySelector(".stats-grid .stat-card:nth-child(3)")].filter(Boolean);
     statCards.forEach(function(statCard){ statCard.style.cursor="pointer"; statCard.addEventListener("click",function(e){
@@ -2829,6 +2929,7 @@
     app.innerHTML='<div class="report-top"><button class="back-btn" id="btn-back">←</button><div class="report-actions"><button class="btn btn-plain btn-sm" id="btn-renew">재계약 처리</button><button class="btn btn-plain btn-sm" id="btn-edit-client">정보 수정</button></div></div>'+
       '<div class="detail-head fade-in"><div class="dh-tagrow"><span class="status-pill">'+(cl.contractType==="renewal"?"재계약":"신규")+'</span></div><h2 class="dh-name">'+esc(cl.name)+'</h2><div class="dh-meta"><span>'+esc(cl.industry||"")+'</span><span>시작 '+esc(cl.startDate||"미등록")+'</span></div></div>'+
       '<div class="detail-tabs"><button class="detail-tab '+(activeTab==="calendar"?"active":"")+'" data-client-tab="calendar">일정 달력</button><button class="detail-tab '+(activeTab==="checklist"?"active":"")+'" data-client-tab="checklist">업무 체크리스트 <small>'+done+'/'+tasks.length+'</small></button><button class="detail-tab '+(activeTab==="reports"?"active":"")+'" data-client-tab="reports">리포트</button><button class="detail-tab '+(activeTab==="contracts"?"active":"")+'" data-client-tab="contracts">계약서</button><button class="detail-tab '+(activeTab==="guide"?"active":"")+'" data-client-tab="guide">정보 안내문</button></div>'+content;
+    if(typeof activateDataMotion==="function")activateDataMotion(app);
     if(_clientTabMotionPending){
       var tabs=app.querySelector('.detail-tabs'), tabContent=tabs&&tabs.nextElementSibling;
       if(tabContent)restartMotion(tabContent,'tab-content-enter');

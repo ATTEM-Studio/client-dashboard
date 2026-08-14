@@ -31,6 +31,13 @@ assert.match(source, /calendar-enter-right/);
 assert.match(source, /check-section-body[^}]*overflow:hidden/);
 assert.match(source, /@media \(prefers-reduced-motion:reduce\)\{[\s\S]*?\.calendar-enter-left,\.calendar-enter-right\{animation:none!important;transform:none!important\}/);
 assert.match(source, /@media \(prefers-reduced-motion:reduce\)\{[\s\S]*?\.check-section-body\{transition:none!important\}/);
+assert.match(source, /function animateValueChange\(element,from,to,formatter\)/);
+assert.match(source, /requestAnimationFrame/);
+assert.match(source, /\.datalab-line[^}]*stroke-dasharray/);
+assert.match(source, /\.datalab-hit[^}]*transition/);
+assert.match(source, /data-previous-value/);
+assert.match(source, /class="datalab-hit"[^>]*tabindex="0"/,
+  'DataLab points must expose their existing tooltip to keyboard focus');
 
 const script = source.match(/<script>([\s\S]*?)<\/script>/)[1];
 const helper = script.match(/function restartMotion\(element,className\)[\s\S]*?\n\s*}/)[0];
@@ -70,6 +77,73 @@ vm.runInNewContext([
 });
 assert.strictEqual(reducedClasses.has('calendar-enter-left'), false,
   'reduced motion must not start a translated calendar entrance');
+
+const reducedValue = { textContent: '35%', dataset: { previousValue: '35' } };
+let reducedFrameRequested = false;
+vm.runInNewContext([
+  functionSource('motionReduced'),
+  functionSource('animateValueChange'),
+  'animateValueChange(element,35,80,function(value){return Math.round(value)+"%";});'
+].join('\n'), {
+  window: { matchMedia: () => ({ matches: true }) },
+  element: reducedValue,
+  performance: { now: () => 100 },
+  requestAnimationFrame: () => { reducedFrameRequested = true; }
+});
+assert.strictEqual(reducedValue.textContent, '80%',
+  'reduced motion must jump directly to the final gauge value');
+assert.strictEqual(reducedValue.dataset.previousValue, '80');
+assert.strictEqual(reducedFrameRequested, false,
+  'reduced motion must not schedule value interpolation frames');
+
+const animatedValue = { textContent: '35%', dataset: { previousValue: '35' } };
+const valueFrames = [];
+vm.runInNewContext([
+  functionSource('motionReduced'),
+  functionSource('animateValueChange'),
+  'animateValueChange(element,35,80,function(value){return Math.round(value)+"%";});'
+].join('\n'), {
+  window: { matchMedia: () => ({ matches: false }) },
+  element: animatedValue,
+  performance: { now: () => 100 },
+  requestAnimationFrame: (frame) => valueFrames.push(frame)
+});
+assert.strictEqual(animatedValue.textContent, '35%',
+  'value interpolation must preserve the prior rendered value before its first frame');
+valueFrames.shift()(330);
+assert.ok(Number(animatedValue.textContent.replace('%', '')) > 35,
+  'the first interpolation frame must advance from the prior value instead of zero');
+valueFrames.shift()(560);
+assert.strictEqual(animatedValue.textContent, '80%');
+assert.strictEqual(animatedValue.dataset.previousValue, '80');
+
+const pointListeners = {};
+const pointClasses = new Set();
+const point = {
+  dataset: { period: '2026-08-14', volume: '1,250' },
+  classList: { add: (name) => pointClasses.add(name), remove: (name) => pointClasses.delete(name) },
+  getAttribute: (name) => name === 'cx' ? '20' : '10',
+  addEventListener: (type, listener) => { pointListeners[type] = listener; },
+  blur: () => {}
+};
+const pointTooltip = { innerHTML: '', style: {} };
+const pointRoot = {
+  querySelector: () => pointTooltip,
+  querySelectorAll: () => [point]
+};
+const tooltipSandbox = {
+  Array,
+  document: { activeElement: null },
+  esc: (value) => String(value)
+};
+vm.runInNewContext(functionSource('bindDataLabPointTooltips'), tooltipSandbox);
+tooltipSandbox.bindDataLabPointTooltips(pointRoot, 100, 100);
+let keyboardDefaultPrevented = false;
+pointListeners.keydown({ key: 'Enter', preventDefault: () => { keyboardDefaultPrevented = true; } });
+assert.strictEqual(pointTooltip.style.display, 'block',
+  'Enter must activate the same existing tooltip used by pointer and touch');
+assert.strictEqual(pointClasses.has('is-active'), true);
+assert.strictEqual(keyboardDefaultPrevented, true);
 
 async function verifyClientSaveOrderingAndRollback() {
   const queuedWrites = [];
