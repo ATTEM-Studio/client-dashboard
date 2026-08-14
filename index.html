@@ -662,6 +662,7 @@
   </div>
 </div>
 
+<script src="demo-data.js"></script>
 <script>
 (function(){
   "use strict";
@@ -670,6 +671,17 @@
   var AUTH_KEY = "rs:team-token";
   var authToken = null;
   try { authToken = localStorage.getItem(AUTH_KEY); } catch(e) {}
+
+  var workspaceMode = sessionStorage.getItem('rs:workspace-mode') === 'demo' ? 'demo' : 'staff';
+  var demoWorkspace = null;
+  function isDemoMode(){ return workspaceMode === 'demo'; }
+  function ensureDemoWorkspace(){
+    if (!demoWorkspace) demoWorkspace = DemoData.loadDemoWorkspace(localStorage, new Date());
+    return demoWorkspace;
+  }
+  function cloneDemoValue(value){
+    return value === undefined ? null : JSON.parse(JSON.stringify(value));
+  }
 
   function authHeaders(){
     return authToken ? { "x-team-token": authToken } : {};
@@ -1532,10 +1544,10 @@
       return {status:"error",error:e};
     }
   }
-  async function getP(k){ try{ var r=await storageBackend.get(k,false); return r&&r.value?JSON.parse(r.value):null; }catch(e){ return null; } }
-  async function setP(k,v){ try{ return await storageBackend.set(k,JSON.stringify(v),false); }catch(e){ console.error(e); return null; } }
-  async function getS(k){ try{ var r=await storageBackend.get(k,true); return r&&r.value?JSON.parse(r.value):null; }catch(e){ return null; } }
-  async function setS(k,v){ try{ return await storageBackend.set(k,JSON.stringify(v),true); }catch(e){ console.error(e); return null; } }
+  async function getP(k){ if(isDemoMode()) return cloneDemoValue(ensureDemoWorkspace().values[k]); try{ var r=await storageBackend.get(k,false); return r&&r.value?JSON.parse(r.value):null; }catch(e){ return null; } }
+  async function setP(k,v){ if(isDemoMode()){ demoWorkspace=DemoData.saveDemoValue(localStorage,k,v); return {key:k,value:v}; } try{ return await storageBackend.set(k,JSON.stringify(v),false); }catch(e){ console.error(e); return null; } }
+  async function getS(k){ if(isDemoMode()) return cloneDemoValue(ensureDemoWorkspace().values[k]); try{ var r=await storageBackend.get(k,true); return r&&r.value?JSON.parse(r.value):null; }catch(e){ return null; } }
+  async function setS(k,v){ if(isDemoMode()){ demoWorkspace=DemoData.saveDemoValue(localStorage,k,v); return {key:k,value:v}; } try{ return await storageBackend.set(k,JSON.stringify(v),true); }catch(e){ console.error(e); return null; } }
   async function delS(k){ try{ return await storageBackend.delete(k,true); }catch(e){ return null; } }
   async function reserveGuideIssue(clientId){ try{ return await storageBackend.reserveGuideIssue(clientId); }catch(e){ console.error(e); return null; } }
   async function mutatePublicGuide(guideId,answers,submitted){ try{ return await storageBackend.mutatePublicGuide(guideId,answers,submitted); }catch(e){ console.error(e); return null; } }
