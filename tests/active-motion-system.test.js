@@ -248,6 +248,12 @@ assert.strictEqual(mixedTooltip.style.display, 'block',
 assert.match(mixedTooltip.innerHTML, /2026-08-01/);
 assert.strictEqual(focusedPoint.classes.has('is-active'), true);
 assert.strictEqual(pointerPoint.classes.has('is-active'), false);
+focusedPoint.listeners.pointerenter();
+focusedPoint.listeners.pointerleave();
+assert.strictEqual(mixedTooltip.style.display, 'block',
+  'pointer leave on the focused owner must keep its keyboard tooltip visible');
+assert.strictEqual(focusedPoint.classes.has('is-active'), true,
+  'the focused owner must retain its single visible focus marker after pointer leave');
 assert.doesNotMatch(source, /\.datalab-hit:focus\+\.datalab-dot/,
   'visual point growth must follow the single tooltip owner rather than raw focus plus pointer state');
 

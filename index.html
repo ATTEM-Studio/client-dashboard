@@ -1397,27 +1397,27 @@
       tooltip.style.left=x+'%';tooltip.style.top=y+'%';
       tooltip.style.transform='translate('+(x<18?'0':x>82?'-100%':'-50%')+','+(y<28?'16px':'calc(-100% - 14px)')+')';
     }
-    function hide(hit){
+    function hide(hit,restoreFocused){
       hit.classList.remove('is-active');
       if(activeHit!==hit)return;
-      var focused=hits.find(function(point){return document.activeElement===point;});
-      if(focused&&focused!==hit){show(focused);return;}
+      var focused=restoreFocused&&hits.find(function(point){return document.activeElement===point;});
+      if(focused){show(focused);return;}
       activeHit=null;
       tooltip.style.display='none';
     }
     hits.forEach(function(hit){
       var showHit=function(){show(hit);};
       hit.addEventListener('pointerenter',showHit);
-      hit.addEventListener('pointerleave',function(){hide(hit);});
+      hit.addEventListener('pointerleave',function(){hide(hit,true);});
       hit.addEventListener('mouseenter',showHit);
-      hit.addEventListener('mouseleave',function(){hide(hit);});
+      hit.addEventListener('mouseleave',function(){hide(hit,true);});
       hit.addEventListener('touchstart',showHit,{passive:true});
       hit.addEventListener('click',showHit);
       hit.addEventListener('focus',showHit);
-      hit.addEventListener('blur',function(){hide(hit);});
+      hit.addEventListener('blur',function(){hide(hit,false);});
       hit.addEventListener('keydown',function(event){
         if(event.key==='Enter'||event.key===' '){event.preventDefault();show(hit);}
-        if(event.key==='Escape'){hit.blur();hide(hit);}
+        if(event.key==='Escape'){hit.blur();hide(hit,false);}
       });
     });
   }
