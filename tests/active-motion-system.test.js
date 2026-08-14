@@ -18,6 +18,9 @@ assert.match(source, /\.dashboard-menu-panel[^}]*transform-origin/);
 assert.match(source, /\.modal-layer\.show \.modal/);
 assert.match(source, /\.tab-content-enter/);
 assert.match(source, /aria-expanded/);
+assert.match(source, /#renewal-modal\.show \.modal\{[^}]*opacity:1/);
+assert.match(source, /layer\.className="modal-layer show"/);
+assert.match(source, /\.client-card:hover\.is-pressing\{[^}]*transform:scale\(\.97\)/);
 
 const script = source.match(/<script>([\s\S]*?)<\/script>/)[1];
 const helper = script.match(/function restartMotion\(element,className\)[\s\S]*?\n\s*}/)[0];
