@@ -91,7 +91,7 @@ async function verifyClientSaveOrderingAndRollback() {
     render: () => { throw new Error('single-toggle saves must not rerender the workspace'); }
   };
   vm.runInNewContext([
-    'var _clientSaveQueue=Promise.resolve(), _clientSaveVersions={}, _clientSaveBaselines={};',
+    'var _clientSaveQueue=Promise.resolve(), _clientSaveVersions={}, _clientSaveBaselines={}, _clientSaveNoteReconciliations={};',
     functionSource('copyClientForSave'),
     functionSource('clientIndexEntry'),
     functionSource('persistClientSnapshot'),
@@ -126,7 +126,7 @@ async function verifyClientSaveOrderingAndRollback() {
     render: () => { throw new Error('failed saves must not rerender the workspace'); }
   };
   vm.runInNewContext([
-    'var _clientSaveQueue=Promise.resolve(), _clientSaveVersions={}, _clientSaveBaselines={};',
+    'var _clientSaveQueue=Promise.resolve(), _clientSaveVersions={}, _clientSaveBaselines={}, _clientSaveNoteReconciliations={};',
     functionSource('copyClientForSave'),
     functionSource('clientIndexEntry'),
     functionSource('persistClientSnapshot'),
@@ -177,7 +177,7 @@ async function verifyClientSaveFailureReconciliation() {
     render: () => { throw new Error('feedback save failures must not rerender the workspace'); }
   };
   vm.runInNewContext([
-    'var _clientSaveQueue=Promise.resolve(), _clientSaveVersions={}, _clientSaveBaselines={};',
+    'var _clientSaveQueue=Promise.resolve(), _clientSaveVersions={}, _clientSaveBaselines={}, _clientSaveNoteReconciliations={};',
     functionSource('copyClientForSave'),
     functionSource('clientIndexEntry'),
     functionSource('persistClientSnapshot'),
@@ -205,7 +205,7 @@ async function verifyClientSaveFailureReconciliation() {
     render: () => { throw new Error('read failure reconciliation must not rerender the workspace'); }
   };
   vm.runInNewContext([
-    'var _clientSaveQueue=Promise.resolve(), _clientSaveVersions={}, _clientSaveBaselines={};',
+    'var _clientSaveQueue=Promise.resolve(), _clientSaveVersions={}, _clientSaveBaselines={}, _clientSaveNoteReconciliations={};',
     functionSource('copyClientForSave'),
     functionSource('clientIndexEntry'),
     functionSource('persistClientSnapshot'),
@@ -271,6 +271,20 @@ function makeTaskControl(id) {
     classList: { toggle: () => {} },
     closest: () => ({ classList: { toggle: () => {} } })
   };
+}
+
+function makeNoteInput(value) {
+  const listeners = {};
+  const input = {
+    value,
+    isConnected: true,
+    addEventListener: (type, listener) => {
+      listeners[type] = listeners[type] || [];
+      listeners[type].push(listener);
+    }
+  };
+  input.dispatchInput = () => (listeners.input || []).forEach((listener) => listener({ target: input }));
+  return input;
 }
 
 async function verifyChecklistHandlerReconcilesAllVisibleControls() {
@@ -362,6 +376,7 @@ async function verifyNoteFailureStaysWithItsOriginLayer() {
   failure.clientSaveIsLatest = true;
   failure.clientSaveReconciledSnapshot = { id: 'client-note', dailyNotes: { '2026-08-14': 'old note' } };
   const sandbox = {
+    _dayNoteInputEditStates: new WeakMap(),
     copyClientForSave: copy,
     saveClientWithFeedback: async () => { throw failure; },
     reconcileClientSave: (target, error) => {
@@ -410,7 +425,7 @@ function makeMixedFailureHarness(id) {
     },
     querySelector: (selector) => selector === '.checklist-head-actions .count' ? totalCount : null
   };
-  const noteInput = { value: 'old note', isConnected: true };
+  const noteInput = makeNoteInput('old note');
   const layer = {
     id: 'day-modal-layer',
     isConnected: true,
@@ -436,7 +451,7 @@ function makeMixedFailureHarness(id) {
     setChecklistTaskVisualState: (target, task, control) => { control.checked = task.done; }
   };
   vm.runInNewContext([
-    'var _clientSaveQueue=Promise.resolve(), _clientSaveVersions={}, _clientSaveBaselines={}, _saveFeedbackTokens=new WeakMap();',
+    'var _clientSaveQueue=Promise.resolve(), _clientSaveVersions={}, _clientSaveBaselines={}, _clientSaveNoteReconciliations={}, _saveFeedbackTokens=new WeakMap(), _dayNoteInputEditStates=new WeakMap();',
     functionSource('copyClientForSave'),
     functionSource('clientIndexEntry'),
     functionSource('reconcileClientSave'),
@@ -471,6 +486,8 @@ function assertMixedFailureReconciled(harness) {
   assert.strictEqual(harness.getStored().dailyNotes[harness.key], 'old note', 'client storage must retain the confirmed note');
   assert.strictEqual(harness.sandbox._clientSaveBaselines[harness.client.id], undefined,
     'the settled queue baseline must not retain optimistic state');
+  assert.strictEqual(harness.sandbox._clientSaveNoteReconciliations[harness.client.id], undefined,
+    'the settled queue must not retain note reconciliation state');
   assert.strictEqual(harness.workspaceControl.checked, false, 'the visible checklist control must match the reconciled model');
   assert.strictEqual(harness.dayControl.checked, false, 'the visible day-task control must match the reconciled model');
   assert.strictEqual(harness.noteInput.value, 'old note', 'the original current note input must match the reconciled model');
@@ -522,12 +539,72 @@ async function verifyNoteThenTaskBothFailReconcilesCurrentView() {
   assertMixedFailureReconciled(harness);
 }
 
+async function verifyTaskFailureAfterUnsavedTypingPreservesTyping() {
+  const harness = makeMixedFailureHarness('client-task-only-typing');
+  const taskSave = harness.sandbox.toggleClientChecklistTask(
+    harness.client,
+    'day-task',
+    harness.dayControl,
+    harness.layer,
+    harness.taskContext
+  );
+  harness.noteInput.value = 'typing after task save began';
+  harness.noteInput.dispatchInput();
+  await taskSave;
+  assert.strictEqual(harness.client.checklist[0].done, false, 'the failed task must reconcile the model');
+  assert.strictEqual(harness.getStored().checklist[0].done, false, 'the failed task must compensate storage');
+  assert.strictEqual(harness.noteInput.value, 'typing after task save began',
+    'a task-only failure must never overwrite unsaved note typing');
+}
+
+async function verifyUnchangedNoteInputRestoresAfterFailure() {
+  const harness = makeMixedFailureHarness('client-note-unchanged');
+  harness.noteInput.value = 'submitted note';
+  harness.noteInput.dispatchInput();
+  await harness.sandbox.saveDayNoteWithFeedback(
+    harness.client,
+    harness.key,
+    harness.noteInput,
+    harness.layer,
+    {},
+    () => { throw new Error('a failed note save must not close the modal'); }
+  );
+  assert.strictEqual(harness.client.dailyNotes[harness.key], 'old note', 'the failed note must reconcile the model');
+  assert.strictEqual(harness.getStored().dailyNotes[harness.key], 'old note', 'the failed note must compensate storage');
+  assert.strictEqual(harness.noteInput.value, 'old note',
+    'an unchanged input from the failed note save must display the reconciled note');
+}
+
+async function verifyNewerTypingDuringFailedNoteSaveIsPreserved() {
+  const harness = makeMixedFailureHarness('client-note-newer-typing');
+  harness.noteInput.value = 'submitted note';
+  harness.noteInput.dispatchInput();
+  const noteSave = harness.sandbox.saveDayNoteWithFeedback(
+    harness.client,
+    harness.key,
+    harness.noteInput,
+    harness.layer,
+    {},
+    () => { throw new Error('a failed note save must not close the modal'); }
+  );
+  harness.noteInput.value = 'newer typing during the failed save';
+  harness.noteInput.dispatchInput();
+  await noteSave;
+  assert.strictEqual(harness.client.dailyNotes[harness.key], 'old note', 'the failed note must still reconcile the model');
+  assert.strictEqual(harness.getStored().dailyNotes[harness.key], 'old note', 'the failed note must still compensate storage');
+  assert.strictEqual(harness.noteInput.value, 'newer typing during the failed save',
+    'newer DOM edits must survive note failure reconciliation');
+}
+
 Promise.all([
   verifyChecklistHandlerReconcilesAllVisibleControls(),
   verifyFeedbackTokensKeepNewerSaveVisible(),
   verifyNoteFailureStaysWithItsOriginLayer(),
   verifyNoteThenTaskBothFailReconcilesCurrentView(),
-  verifyTaskThenNoteBothFailReconcilesCurrentView()
+  verifyTaskThenNoteBothFailReconcilesCurrentView(),
+  verifyTaskFailureAfterUnsavedTypingPreservesTyping(),
+  verifyUnchangedNoteInputRestoresAfterFailure(),
+  verifyNewerTypingDuringFailedNoteSaveIsPreserved()
 ]).catch((error) => {
   console.error(error);
   process.exitCode = 1;

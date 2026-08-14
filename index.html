@@ -2995,7 +2995,7 @@
       }
     });
   }
-  function reconcileClientTask3View(cl,context){
+  function reconcileClientTask3View(cl,context,error){
     context=context||{};
     var currentClient=typeof state==='undefined' ? null : state.currentClient;
     if(currentClient&&currentClient!==cl&&String(currentClient.id||"")!==String(cl.id||""))return;
@@ -3005,13 +3005,16 @@
       roots.push(root);
     };
     if(typeof app!=='undefined')addRoot(app);
-    var layer=context.layer;
+    var layer=context.layer, noteReconciliation=error&&error.clientSaveTask3NoteReconciliation;
     var currentLayer=!!(layer&&layer.isConnected!==false&&typeof document!=='undefined'&&document.getElementById('day-modal-layer')===layer);
     if(currentLayer)addRoot(layer);
     if(context.root!==layer)addRoot(context.root);
+    var noteLayer=noteReconciliation&&noteReconciliation.layer;
+    var currentNoteLayer=!!(noteLayer&&noteLayer.isConnected!==false&&typeof document!=='undefined'&&document.getElementById('day-modal-layer')===noteLayer);
+    if(currentNoteLayer)addRoot(noteLayer);
     roots.forEach(function(root){ syncChecklistTaskControls(cl,root); });
-    if(currentLayer&&context.noteInput&&context.noteInput.isConnected!==false){
-      context.noteInput.value=(cl.dailyNotes||{})[context.noteKey]||"";
+    if(currentNoteLayer&&noteReconciliation.noteInput&&noteReconciliation.noteInput.isConnected!==false&&noteReconciliation.editState&&noteReconciliation.editState.version===noteReconciliation.editVersion){
+      noteReconciliation.noteInput.value=(cl.dailyNotes||{})[noteReconciliation.noteKey]||"";
     }
   }
   async function toggleClientChecklistTask(cl,id,element,root){
@@ -3029,7 +3032,7 @@
           var currentTask=(cl.checklist||[]).filter(function(item){ return String(item.id||"")===String(id); })[0];
           if(currentTask)currentTask.done=previousDone;
         }
-        reconcileClientTask3View(cl,viewContext);
+        reconcileClientTask3View(cl,viewContext,error);
       }
     }
   }
@@ -3101,17 +3104,25 @@
   }
   async function saveDayNoteWithFeedback(cl,key,noteInput,layer,button,closeModal){
     cl.dailyNotes=cl.dailyNotes||{};
+    var editState=noteInput&&_dayNoteInputEditStates.get(noteInput);
+    if(noteInput&&!editState){
+      editState={version:0};
+      _dayNoteInputEditStates.set(noteInput,editState);
+      if(noteInput.addEventListener)noteInput.addEventListener('input',function(){ editState.version+=1; });
+    }
+    var noteReconciliation={noteInput:noteInput,layer:layer,noteKey:key,editState:editState,editVersion:editState?editState.version:0};
     var rollbackSnapshot=copyClientForSave(cl), hadNote=Object.prototype.hasOwnProperty.call(cl.dailyNotes,key), previousNote=cl.dailyNotes[key], note=(noteInput&&noteInput.value||"").trim();
     if(note)cl.dailyNotes[key]=note; else delete cl.dailyNotes[key];
     try{
-      await saveClientWithFeedback(cl,button,{rollbackSnapshot:rollbackSnapshot});
+      await saveClientWithFeedback(cl,button,{rollbackSnapshot:rollbackSnapshot,task3NoteReconciliation:noteReconciliation});
       if(layer&&layer.isConnected!==false&&document.getElementById('day-modal-layer')===layer&&closeModal)closeModal();
     }catch(error){
       if(error.clientSaveIsLatest!==false){
+        if(!error.clientSaveTask3NoteReconciliation)error.clientSaveTask3NoteReconciliation=noteReconciliation;
         if(!reconcileClientSave(cl,error)){
           if(hadNote)cl.dailyNotes[key]=previousNote; else delete cl.dailyNotes[key];
         }
-        reconcileClientTask3View(cl,{root:layer,layer:layer,noteInput:noteInput,noteKey:key});
+        reconcileClientTask3View(cl,{root:layer,layer:layer},error);
       }
     }
   }
@@ -3328,7 +3339,7 @@
     });
   }
 
-  var _clientSaveQueue=Promise.resolve(), _clientSaveVersions={}, _clientSaveBaselines={}, _saveFeedbackTokens=new WeakMap();
+  var _clientSaveQueue=Promise.resolve(), _clientSaveVersions={}, _clientSaveBaselines={}, _clientSaveNoteReconciliations={}, _saveFeedbackTokens=new WeakMap(), _dayNoteInputEditStates=new WeakMap();
   function copyClientForSave(client){ return JSON.parse(JSON.stringify(client)); }
   function clientIndexEntry(client){ return { id:client.id, name:client.name, contractType:client.contractType, renewalCount:client.renewalCount, startDate:client.startDate, status:client.status, updatedAt:client.updatedAt }; }
   function reconcileClientSave(client,error){
@@ -3387,6 +3398,7 @@
     cl.updatedAt=Date.now();
     var clientId=cl.id;
     if(!_clientSaveBaselines[clientId]&&options&&options.rollbackSnapshot)_clientSaveBaselines[clientId]=copyClientForSave(options.rollbackSnapshot);
+    if(options&&options.task3NoteReconciliation)_clientSaveNoteReconciliations[clientId]=options.task3NoteReconciliation;
     var baseline=_clientSaveBaselines[clientId], snapshot=copyClientForSave(cl), version=(_clientSaveVersions[clientId]||0)+1;
     _clientSaveVersions[clientId]=version;
     var operation=_clientSaveQueue.catch(function(){}).then(function(){ return persistClientSnapshot(snapshot,baseline); });
@@ -3395,6 +3407,7 @@
       var index=await operation, isLatest=_clientSaveVersions[clientId]===version;
       if(isLatest){
         delete _clientSaveBaselines[clientId];
+        delete _clientSaveNoteReconciliations[clientId];
         state.clients=index;
         state.currentClient=cl;
         if(state.view==="clientDetail" && !(options&&options.refresh===false)) render();
@@ -3405,7 +3418,9 @@
       error.clientSaveIsLatest=_clientSaveVersions[clientId]===version;
       if(error.clientSaveIsLatest){
         if(!error.clientSaveReconciledSnapshot&&baseline)error.clientSaveReconciledSnapshot=copyClientForSave(baseline);
+        if(_clientSaveNoteReconciliations[clientId])error.clientSaveTask3NoteReconciliation=_clientSaveNoteReconciliations[clientId];
         delete _clientSaveBaselines[clientId];
+        delete _clientSaveNoteReconciliations[clientId];
       }
       throw error;
     }
