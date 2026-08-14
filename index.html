@@ -1283,7 +1283,7 @@
     return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   }
   function animateValueChange(element,from,to,formatter){
-    if(!element)return;
+    if(!element||element.isConnected===false)return;
     from=Number(from);to=Number(to);
     if(!isFinite(from))from=to;
     if(!isFinite(to))to=from;
@@ -1305,24 +1305,28 @@
     }
     var started=performance.now(),duration=460,difference=to-from;
     function frame(now){
-      if(sequence&&_dataMotionSequences[motionKey]!==sequence)return;
+      if(element.isConnected===false||(sequence&&_dataMotionSequences[motionKey]!==sequence))return;
       var progress=Math.min(1,(now-started)/duration);
       var eased=1-Math.pow(1-progress,3);
       var value=from+difference*eased;
       element.textContent=formatter(value);
+      if(element.isConnected===false)return;
       if(motionKey&&typeof _dataMotionValues==='object')_dataMotionValues[motionKey]=value;
-      if(progress<1)requestAnimationFrame(frame);
+      if(progress<1){
+        if(element.isConnected!==false)requestAnimationFrame(frame);
+      }
       else{
+        if(element.isConnected===false)return;
         element.dataset.previousValue=String(to);
         if(motionKey&&typeof _dataMotionValues==='object')_dataMotionValues[motionKey]=to;
       }
     }
-    requestAnimationFrame(frame);
+    if(element.isConnected!==false)requestAnimationFrame(frame);
   }
   var _dataMotionValues={};
   var _dataMotionSequences={};
   function animateDimensionChange(element,property,from,to){
-    if(!element)return;
+    if(!element||element.isConnected===false)return;
     element.dataset.previousValue=String(from);
     element.style[property]=from+'%';
     var motionKey=element.getAttribute&&(element.getAttribute('data-motion-width')||element.getAttribute('data-motion-height'));
@@ -1341,20 +1345,24 @@
     var started=performance.now(),duration=460,difference=to-from,previousTransition=element.style.transition;
     element.style.transition='none';
     function frame(now){
-      if(sequence&&_dataMotionSequences[motionKey]!==sequence)return;
+      if(element.isConnected===false||(sequence&&_dataMotionSequences[motionKey]!==sequence))return;
       var progress=Math.min(1,(now-started)/duration);
       var eased=1-Math.pow(1-progress,3),value=from+difference*eased;
       element.style[property]=value+'%';
+      if(element.isConnected===false)return;
       if(motionKey)_dataMotionValues[motionKey]=value;
-      if(progress<1)requestAnimationFrame(frame);
+      if(progress<1){
+        if(element.isConnected!==false)requestAnimationFrame(frame);
+      }
       else{
+        if(element.isConnected===false)return;
         element.style[property]=to+'%';
         element.style.transition=previousTransition;
         element.dataset.previousValue=String(to);
         if(motionKey)_dataMotionValues[motionKey]=to;
       }
     }
-    requestAnimationFrame(frame);
+    if(element.isConnected!==false)requestAnimationFrame(frame);
   }
   function activateDataMotion(root){
     if(!root)return;
@@ -1368,18 +1376,25 @@
     });
   }
   function animateDataLabLine(line){
-    if(!line||line.dataset.motionDrawn)return;
+    if(!line||line.isConnected===false||line.dataset.motionDrawn)return;
     line.dataset.motionDrawn='true';
+    var owner=String((Number(line.dataset.motionDrawOwner)||0)+1);
+    line.dataset.motionDrawOwner=owner;
     var length=line.getTotalLength?line.getTotalLength():0;
     if(!length||motionReduced()){
+      if(line.isConnected===false||line.dataset.motionDrawOwner!==owner)return;
       line.style.strokeDasharray='none';
       line.style.strokeDashoffset='0';
       return;
     }
+    if(line.isConnected===false||line.dataset.motionDrawOwner!==owner)return;
     line.style.setProperty('--datalab-line-length',String(length));
     line.style.strokeDashoffset=String(length);
     void line.getBoundingClientRect();
-    requestAnimationFrame(function(){line.style.strokeDashoffset='0';});
+    if(line.isConnected!==false)requestAnimationFrame(function(){
+      if(line.isConnected===false||line.dataset.motionDrawOwner!==owner)return;
+      line.style.strokeDashoffset='0';
+    });
   }
   function bindDataLabPointTooltips(root,width,height){
     if(!root)return;
@@ -1396,6 +1411,11 @@
       var y=Math.max(2,Math.min(98,Number(hit.getAttribute('cy'))/height*100));
       tooltip.style.left=x+'%';tooltip.style.top=y+'%';
       tooltip.style.transform='translate('+(x<18?'0':x>82?'-100%':'-50%')+','+(y<28?'16px':'calc(-100% - 14px)')+')';
+    }
+    function dismiss(){
+      hits.forEach(function(point){point.classList.remove('is-active');});
+      activeHit=null;
+      tooltip.style.display='none';
     }
     function hide(hit,restoreFocused){
       hit.classList.remove('is-active');
@@ -1417,7 +1437,7 @@
       hit.addEventListener('blur',function(){hide(hit,false);});
       hit.addEventListener('keydown',function(event){
         if(event.key==='Enter'||event.key===' '){event.preventDefault();show(hit);}
-        if(event.key==='Escape'){hit.blur();hide(hit,false);}
+        if(event.key==='Escape'){event.preventDefault();hit.blur();dismiss();}
       });
     });
   }

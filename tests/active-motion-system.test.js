@@ -119,6 +119,7 @@ assert.strictEqual(animatedValue.dataset.previousValue, '80');
 
 function makeMotionValue(target, previous) {
   return {
+    isConnected: true,
     textContent: String(previous),
     dataset: { targetValue: String(target), previousValue: String(previous) },
     getAttribute: (name) => name === 'data-motion-value' ? 'monthly-progress' : null,
@@ -159,8 +160,23 @@ interruptedFrames.shift()(560);
 assert.strictEqual(replacementMotionValue.textContent, '40');
 assert.strictEqual(interruptedSandbox._dataMotionValues['monthly-progress'], 40);
 
+const detachedMotionValue = makeMotionValue(80, 20);
+interruptedSandbox.activateDataMotion({ querySelectorAll: () => [detachedMotionValue] });
+interruptedFrames.shift()(330);
+const detachedValueAtRemoval = detachedMotionValue.textContent;
+const detachedCacheAtRemoval = interruptedSandbox._dataMotionValues['monthly-progress'];
+detachedMotionValue.isConnected = false;
+interruptedFrames.shift()(560);
+assert.strictEqual(detachedMotionValue.textContent, detachedValueAtRemoval,
+  'a detached numeric value must stop at its last rendered frame');
+assert.strictEqual(interruptedSandbox._dataMotionValues['monthly-progress'], detachedCacheAtRemoval,
+  'a detached numeric value must not advance the shared cache to an unseen target');
+assert.strictEqual(interruptedFrames.length, 0,
+  'a detached numeric value must not schedule another animation frame');
+
 function makeMotionWidth(target, previous) {
   return {
+    isConnected: true,
     dataset: { targetValue: String(target), previousValue: String(previous) },
     style: { width: previous + '%', transition: '' },
     offsetWidth: 100,
@@ -185,6 +201,48 @@ assert.strictEqual(Math.round(interruptedSandbox._dataMotionValues['monthly-prog
 interruptedFrames.shift()(560);
 assert.strictEqual(replacementMotionWidth.style.width, '40%');
 assert.strictEqual(interruptedSandbox._dataMotionValues['monthly-progress-fill'], 40);
+
+const detachedMotionWidth = makeMotionWidth(80, 20);
+interruptedSandbox.activateDataMotion({ querySelectorAll: () => [detachedMotionWidth] });
+interruptedFrames.shift()(330);
+const detachedWidthAtRemoval = detachedMotionWidth.style.width;
+const detachedWidthCacheAtRemoval = interruptedSandbox._dataMotionValues['monthly-progress-fill'];
+detachedMotionWidth.isConnected = false;
+interruptedFrames.shift()(560);
+assert.strictEqual(detachedMotionWidth.style.width, detachedWidthAtRemoval,
+  'a detached gauge or bar must stop at its last rendered dimension');
+assert.strictEqual(interruptedSandbox._dataMotionValues['monthly-progress-fill'], detachedWidthCacheAtRemoval,
+  'a detached gauge or bar must not advance the shared cache to an unseen target');
+assert.strictEqual(interruptedFrames.length, 0,
+  'a detached gauge or bar must not schedule another animation frame');
+
+const lineFrames = [];
+const dataLabLine = {
+  isConnected: true,
+  dataset: {},
+  style: {
+    strokeDasharray: '',
+    strokeDashoffset: '',
+    setProperty(name, value) { this[name] = value; }
+  },
+  getTotalLength: () => 100,
+  getBoundingClientRect: () => ({ width: 100, height: 20 })
+};
+const lineSandbox = {
+  window: { matchMedia: () => ({ matches: false }) },
+  requestAnimationFrame: (frame) => lineFrames.push(frame)
+};
+vm.runInNewContext([
+  functionSource('motionReduced'),
+  functionSource('animateDataLabLine')
+].join('\n'), lineSandbox);
+lineSandbox.animateDataLabLine(dataLabLine);
+assert.strictEqual(dataLabLine.style.strokeDashoffset, '100');
+dataLabLine.isConnected = false;
+lineFrames.shift()();
+assert.strictEqual(dataLabLine.style.strokeDashoffset, '100',
+  'a detached DataLab line must not finish its draw on an unseen SVG node');
+assert.strictEqual(lineFrames.length, 0);
 
 const pointListeners = {};
 const pointClasses = new Set();
@@ -254,6 +312,15 @@ assert.strictEqual(mixedTooltip.style.display, 'block',
   'pointer leave on the focused owner must keep its keyboard tooltip visible');
 assert.strictEqual(focusedPoint.classes.has('is-active'), true,
   'the focused owner must retain its single visible focus marker after pointer leave');
+focusedPoint.listeners.focus();
+pointerPoint.listeners.touchstart();
+assert.strictEqual(pointerPoint.classes.has('is-active'), true);
+focusedPoint.listeners.keydown({ key: 'Escape', preventDefault: () => {} });
+assert.strictEqual(mixedTooltip.style.display, 'none',
+  'Escape from a focused non-owner must dismiss the shared active tooltip');
+assert.strictEqual(focusedPoint.classes.has('is-active'), false);
+assert.strictEqual(pointerPoint.classes.has('is-active'), false,
+  'Escape must clear the actual pointer or touch owner regardless of the event target');
 assert.doesNotMatch(source, /\.datalab-hit:focus\+\.datalab-dot/,
   'visual point growth must follow the single tooltip owner rather than raw focus plus pointer state');
 
