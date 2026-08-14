@@ -117,6 +117,75 @@ valueFrames.shift()(560);
 assert.strictEqual(animatedValue.textContent, '80%');
 assert.strictEqual(animatedValue.dataset.previousValue, '80');
 
+function makeMotionValue(target, previous) {
+  return {
+    textContent: String(previous),
+    dataset: { targetValue: String(target), previousValue: String(previous) },
+    getAttribute: (name) => name === 'data-motion-value' ? 'monthly-progress' : null,
+    hasAttribute: (name) => name === 'data-motion-value'
+  };
+}
+const interruptedFrames = [];
+const interruptedSandbox = {
+  _dataMotionValues: {},
+  _dataMotionSequences: {},
+  window: { matchMedia: () => ({ matches: false }) },
+  performance: { now: () => 100 },
+  requestAnimationFrame: (frame) => interruptedFrames.push(frame),
+  isFinite
+};
+vm.runInNewContext([
+  functionSource('motionReduced'),
+  functionSource('animateValueChange'),
+  functionSource('animateDimensionChange'),
+  functionSource('activateDataMotion')
+].join('\n'), interruptedSandbox);
+const firstMotionValue = makeMotionValue(80, 20);
+interruptedSandbox.activateDataMotion({ querySelectorAll: () => [firstMotionValue] });
+interruptedFrames.shift()(330);
+const interruptedAt = Number(firstMotionValue.textContent);
+assert.ok(interruptedAt > 20 && interruptedAt < 80);
+assert.strictEqual(Math.round(interruptedSandbox._dataMotionValues['monthly-progress']), interruptedAt,
+  'the motion cache must track the currently rendered frame rather than the pending target');
+const replacementMotionValue = makeMotionValue(40, 40);
+interruptedSandbox.activateDataMotion({ querySelectorAll: () => [replacementMotionValue] });
+assert.strictEqual(Number(replacementMotionValue.textContent), interruptedAt,
+  'a rapid rerender must resume from the interrupted rendered value without jumping to the old target');
+const staleFrame = interruptedFrames.shift();
+staleFrame(560);
+assert.strictEqual(Math.round(interruptedSandbox._dataMotionValues['monthly-progress']), interruptedAt,
+  'a detached stale animation must not overwrite the newer transition cache');
+interruptedFrames.shift()(560);
+assert.strictEqual(replacementMotionValue.textContent, '40');
+assert.strictEqual(interruptedSandbox._dataMotionValues['monthly-progress'], 40);
+
+function makeMotionWidth(target, previous) {
+  return {
+    dataset: { targetValue: String(target), previousValue: String(previous) },
+    style: { width: previous + '%', transition: '' },
+    offsetWidth: 100,
+    getAttribute: (name) => name === 'data-motion-width' ? 'monthly-progress-fill' : null,
+    hasAttribute: (name) => name === 'data-motion-width'
+  };
+}
+const firstMotionWidth = makeMotionWidth(80, 20);
+interruptedSandbox.activateDataMotion({ querySelectorAll: () => [firstMotionWidth] });
+interruptedFrames.shift()(330);
+const interruptedWidth = Number.parseFloat(firstMotionWidth.style.width);
+assert.ok(interruptedWidth > 20 && interruptedWidth < 80,
+  'dimension motion must expose its current interpolated width rather than jumping the inline target');
+assert.strictEqual(Math.round(interruptedSandbox._dataMotionValues['monthly-progress-fill']), Math.round(interruptedWidth));
+const replacementMotionWidth = makeMotionWidth(40, 40);
+interruptedSandbox.activateDataMotion({ querySelectorAll: () => [replacementMotionWidth] });
+assert.strictEqual(Number.parseFloat(replacementMotionWidth.style.width), interruptedWidth,
+  'a replacement gauge must resume from the interrupted rendered width');
+const staleWidthFrame = interruptedFrames.shift();
+staleWidthFrame(560);
+assert.strictEqual(Math.round(interruptedSandbox._dataMotionValues['monthly-progress-fill']), Math.round(interruptedWidth));
+interruptedFrames.shift()(560);
+assert.strictEqual(replacementMotionWidth.style.width, '40%');
+assert.strictEqual(interruptedSandbox._dataMotionValues['monthly-progress-fill'], 40);
+
 const pointListeners = {};
 const pointClasses = new Set();
 const point = {
@@ -144,6 +213,43 @@ assert.strictEqual(pointTooltip.style.display, 'block',
   'Enter must activate the same existing tooltip used by pointer and touch');
 assert.strictEqual(pointClasses.has('is-active'), true);
 assert.strictEqual(keyboardDefaultPrevented, true);
+
+function makeDataLabPoint(period, volume, cx, cy) {
+  const listeners = {};
+  const classes = new Set();
+  return {
+    listeners,
+    classes,
+    dataset: { period, volume },
+    classList: { add: (name) => classes.add(name), remove: (name) => classes.delete(name) },
+    getAttribute: (name) => name === 'cx' ? String(cx) : String(cy),
+    addEventListener: (type, listener) => { listeners[type] = listener; },
+    blur: () => {}
+  };
+}
+const focusedPoint = makeDataLabPoint('2026-08-01', '800', 20, 20);
+const pointerPoint = makeDataLabPoint('2026-08-14', '1,250', 80, 80);
+const mixedTooltip = { innerHTML: '', style: {} };
+const mixedDocument = { activeElement: focusedPoint };
+const mixedTooltipSandbox = { Array, document: mixedDocument, esc: (value) => String(value) };
+vm.runInNewContext(functionSource('bindDataLabPointTooltips'), mixedTooltipSandbox);
+mixedTooltipSandbox.bindDataLabPointTooltips({
+  querySelector: () => mixedTooltip,
+  querySelectorAll: () => [focusedPoint, pointerPoint]
+}, 100, 100);
+focusedPoint.listeners.focus();
+pointerPoint.listeners.pointerenter();
+assert.strictEqual(focusedPoint.classes.has('is-active'), false,
+  'pointer ownership must temporarily replace the keyboard-focused active point');
+assert.strictEqual(pointerPoint.classes.has('is-active'), true);
+pointerPoint.listeners.pointerleave();
+assert.strictEqual(mixedTooltip.style.display, 'block',
+  'leaving a pointer-owned point must restore the tooltip for the still-focused point');
+assert.match(mixedTooltip.innerHTML, /2026-08-01/);
+assert.strictEqual(focusedPoint.classes.has('is-active'), true);
+assert.strictEqual(pointerPoint.classes.has('is-active'), false);
+assert.doesNotMatch(source, /\.datalab-hit:focus\+\.datalab-dot/,
+  'visual point growth must follow the single tooltip owner rather than raw focus plus pointer state');
 
 async function verifyClientSaveOrderingAndRollback() {
   const queuedWrites = [];
