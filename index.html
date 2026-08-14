@@ -50,10 +50,14 @@
   .dashboard-menu-toggle{ display:flex; align-items:center; gap:7px; }
   .dashboard-menu-toggle .menu-chevron{ transition:transform var(--motion-short) var(--ease-out); }
   .dashboard-menu.open .menu-chevron{ transform:rotate(180deg); }
-  .dashboard-menu-panel{ position:absolute; right:0; top:calc(100% + 8px); z-index:20; min-width:170px; padding:6px; border:1px solid var(--line); border-radius:14px; background:#fff; box-shadow:var(--shadow-pop); opacity:0; transform:translateY(-6px) scale(.98); pointer-events:none; transition:opacity var(--motion-short) var(--ease-out),transform var(--motion-short) var(--ease-out); }
+  .dashboard-menu-panel{ position:absolute; right:0; top:calc(100% + 8px); z-index:20; min-width:170px; padding:6px; border:1px solid var(--line); border-radius:14px; background:#fff; box-shadow:var(--shadow-pop); opacity:0; transform:translateY(-6px) scale(.98); transform-origin:top right; pointer-events:none; transition:opacity var(--motion-short) var(--ease-out),transform var(--motion-short) var(--ease-out); }
   .dashboard-menu.open .dashboard-menu-panel{ opacity:1; transform:translateY(0) scale(1); pointer-events:auto; }
-  .dashboard-menu-item{ display:flex; width:100%; align-items:center; gap:9px; border:0; border-radius:10px; padding:11px 12px; background:transparent; color:var(--ink-700); font-size:13px; font-weight:700; text-align:left; }
+  .dashboard-menu-item{ display:flex; width:100%; align-items:center; gap:9px; border:0; border-radius:10px; padding:11px 12px; background:transparent; color:var(--ink-700); font-size:13px; font-weight:700; text-align:left; opacity:0; transform:translateY(-4px); }
   .dashboard-menu-item:hover{ background:var(--brand-light); color:var(--brand-dark); }
+  .dashboard-menu.open .dashboard-menu-item{ transition:transform var(--motion-short) var(--ease-out),opacity var(--motion-short) var(--ease-out); }
+  .dashboard-menu.open .dashboard-menu-item{ opacity:1; transform:translateY(0); }
+  .dashboard-menu.open .dashboard-menu-item:nth-child(1){ transition-delay:40ms; }
+  .dashboard-menu.open .dashboard-menu-item:nth-child(2){ transition-delay:80ms; }
   @media(max-width:480px){ .dashboard-menu-panel{ right:-4px; min-width:180px; } }
   .brand{ display:flex; align-items:center; gap:9px; font-weight:800; font-size:17px; }
   .brand-mark{ width:24px; height:24px; border-radius:8px; background:linear-gradient(135deg,var(--brand),var(--brand-dark)); position:relative; flex:none; }
@@ -61,6 +65,7 @@
 
   .btn{ border:none; border-radius:12px; padding:11px 16px; font-size:14px; font-weight:700; transition:transform var(--motion-press) var(--ease-out), background var(--motion-short) var(--ease-out); white-space:nowrap; }
   .btn:active{ transform:scale(.97); }
+  .btn.is-pressing,.client-card.is-pressing,.detail-tab.is-pressing,.dashboard-menu-item.is-pressing{ transform:scale(.97); }
   .btn-primary{ background:var(--brand); color:#fff; box-shadow:0 6px 16px -6px rgba(49,130,246,.55); }
   .btn-primary:hover{ background:var(--brand-dark); }
   .btn-ghost{ background:var(--brand-light); color:var(--brand-dark); }
@@ -149,8 +154,9 @@
   #toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
 
   /* modal */
-  #modal-layer{ position:fixed; inset:0; background:rgba(15,23,42,.42); display:none; align-items:center; justify-content:center; padding:20px; z-index:100; }
-  #modal-layer.show{ display:flex; }
+  #modal-layer{ position:fixed; inset:0; background:rgba(15,23,42,.42); display:none; align-items:center; justify-content:center; padding:20px; z-index:100; opacity:0; transition:opacity var(--motion-short) var(--ease-out); }
+  #modal-layer.show,#modal-layer.is-closing{ display:flex; }
+  #modal-layer.show{ opacity:1; }
   #modal-layer.client-info-modal .modal{ max-width:460px; }
   #modal-layer.client-info-modal #modal-body{ white-space:normal; }
   .client-info-grid{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin:6px 0 18px; }
@@ -203,7 +209,11 @@
   #renewal-set-options{ display:grid; gap:8px; margin:0 0 18px; }
   #renewal-set-options button{ border:1px solid var(--line); background:#fff; border-radius:10px; padding:11px 12px; text-align:left; font-weight:700; }
   #renewal-set-options button.active{ border-color:var(--brand); background:var(--brand-light); color:var(--brand-dark); }
-  .modal{ background:#fff; border-radius:18px; padding:24px 22px 18px; max-width:360px; width:100%; box-shadow:var(--shadow-pop); }
+  .modal{ background:#fff; border-radius:18px; padding:24px 22px 18px; max-width:360px; width:100%; box-shadow:var(--shadow-pop); opacity:0; transform:translateY(10px) scale(.97); transform-origin:var(--motion-origin-x,50%) var(--motion-origin-y,50%); transition:opacity var(--motion-short) var(--ease-out),transform var(--motion-short) var(--ease-spring); }
+  .modal-layer.show .modal{ opacity:1; transform:translateY(0) scale(1); }
+  .modal-layer.is-closing .modal{ opacity:0; transform:translateY(6px) scale(.98); }
+  .tab-content-enter{ animation:tab-content-enter var(--motion-short) var(--ease-out); }
+  @keyframes tab-content-enter{ from{ opacity:0; transform:translateY(6px); } to{ opacity:1; transform:translateY(0); } }
   .modal h3{ margin:0 0 8px; font-size:16.5px; }
   .modal p{ margin:0 0 20px; font-size:13.5px; color:var(--ink-600); line-height:1.6; }
   .modal-actions{ display:flex; gap:8px; justify-content:flex-end; }
@@ -409,7 +419,7 @@
   .checklist li{ display:flex; gap:10px; padding:8px 0; font-size:14px; color:var(--ink-700); border-bottom:1px solid var(--line); }
   .checklist li:last-child{ border-bottom:none; }
   .detail-tabs{ display:flex; gap:6px; margin:18px 0; border-bottom:1px solid var(--line); }
-  .detail-tab{ border:0; background:transparent; padding:11px 12px; font-weight:800; color:var(--ink-400); cursor:pointer; border-bottom:2px solid transparent; }
+  .detail-tab{ border:0; background:transparent; padding:11px 12px; font-weight:800; color:var(--ink-400); cursor:pointer; border-bottom:2px solid transparent; transition:transform var(--motion-press) var(--ease-out); }
   .detail-tab.active{ color:var(--brand-dark); border-bottom-color:var(--brand); }
   .calendar-grid{ display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:7px; }
   .calendar-weekday{ text-align:center; color:var(--ink-400); font-size:11px; font-weight:800; padding:3px 0; }
@@ -616,7 +626,7 @@
 <body>
 <div id="app"></div>
 <div id="toast"></div>
-<div id="modal-layer"><div class="modal">
+<div id="modal-layer" class="modal-layer"><div class="modal">
   <h3 id="modal-title">확인</h3>
   <p id="modal-body"></p>
   <div class="modal-actions">
@@ -1274,6 +1284,17 @@
     if(state==='saved')restartMotion(element,'is-saved');
     if(state==='error')element.classList.add('is-save-error');
   }
+  function bindPressFeedback(root){
+    (root||document).querySelectorAll('.btn,.client-card,[data-client-tab],.dashboard-menu-item').forEach(function(element){
+      if(element.dataset.pressBound)return;
+      element.dataset.pressBound='true';
+      var release=function(){element.classList.remove('is-pressing');};
+      element.addEventListener('pointerdown',function(){if(!element.disabled)element.classList.add('is-pressing');});
+      element.addEventListener('pointerup',release);
+      element.addEventListener('pointercancel',release);
+      element.addEventListener('pointerleave',release);
+    });
+  }
   function copyText(text){
     if(navigator.clipboard&&navigator.clipboard.writeText){
       navigator.clipboard.writeText(text).then(function(){showToast("복사되었습니다");}).catch(fb);
@@ -1284,22 +1305,37 @@
       document.body.removeChild(ta);
     }
   }
-  var _confirmCb=null;
+  var _confirmCb=null, _modalSequence=0, _modalCloseTimer=null;
+  function setModalOrigin(layer,trigger){
+    var rect=trigger&&trigger.getBoundingClientRect ? trigger.getBoundingClientRect() : null;
+    var x=rect ? rect.left+rect.width/2 : window.innerWidth/2;
+    var y=rect ? rect.top+rect.height/2 : window.innerHeight/2;
+    layer.style.setProperty('--motion-origin-x',x+'px');
+    layer.style.setProperty('--motion-origin-y',y+'px');
+  }
+  function openModalLayer(layer,trigger,clientInfo){
+    _modalSequence++;
+    clearTimeout(_modalCloseTimer);
+    setModalOrigin(layer,trigger||document.activeElement);
+    layer.classList.remove('is-closing');
+    layer.classList.toggle('client-info-modal',!!clientInfo);
+    layer.classList.add('show');
+  }
   function confirmDialog(title, body, confirmLabel, cb){
     document.getElementById("modal-title").textContent=title;
     document.getElementById("modal-body").textContent=body;
     document.getElementById("modal-confirm").textContent=confirmLabel||"삭제";
-    document.getElementById("modal-layer").classList.add("show");
+    openModalLayer(document.getElementById("modal-layer"));
     _confirmCb=cb;
   }
-  function closeModal(){ var layer=document.getElementById("modal-layer"), confirm=document.getElementById("modal-confirm"), cancel=document.getElementById("modal-cancel"); layer.classList.remove("show","client-info-modal"); confirm.hidden=false; cancel.textContent="취소"; document.getElementById("modal-body").textContent=""; _confirmCb=null; }
+  function closeModal(){ var layer=document.getElementById("modal-layer"), confirm=document.getElementById("modal-confirm"), cancel=document.getElementById("modal-cancel"), sequence=++_modalSequence; layer.classList.remove("show","client-info-modal"); layer.classList.add("is-closing"); _modalCloseTimer=setTimeout(function(){ if(sequence!==_modalSequence)return; layer.classList.remove("is-closing"); confirm.hidden=false; cancel.textContent="취소"; document.getElementById("modal-body").textContent=""; _confirmCb=null; },200); }
   document.getElementById("modal-cancel").addEventListener("click", closeModal);
   document.getElementById("modal-layer").addEventListener("click", function(e){ if(e.target.id==="modal-layer") closeModal(); });
   document.getElementById("modal-confirm").addEventListener("click", function(){
     var cb=_confirmCb; closeModal(); if(cb) cb();
   });
 
-  function showClientInfoModal(client){
+  function showClientInfoModal(client,trigger){
     if(!client) return;
     var layer=document.getElementById("modal-layer"), body=document.getElementById("modal-body"), confirm=document.getElementById("modal-confirm"), cancel=document.getElementById("modal-cancel");
     var progress=thirtyDayProgress(client.startDate);
@@ -1307,7 +1343,7 @@
     var rows=[["계약 구분",contractLabel(client)],["회차",client.contractType==="renewal"?String(client.renewalCount||1)+"회차":"신규"],["진행 사항",progressText],["시작일",client.startDate||"미입력"]];
     document.getElementById("modal-title").textContent="업체 정보";
     body.innerHTML='<div class="client-info-grid">'+rows.map(function(row){return '<div class="client-info-item"><span class="client-info-label">'+esc(row[0])+'</span><span class="client-info-value">'+esc(row[1]||"미입력")+'</span></div>';}).join("")+'</div><button type="button" class="btn btn-primary btn-block" id="btn-client-info-open">업체 상세로 이동</button>';
-    layer.classList.add("show","client-info-modal");
+    openModalLayer(layer,trigger,true);
     confirm.hidden=true; cancel.textContent="닫기";
     _confirmCb=null;
     document.getElementById("btn-client-info-open").onclick=function(){ closeModal(); openClient(client.id); };
@@ -1795,6 +1831,7 @@
       btn.disabled=true; result.innerHTML='<div class="empty-state"><div class="es-title">검색량을 불러오는 중입니다</div><div class="es-sub">네이버 API에 안전하게 요청하고 있습니다.</div></div>';
       try{var res=await fetch('/api/naver-keyword',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+authToken},body:JSON.stringify({keywords:keywords})});var data=await res.json();if(!res.ok)throw new Error(data.error||'조회에 실패했습니다');var returned=Array.isArray(data.keywordList)?data.keywordList:[];var exact=returned.filter(function(item){return keywords.indexOf(String(item.relKeyword||''))>=0;});if(bulkMode){exact.forEach(function(item){bulkResults[String(item.relKeyword)]=item;});}var display=bulkMode?Object.keys(bulkResults).map(function(key){return bulkResults[key];}):returned;var rows=display.map(function(item){return '<tr><td><strong>'+esc(item.relKeyword||'')+'</strong></td><td>'+esc(item.monthlyPcQcCnt||'-')+'</td><td>'+esc(item.monthlyMobileQcCnt||'-')+'</td><td>'+esc(item.monthlyAveMobileClkCnt||'-')+'</td></tr>';}).join('');var related=!bulkMode?returned.filter(function(item){return keywords.indexOf(String(item.relKeyword||''))<0;}).slice(0,10).map(function(item){return '<span class="tag">'+esc(item.relKeyword||'')+'</span>';}).join(''):'';result.innerHTML=rows?'<div class="table-wrap"><table><thead><tr><th>키워드</th><th>PC 검색량</th><th>모바일 검색량</th><th>평균 클릭</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+(related?'<div style="margin-top:16px"><div class="panel-hint" style="margin-bottom:8px">연관 검색어</div><div style="display:flex;gap:6px;flex-wrap:wrap">'+related+'</div></div>':''):'<div class="empty-state"><div class="es-title">입력한 키워드 결과가 없습니다</div><div class="es-sub">띄어쓰기 없이 정확한 키워드를 입력해 주세요.</div></div>';if(!bulkMode&&!relatedMode&&rows){var trend=document.createElement('div');trend.className='datalab-trend-card';trend.innerHTML='<div class="datalab-trend-head"><strong>검색 관심도 추이</strong><span>네이버 데이터랩 · 상대 지수</span></div><div class="empty-state"><div class="es-sub">관심도 데이터를 불러오는 중입니다.</div></div>';result.appendChild(trend);fetch('/api/naver-datalab',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+authToken},body:JSON.stringify({keyword:keywords[0],timeUnit:'date'})}).then(function(r){return r.json().then(function(d){if(!r.ok)throw new Error(d.error||'데이터랩 조회 실패');return d;});}).then(function(d){var points=d.results&&d.results[0]&&d.results[0].data||[];if(!points.length){trend.innerHTML+='<div class="datalab-note">표시할 관심도 데이터가 없습니다.</div>';return;}var max=Math.max.apply(null,points.map(function(p){return Number(p.ratio)||0;}))||1,w=720,h=160,pad=8,step=(w-pad*2)/Math.max(points.length-1,1),coords=points.map(function(p,i){return [pad+i*step,h-pad-(Number(p.ratio)||0)/max*(h-pad*2)];});var line=coords.map(function(p){return p[0].toFixed(1)+','+p[1].toFixed(1);}).join(' '),last=points[points.length-1].period,first=points[0].period;trend.innerHTML='<div class="datalab-trend-head"><strong>검색 관심도 추이</strong><span>네이버 데이터랩 · 상대 지수</span></div><svg class="datalab-chart" viewBox="0 0 '+w+' '+h+'" role="img" aria-label="'+esc(keywords[0])+' 관심도 추이"><polyline class="datalab-line" points="'+line+'"></polyline><circle class="datalab-dot" cx="'+coords[0][0]+'" cy="'+coords[0][1]+'" r="4"></circle><circle class="datalab-dot" cx="'+coords[coords.length-1][0]+'" cy="'+coords[coords.length-1][1]+'" r="4"></circle></svg><div class="datalab-axis"><span>'+esc(first)+'</span><span>'+esc(last)+'</span></div>';}).catch(function(e){trend.innerHTML='<div class="datalab-trend-head"><strong>검색 관심도 추이</strong><span>네이버 데이터랩</span></div><div class="datalab-note">'+esc(e.message)+' (검색량 결과는 정상 표시됩니다.)</div>';});} }catch(e){result.innerHTML='<div class="empty-state"><div class="es-title">조회하지 못했습니다</div><div class="es-sub">'+esc(e.message)+'</div></div>';}finally{var table=result.querySelector('table');if(table)table.className='keyword-result-table';btn.disabled=false;}
     };
+    bindPressFeedback(app);
   }
 
   /* ============ client helpers ============ */
@@ -1859,7 +1896,7 @@
     });
     document.getElementById("btn-menu-tools").addEventListener("click", function(){ state.view="keywordTool"; render(); });
     var menu=document.getElementById("dashboard-menu"), menuButton=document.getElementById("btn-dashboard-menu");
-    menuButton.addEventListener("click", function(e){ e.stopPropagation(); var open=menu.classList.toggle("open"); menuButton.setAttribute("aria-expanded",String(open)); });
+    menuButton.addEventListener("click", function(e){ e.stopPropagation(); var open=!menu.classList.contains("open"); menuButton.setAttribute("aria-expanded",String(open)); menu.classList.toggle("open",open); });
     document.addEventListener("click", function closeDashboardMenu(e){ if(menu&&!menu.contains(e.target)){ menu.classList.remove("open"); menuButton.setAttribute("aria-expanded","false"); } }, { once:true });
     document.getElementById("btn-this-month").addEventListener("click", function(){
       state.month=monthKey(new Date()); render();
@@ -1871,6 +1908,7 @@
         state.month=monthKey(d); render();
       });
     });
+    bindPressFeedback(app);
 
     fillDashboard();
   }
@@ -1954,7 +1992,7 @@
     body.innerHTML=statsHtml+listHtml;
 
     var statCards=[document.getElementById("stat-managed-clients"),document.querySelector(".stats-grid .stat-card:nth-child(2)"),document.querySelector(".stats-grid .stat-card:nth-child(3)")].filter(Boolean);
-    statCards.forEach(function(statCard){ statCard.style.cursor="pointer"; statCard.addEventListener("click",function(){
+    statCards.forEach(function(statCard){ statCard.style.cursor="pointer"; statCard.addEventListener("click",function(e){
       var statIndex=Array.prototype.indexOf.call(statCards,statCard);
       var activeClients=clients.filter(function(item){return item.status!=="ended" && (statIndex===0 || (statIndex===1 ? item.contractType!=="renewal" : item.contractType==="renewal"));});
       var layer=document.getElementById("modal-layer"), bodyEl=document.getElementById("modal-body"), confirm=document.getElementById("modal-confirm"), cancel=document.getElementById("modal-cancel");
@@ -1969,7 +2007,7 @@
         var label=complete?"재계약 완료":(overdue?"갱신 미진행":(season?"재계약 시즌":"진행 중"));
         return '<div class="client-status-row '+cls+'"><button type="button" data-stat-client="'+esc(item.id)+'">'+esc(item.name)+'</button><span>'+esc(item.startDate||"-")+'</span><span>'+esc(end?end.toISOString().slice(0,10):"-")+'</span><span class="client-status-badge">'+label+'</span></div>';
       }).join("")+'</div>';
-      layer.classList.add("show","client-info-modal"); confirm.hidden=true; cancel.textContent="닫기"; _confirmCb=null;
+      openModalLayer(layer,e.currentTarget,true); confirm.hidden=true; cancel.textContent="닫기"; _confirmCb=null;
       bodyEl.querySelectorAll("[data-stat-client]").forEach(function(btn){btn.onclick=function(){closeModal();openClient(btn.getAttribute("data-stat-client"));};});
     }); });
 
@@ -1981,6 +2019,7 @@
     body.querySelectorAll("[data-open-client]").forEach(function(el){
       el.addEventListener("click", function(){ openClient(el.getAttribute("data-open-client")); });
     });
+    bindPressFeedback(app);
   }
 
   async function cycleWeek(clientId, week){
@@ -2756,8 +2795,10 @@
     if(!open) syncChecklistSetEditor();
     state.setCollectionOpen=Boolean(open);
   }
+  var _clientTabMotionPending=false;
   function setClientWorkspaceTab(tab){
     syncChecklistSetEditor();
+    _clientTabMotionPending=state.clientTab!==tab;
     state.clientTab=tab;
   }
   function renderClientWorkspace(cl){
@@ -2775,6 +2816,10 @@
     app.innerHTML='<div class="report-top"><button class="back-btn" id="btn-back">←</button><div class="report-actions"><button class="btn btn-plain btn-sm" id="btn-renew">재계약 처리</button><button class="btn btn-plain btn-sm" id="btn-edit-client">정보 수정</button></div></div>'+
       '<div class="detail-head fade-in"><div class="dh-tagrow"><span class="status-pill">'+(cl.contractType==="renewal"?"재계약":"신규")+'</span></div><h2 class="dh-name">'+esc(cl.name)+'</h2><div class="dh-meta"><span>'+esc(cl.industry||"")+'</span><span>시작 '+esc(cl.startDate||"미등록")+'</span></div></div>'+
       '<div class="detail-tabs"><button class="detail-tab '+(activeTab==="calendar"?"active":"")+'" data-client-tab="calendar">일정 달력</button><button class="detail-tab '+(activeTab==="checklist"?"active":"")+'" data-client-tab="checklist">업무 체크리스트 <small>'+done+'/'+tasks.length+'</small></button><button class="detail-tab '+(activeTab==="reports"?"active":"")+'" data-client-tab="reports">리포트</button><button class="detail-tab '+(activeTab==="contracts"?"active":"")+'" data-client-tab="contracts">계약서</button><button class="detail-tab '+(activeTab==="guide"?"active":"")+'" data-client-tab="guide">정보 안내문</button></div>'+content;
+    if(_clientTabMotionPending){
+      var tabs=app.querySelector('.detail-tabs'), tabContent=tabs&&tabs.nextElementSibling;
+      if(tabContent)restartMotion(tabContent,'tab-content-enter');
+    }
     document.getElementById("btn-back").onclick=function(){ state.view="dashboard"; render(); };
     document.getElementById("btn-edit-client").onclick=function(){ state.editingClient=cl; state.view="clientForm"; render(); };
     document.getElementById("btn-renew").onclick=function(){ markRenewal(cl.id); };
@@ -2782,6 +2827,8 @@
     bindCalendarPanel(cl); bindChecklistPanel(cl); bindReportPanel(cl);
     if(typeof bindContractsPanel==="function") bindContractsPanel(cl);
     if(activeTab==="guide") bindGuidePanel(cl,state.currentGuide,state.currentGuideReview,state.currentGuideLoadState,state.currentGuideReviewLoadState);
+    bindPressFeedback(app);
+    _clientTabMotionPending=false;
   }
   function calendarPanel(cl){
     var anchor=cl.startDate ? new Date(cl.startDate+"T12:00:00") : new Date();
