@@ -18,7 +18,7 @@ assert(html.includes('id="datalab-time-unit"')&&html.includes('id="datalab-start
 assert(html.includes('datalab-summary-card'),'DataLab single result summary missing');
 assert(html.includes('function estimateKeywordVolumes('),'Estimated volume helper missing');
 assert(html.includes("Promise.all([fetch('/api/naver-keyword'"),'Single keyword mode must combine Keyword Tool and DataLab');
-assert(html.includes('월간 예상 검색량')&&html.includes('일평균 예상 검색량'),'Estimated-volume summary labels missing');
+assert(html.includes('월간 검색량')&&html.includes('일평균 검색량'),'Estimated-volume summary labels missing');
 assert(html.includes('period-volume-table'),'Estimated period-volume table missing');
 assert(html.includes('키워드 도구 월간 검색량과 데이터랩 상대 추이를 조합한 추정치'),'Estimate disclosure missing');
 assert(/function syncMode\(\)[\s\S]*?datalab-controls[\s\S]*?bulkMode\|\|relatedMode/.test(html),'Mode sync must hide DataLab date controls outside the single-keyword tab');
@@ -28,6 +28,10 @@ assert(html.includes('function localInputDate('),'Local calendar date helper mis
 assert(html.includes("unit==='year'?5*365:unit==='month'?365:unit==='week'?183:30"),'Expected automatic ranges are not configured');
 assert(html.includes('datalab-chart-tooltip'),'Interactive chart tooltip missing');
 assert(html.includes("addEventListener('mouseenter'")&&html.includes("addEventListener('touchstart'"),'Mouse and touch tooltip handlers missing');
+assert(html.includes('metric-label')&&html.includes('metric-context')&&html.includes('metric-value')&&html.includes('metric-unit'),'Readable metric hierarchy missing');
+assert(html.includes('월평균 검색량')&&html.includes('최근 1년 기준'),'Monthly average label hierarchy missing');
+assert(html.includes('주평균 검색량')&&html.includes('최근 6개월 기준'),'Weekly average label hierarchy missing');
+assert(html.includes('period-index')&&html.includes('period-index-badge'),'Readable period table styling missing');
 const estimatorSource=html.match(/function estimateKeywordVolumes\([\s\S]*?\n    \}/);
 assert(estimatorSource,'Estimator source could not be extracted');
 const sandbox={};vm.runInNewContext(estimatorSource[0],sandbox);
