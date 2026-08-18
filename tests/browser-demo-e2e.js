@@ -3,6 +3,7 @@ const assert = require('assert');
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 (async () => {
+  const baseUrl = process.env.DEMO_BASE_URL || 'http://127.0.0.1:8765/';
   const tabs = await fetch('http://127.0.0.1:9222/json').then((res) => res.json());
   const tab = tabs.find((item) => item.type === 'page');
   assert.ok(tab, 'Edge debugging page must exist');
@@ -30,7 +31,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
   await send('Page.enable'); await send('Runtime.enable'); await send('Network.enable');
   await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
-  await send('Page.navigate', { url: 'http://127.0.0.1:8765/' });
+  await send('Page.navigate', { url: baseUrl });
   await sleep(1000);
   assert.strictEqual(await evaluate("!!document.getElementById('btn-enter-demo')"), true, 'demo entry must render');
   await evaluate("document.getElementById('btn-enter-demo').click()");
