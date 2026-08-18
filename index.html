@@ -784,6 +784,41 @@
     try { localStorage.removeItem(AUTH_KEY); } catch(e) {}
   }
 
+  function staffLogout(){
+    forceLogout();
+    workspaceMode = "staff";
+    demoWorkspace = null;
+    try { sessionStorage.removeItem("rs:workspace-mode"); } catch(e) {}
+    state.view = "login";
+    renderLogin();
+  }
+
+  async function enterDemoMode(){
+    workspaceMode = "demo";
+    authToken = null;
+    demoWorkspace = null;
+    try { sessionStorage.setItem("rs:workspace-mode", "demo"); } catch(e) {}
+    ensureDemoWorkspace();
+    await loadWorkspace();
+  }
+
+  function leaveDemoMode(){
+    workspaceMode = "staff";
+    demoWorkspace = null;
+    try { sessionStorage.removeItem("rs:workspace-mode"); } catch(e) {}
+    state.view = "login";
+    renderLogin();
+  }
+
+  async function resetDemoMode(){
+    if (!isDemoMode()) return;
+    var confirmed = await confirmDialog("데모 초기화", "수정한 데모 내용을 모두 지우고 처음 상태로 되돌릴까요?", "초기화");
+    if (!confirmed) return;
+    demoWorkspace = DemoData.resetDemoWorkspace(localStorage, new Date());
+    await loadWorkspace();
+    showToast("데모 데이터가 처음 상태로 초기화되었습니다.");
+  }
+
   /* ============ utils ============ */
   function uid(p){ return (p||"id")+"_"+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
   function newGuide(clientId){
@@ -1880,6 +1915,7 @@
       return;
     }
 
+    if (isDemoMode()) { await loadWorkspace(); return; }
     if (!authToken) { renderLogin(); return; }
     await loadWorkspace();
   }
@@ -1907,6 +1943,9 @@
           '<div class="field"><input type="password" id="login-pw" placeholder="비밀번호" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:12px 13px;font-size:14px;background:#FAFBFC;" /></div>'+
           '<div id="login-error" class="muted" style="color:var(--stop);display:none;margin-bottom:10px;font-size:13px;"></div>'+
           '<button class="btn btn-primary btn-block" id="btn-login">들어가기</button>'+
+          '<div style="display:flex;align-items:center;gap:10px;margin:18px 0;color:var(--ink-300);font-size:11px;"><span style="height:1px;background:var(--line);flex:1"></span>또는<span style="height:1px;background:var(--line);flex:1"></span></div>'+
+          '<button class="btn btn-plain btn-block" id="btn-enter-demo">비밀번호 없이 데모 체험</button>'+
+          '<p class="panel-hint" style="margin:10px 0 0;text-align:center;">가상의 업체 3곳으로 주요 기능과 분석기를 안전하게 확인합니다.</p>'+
         '</div>'+
       '</div>';
 
@@ -1914,6 +1953,7 @@
     pw.focus();
     pw.addEventListener("keydown", function(e){ if (e.key === "Enter") doLogin(); });
     document.getElementById("btn-login").addEventListener("click", doLogin);
+    document.getElementById("btn-enter-demo").addEventListener("click", enterDemoMode);
 
     async function doLogin(){
       var btn = document.getElementById("btn-login");
@@ -2063,8 +2103,8 @@
   function renderDashboard(){
     app.innerHTML=
       '<div class="topbar">'+
-        '<div class="brand"><span class="brand-mark"></span>업체 관리 대시보드</div>'+
-        '<div class="dashboard-menu" id="dashboard-menu"><button class="btn btn-primary dashboard-menu-toggle" id="btn-dashboard-menu" aria-expanded="false">메뉴 <span class="menu-chevron">⌄</span></button><div class="dashboard-menu-panel" role="menu"><button class="dashboard-menu-item" id="btn-menu-new-client" role="menuitem">＋ 업체 추가</button><button class="dashboard-menu-item" id="btn-menu-tools" role="menuitem">▥ 분석기</button></div></div>'+
+        '<div class="brand"><span class="brand-mark"></span>업체 관리 대시보드'+(isDemoMode()?' <span class="tag tag-new" style="margin-left:7px">DEMO</span>':'')+'</div>'+
+        '<div class="dashboard-menu" id="dashboard-menu"><button class="btn btn-primary dashboard-menu-toggle" id="btn-dashboard-menu" aria-expanded="false">메뉴 <span class="menu-chevron">⌄</span></button><div class="dashboard-menu-panel" role="menu"><button class="dashboard-menu-item" id="btn-menu-new-client" role="menuitem">＋ 업체 추가</button><button class="dashboard-menu-item" id="btn-menu-tools" role="menuitem">▥ 분석기</button>'+(isDemoMode()?'<button class="dashboard-menu-item" id="btn-menu-demo-reset" role="menuitem">↻ 데모 초기화</button><button class="dashboard-menu-item" id="btn-menu-staff-login" role="menuitem">직원 로그인으로 전환</button>':'<button class="dashboard-menu-item" id="btn-menu-logout" role="menuitem">로그아웃</button>')+'</div></div>'+
       '</div>'+
       '<div class="hero">'+
         '<p class="eyebrow">'+esc(monthLabel(state.month))+' 기준</p>'+
@@ -2082,6 +2122,9 @@
       state.editingClient=null; state.view="clientForm"; render();
     });
     document.getElementById("btn-menu-tools").addEventListener("click", function(){ state.view="keywordTool"; render(); });
+    var demoReset=document.getElementById("btn-menu-demo-reset"); if(demoReset) demoReset.addEventListener("click", resetDemoMode);
+    var staffSwitch=document.getElementById("btn-menu-staff-login"); if(staffSwitch) staffSwitch.addEventListener("click", leaveDemoMode);
+    var logoutButton=document.getElementById("btn-menu-logout"); if(logoutButton) logoutButton.addEventListener("click", staffLogout);
     var menu=document.getElementById("dashboard-menu"), menuButton=document.getElementById("btn-dashboard-menu");
     menuButton.addEventListener("click", function(e){ e.stopPropagation(); var open=!menu.classList.contains("open"); menuButton.setAttribute("aria-expanded",String(open)); menu.classList.toggle("open",open); });
     document.addEventListener("click", function closeDashboardMenu(e){ if(menu&&!menu.contains(e.target)){ menu.classList.remove("open"); menuButton.setAttribute("aria-expanded","false"); } }, { once:true });

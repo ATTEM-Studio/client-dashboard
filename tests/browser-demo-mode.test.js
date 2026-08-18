@@ -79,6 +79,12 @@ assert.strictEqual(memoryWorkspace.persistent, false, 'storage failures must fal
 assert.strictEqual(memoryWorkspace.values['clients-index'].length, 3);
 
 const html = fs.readFileSync('index.html', 'utf8');
+assert.match(html, /id="btn-enter-demo"/, 'login must offer password-free demo entry');
+assert.match(html, /function enterDemoMode\(\)/, 'demo entry transition must exist');
+assert.match(html, /function resetDemoMode\(\)/, 'demo reset action must exist');
+assert.match(html, /function leaveDemoMode\(\)/, 'demo-to-staff transition must exist');
+assert.match(html, /id="btn-menu-logout"/, 'staff dashboard menu must expose logout');
+assert.match(html, /DEMO/, 'demo chrome must visibly identify demo mode');
 assert.match(html, /<script src="demo-data\.js"><\/script>\s*<script>/,
   'the dashboard must load demo storage helpers before its inline application script');
 const storageStart = html.indexOf('  var workspaceMode = sessionStorage.getItem(\'rs:workspace-mode\')');
