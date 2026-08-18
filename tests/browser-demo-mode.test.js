@@ -23,7 +23,7 @@ const storage = fakeStorage();
 const seed = DemoData.createDemoSeed(now);
 const requiredDemoExports = [
   'DEMO_STORAGE_KEY', 'DEMO_SCHEMA_VERSION', 'createDemoSeed', 'loadDemoWorkspace',
-  'saveDemoValue', 'resetDemoWorkspace'
+  'saveDemoValue', 'resetDemoWorkspace', 'demoKeywordResponse', 'demoDataLabResponse'
 ];
 const requiredSeedKeys = [
   'clients-index', 'reports-index', 'contracts-index', 'contract-base-terms-template', 'checklist-sets'
@@ -32,7 +32,7 @@ const requiredSeedKeys = [
 requiredDemoExports.forEach((name) => {
   assert.ok(Object.prototype.hasOwnProperty.call(DemoData, name), `DemoData must export ${name}`);
 });
-['createDemoSeed', 'loadDemoWorkspace', 'saveDemoValue', 'resetDemoWorkspace'].forEach((name) => {
+['createDemoSeed', 'loadDemoWorkspace', 'saveDemoValue', 'resetDemoWorkspace', 'demoKeywordResponse', 'demoDataLabResponse'].forEach((name) => {
   assert.strictEqual(typeof DemoData[name], 'function', `DemoData.${name} must be callable`);
 });
 requiredSeedKeys.forEach((key) => {
@@ -78,6 +78,13 @@ const memoryWorkspace = DemoData.loadDemoWorkspace(unavailableStorage, now);
 assert.strictEqual(memoryWorkspace.persistent, false, 'storage failures must fall back to a non-persistent memory workspace');
 assert.strictEqual(memoryWorkspace.values['clients-index'].length, 3);
 
+const demoKeyword = DemoData.demoKeywordResponse('single', ['강남맛집']);
+assert.strictEqual(demoKeyword.keywordList[0].relKeyword, '강남맛집');
+assert.strictEqual(demoKeyword.demo, true);
+const demoTrend = DemoData.demoDataLabResponse('강남맛집', 'date', '2026-08-01', '2026-08-17');
+assert.ok(demoTrend.results[0].data.length > 5, 'demo analyzer must return deterministic chart points');
+assert.strictEqual(demoTrend.demo, true);
+
 const html = fs.readFileSync('index.html', 'utf8');
 assert.match(html, /id="btn-enter-demo"/, 'login must offer password-free demo entry');
 assert.match(html, /function enterDemoMode\(\)/, 'demo entry transition must exist');
@@ -85,6 +92,9 @@ assert.match(html, /function resetDemoMode\(\)/, 'demo reset action must exist')
 assert.match(html, /function leaveDemoMode\(\)/, 'demo-to-staff transition must exist');
 assert.match(html, /id="btn-menu-logout"/, 'staff dashboard menu must expose logout');
 assert.match(html, /DEMO/, 'demo chrome must visibly identify demo mode');
+assert.match(html, /keywordApiFetch/, 'analyzer must route demo requests through prepared sample data');
+assert.match(html, /데모에서는 실제 계약 링크를 발급하지 않습니다/, 'demo contracts must not issue public links');
+assert.match(html, /데모에서는 실제 링크를 발급하지 않습니다/, 'demo guides must not issue public links');
 assert.match(html, /<script src="demo-data\.js"><\/script>\s*<script>/,
   'the dashboard must load demo storage helpers before its inline application script');
 const storageStart = html.indexOf('  var workspaceMode = sessionStorage.getItem(\'rs:workspace-mode\')');

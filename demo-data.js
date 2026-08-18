@@ -215,12 +215,50 @@
     return workspace;
   }
 
+  var DEMO_KEYWORDS = {
+    "강남맛집": { pc: 36400, mobile: 90400, click: 72.3 },
+    "서면맛집": { pc: 10800, mobile: 93400, click: 165.4 },
+    "카페마케팅": { pc: 2960, mobile: 23700, click: 94 }
+  };
+
+  function demoKeywordResponse(mode, keywords) {
+    var requested = (Array.isArray(keywords) ? keywords : [keywords]).map(function (keyword) {
+      return String(keyword || "").replace(/\s/g, "");
+    }).filter(Boolean);
+    var names = mode === "related" && requested[0]
+      ? [requested[0], "강남역맛집", "데이트맛집", "서울맛집"]
+      : requested;
+    var rows = names.map(function (name, index) {
+      var item = DEMO_KEYWORDS[name] || { pc: 1200 + index * 430, mobile: 6800 + index * 910, click: 18.4 + index * 4.7 };
+      return { relKeyword: name, monthlyPcQcCnt: item.pc, monthlyMobileQcCnt: item.mobile, monthlyAveMobileClkCnt: item.click, demo: true };
+    });
+    return { keywordList: rows, demo: true, notice: "데모 데이터 · 실제 네이버 수치가 아닙니다." };
+  }
+
+  function demoDataLabResponse(keyword, unit, startDate, endDate) {
+    var end = endDate ? new Date(endDate + "T00:00:00") : localDay(new Date());
+    var start = startDate ? new Date(startDate + "T00:00:00") : addCalendarDays(end, -30);
+    var step = unit === "month" ? 30 : unit === "week" ? 7 : 1;
+    var points = [];
+    var cursor = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+    var index = 0;
+    while (cursor <= end && points.length < 370) {
+      var wave = 62 + Math.sin(index * 1.25) * 17 + Math.cos(index * 0.42) * 9;
+      points.push({ period: isoDate(cursor), ratio: Math.max(18, Math.min(100, Math.round(wave * 10) / 10)) });
+      cursor = addCalendarDays(cursor, step);
+      index += 1;
+    }
+    return { startDate: isoDate(start), endDate: isoDate(end), timeUnit: unit || "date", results: [{ title: String(keyword || "강남맛집"), keywords: [String(keyword || "강남맛집")], data: points }], demo: true, notice: "데모 데이터 · 실제 네이버 수치가 아닙니다." };
+  }
+
   root.DemoData = {
     DEMO_STORAGE_KEY: DEMO_STORAGE_KEY,
     DEMO_SCHEMA_VERSION: DEMO_SCHEMA_VERSION,
     createDemoSeed: createDemoSeed,
     loadDemoWorkspace: loadDemoWorkspace,
     saveDemoValue: saveDemoValue,
-    resetDemoWorkspace: resetDemoWorkspace
+    resetDemoWorkspace: resetDemoWorkspace,
+    demoKeywordResponse: demoKeywordResponse,
+    demoDataLabResponse: demoDataLabResponse
   };
 })(typeof globalThis !== "undefined" ? globalThis : this);

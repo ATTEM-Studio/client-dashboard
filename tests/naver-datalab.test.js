@@ -17,7 +17,7 @@ assert(html.includes("addEventListener('click',runSingleDataLabSearch,true)"),'S
 assert(html.includes('id="datalab-time-unit"')&&html.includes('id="datalab-start-date"')&&html.includes('id="datalab-end-date"'),'DataLab period controls missing');
 assert(html.includes('datalab-summary-card'),'DataLab single result summary missing');
 assert(html.includes('function estimateKeywordVolumes('),'Estimated volume helper missing');
-assert(html.includes("Promise.all([fetch('/api/naver-keyword'"),'Single keyword mode must combine Keyword Tool and DataLab');
+assert(html.includes("Promise.all([keywordApiFetch('/api/naver-keyword'"),'Single keyword mode must combine Keyword Tool and DataLab through the mode-aware transport');
 assert(html.includes('월간 검색량')&&html.includes('일평균 검색량'),'Estimated-volume summary labels missing');
 assert(html.includes('period-volume-table'),'Estimated period-volume table missing');
 assert(html.includes('키워드 도구 월간 검색량과 데이터랩 상대 추이를 조합한 추정치'),'Estimate disclosure missing');

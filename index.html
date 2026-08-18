@@ -1569,7 +1569,7 @@
 
   /* ============ storage ============ */
   async function readS(k){
-    if(isDemoMode()){
+    if(typeof isDemoMode==="function"&&isDemoMode()){
       var values=ensureDemoWorkspace().values;
       return Object.prototype.hasOwnProperty.call(values,k) ? {status:"found",value:cloneDemoValue(values[k])} : {status:"missing"};
     }
@@ -1588,13 +1588,34 @@
   async function getS(k){ if(isDemoMode()) return cloneDemoValue(ensureDemoWorkspace().values[k]); try{ var r=await storageBackend.get(k,true); return r&&r.value?JSON.parse(r.value):null; }catch(e){ return null; } }
   async function setS(k,v){ if(isDemoMode()){ demoWorkspace=DemoData.saveDemoValue(localStorage,k,v); return {key:k,value:v}; } try{ return await storageBackend.set(k,JSON.stringify(v),true); }catch(e){ console.error(e); return null; } }
   async function delS(k){ if(isDemoMode()){ demoWorkspace=DemoData.saveDemoValue(localStorage,k,undefined); delete demoWorkspace.values[k]; return {key:k,deleted:true}; } try{ return await storageBackend.delete(k,true); }catch(e){ return null; } }
-  async function reserveGuideIssue(clientId){ try{ return await storageBackend.reserveGuideIssue(clientId); }catch(e){ console.error(e); return null; } }
-  async function mutatePublicGuide(guideId,answers,submitted){ try{ return await storageBackend.mutatePublicGuide(guideId,answers,submitted); }catch(e){ console.error(e); return null; } }
+  async function reserveGuideIssue(clientId){
+    if(isDemoMode()){
+      var guide=newGuide(clientId); guide.id="demo-guide-"+clientId; guide.demo=true;
+      await setS("guide:"+guide.id,guide);
+      return {guide:guide,demo:true};
+    }
+    try{ return await storageBackend.reserveGuideIssue(clientId); }catch(e){ console.error(e); return null; }
+  }
+  async function mutatePublicGuide(guideId,answers,submitted){
+    if(isDemoMode()){
+      var guide=await getS("guide:"+guideId); if(!guide) return null;
+      guide.answers=Object.assign({},guide.answers||{},answers||{}); guide.updatedAt=Date.now(); if(submitted) guide.submittedAt=guide.updatedAt; guide.demo=true;
+      await setS("guide:"+guideId,guide); return guide;
+    }
+    try{ return await storageBackend.mutatePublicGuide(guideId,answers,submitted); }catch(e){ console.error(e); return null; }
+  }
   async function readPublicGuide(guideId){
+    if(isDemoMode()){ var localGuide=await getS("guide:"+guideId); return localGuide?{status:"found",value:localGuide}:{status:"missing"}; }
     try{ return {status:"found",value:await storageBackend.getPublicGuide(guideId)}; }
     catch(e){ return {status:e&&e.code==="not_found"?"missing":"error",error:e}; }
   }
-  async function mutatePublicContract(contractId,contract,submitted){ try{ return await storageBackend.mutatePublicContract(contractId,contract,submitted); }catch(e){ console.error(e); return null; } }
+  async function mutatePublicContract(contractId,contract,submitted){
+    if(isDemoMode()){
+      var local=Object.assign({},contract||{},{id:contractId,demo:true,updatedAt:Date.now()}); if(submitted) local.submittedAt=local.updatedAt;
+      await setS("contract:"+contractId,local); return local;
+    }
+    try{ return await storageBackend.mutatePublicContract(contractId,contract,submitted); }catch(e){ console.error(e); return null; }
+  }
 
   /* ============ public client information guide ============ */
   var publicGuideSaveChain=Promise.resolve(true);
@@ -2007,6 +2028,15 @@
   function renderKeywordTool(){
     var bulkMode=false, relatedMode=false;
     var bulkResults={};
+    function keywordApiFetch(url, options){
+      if(!isDemoMode()) return fetch(url, options);
+      var payload={};
+      try { payload=JSON.parse(options&&options.body||"{}"); } catch(e) {}
+      var data=String(url).indexOf("naver-datalab")>=0
+        ? DemoData.demoDataLabResponse(payload.keyword, payload.timeUnit, payload.startDate, payload.endDate)
+        : DemoData.demoKeywordResponse(relatedMode?"related":bulkMode?"bulk":"single", payload.keywords||[]);
+      return Promise.resolve({ ok:true, status:200, json:function(){ return Promise.resolve(data); } });
+    }
     app.innerHTML='<div class="topbar"><div class="brand"><span class="brand-mark"></span>분석기</div><button class="btn btn-text" id="btn-tool-back">← 돌아가기</button></div><div class="hero"><p class="eyebrow">도구</p><h1>키워드 검색량</h1><p class="panel-hint">네이버 검색광고 API로 키워드 흐름을 빠르게 확인합니다.</p></div><div class="stats-grid"><div class="stat-card"><div class="stat-label">오늘 API 호출</div><div class="stat-value">-<span class="stat-unit">회</span></div><div class="stat-sub">네이버 응답 기준</div></div><div class="stat-card"><div class="stat-label">최근 1분 호출</div><div class="stat-value">-<span class="stat-unit">회</span></div><div class="stat-sub">권장 속도 내</div></div><div class="stat-card accent"><div class="stat-label">API 상태</div><div class="stat-value" style="font-size:20px">정상</div><div class="progress-track"><div class="progress-fill" style="width:12%"></div></div><div class="stat-sub">호출 제한 감지 없음</div></div></div><div class="panel fade-in"><div class="set-period-nav" style="margin-bottom:18px"><button class="active" type="button" id="btn-single-mode">키워드 검색량</button><button type="button" id="btn-bulk-mode">검색량 대량조회</button></div><div class="panel-head"><div><h3 class="panel-title" id="keyword-panel-title">키워드 상세 조회</h3><p class="panel-hint" id="keyword-panel-hint">한 단어를 입력하면 검색량과 연관 키워드를 자세히 확인합니다.</p></div><span class="tag tag-new">내부 전용</span></div><div class="field"><label>검색할 키워드</label><textarea id="naver-keywords" rows="5" placeholder="예: 하단지점"></textarea><p class="field-hint" id="keyword-input-hint">띄어쓰기 없이 한 단어로 입력해야 정확한 키워드로 인식됩니다.</p></div><div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 18px"><button class="btn btn-plain btn-sm keyword-chip" type="button">하단지점</button><button class="btn btn-plain btn-sm keyword-chip" type="button">카페마케팅</button><button class="btn btn-plain btn-sm keyword-chip" type="button">지역광고</button></div><div class="form-actions"><button class="btn btn-primary" id="btn-naver-search">키워드 상세 조회</button></div><div id="naver-result" style="margin-top:20px"><div class="empty-state"><div class="es-title">키워드를 입력해 조회해 보세요</div><div class="es-sub">PC·모바일 검색량과 연관 키워드를 함께 확인할 수 있습니다.</div></div></div></div>';
     document.getElementById('btn-tool-back').onclick=function(){state.view='dashboard';render();};
     var relatedButton=document.createElement('button'); relatedButton.type='button'; relatedButton.id='btn-related-mode'; relatedButton.textContent='연관 키워드 조회'; document.getElementById('btn-bulk-mode').parentNode.insertBefore(relatedButton,document.getElementById('btn-bulk-mode'));
@@ -2015,7 +2045,7 @@
     function localInputDate(date){return date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0')+'-'+String(date.getDate()).padStart(2,'0');}
     function setDataLabDefaultRange(unit){var end=new Date(),days=unit==='year'?5*365:unit==='month'?365:unit==='week'?183:30,start=new Date(end.getFullYear(),end.getMonth(),end.getDate()-days),iso=localInputDate;document.getElementById('datalab-start-date').value=iso(start);document.getElementById('datalab-end-date').value=iso(end);document.getElementById('datalab-start-date').max=iso(end);document.getElementById('datalab-end-date').max=iso(end);document.getElementById('datalab-range-hint').textContent=unit==='year'?'최근 5년':unit==='month'?'최근 1년':unit==='week'?'최근 6개월':'최근 1개월';}
     setDataLabDefaultRange('date');document.getElementById('datalab-time-unit').onchange=function(){setDataLabDefaultRange(this.value);if(document.getElementById('naver-keywords').value.trim())document.getElementById('btn-naver-search').click();};
-    var keywordFetch=window.fetch;window.fetch=function(url,opts){if(String(url).indexOf('/api/naver-datalab')>=0&&opts&&opts.body){try{var payload=JSON.parse(opts.body);payload.timeUnit=(document.getElementById('datalab-time-unit')||{}).value||payload.timeUnit||'date';var start=(document.getElementById('datalab-start-date')||{}).value,end=(document.getElementById('datalab-end-date')||{}).value;if(start)payload.startDate=start;if(end)payload.endDate=end;opts.body=JSON.stringify(payload);}catch(e){}}return keywordFetch.apply(this,arguments);};
+    var keywordFetch=isDemoMode()?keywordApiFetch:window.fetch;window.fetch=function(url,opts){if(String(url).indexOf('/api/naver-datalab')>=0&&opts&&opts.body){try{var payload=JSON.parse(opts.body);payload.timeUnit=(document.getElementById('datalab-time-unit')||{}).value||payload.timeUnit||'date';var start=(document.getElementById('datalab-start-date')||{}).value,end=(document.getElementById('datalab-end-date')||{}).value;if(start)payload.startDate=start;if(end)payload.endDate=end;opts.body=JSON.stringify(payload);}catch(e){}}return keywordFetch.apply(this,arguments);};
     document.querySelectorAll('.keyword-chip').forEach(function(chip){ chip.remove(); });
     document.querySelectorAll('.keyword-chip').forEach(function(chip){chip.remove();});
     function syncMode(){document.getElementById('btn-single-mode').classList.toggle('active',!bulkMode&&!relatedMode);document.getElementById('btn-bulk-mode').classList.toggle('active',bulkMode);document.getElementById('keyword-panel-title').textContent=bulkMode?'키워드 대량 조회':relatedMode?'연관 키워드 조회':'키워드 상세 조회';document.getElementById('keyword-panel-hint').textContent=bulkMode?'여러 키워드를 줄바꿈으로 입력하면 한 번에 조회합니다.':relatedMode?'입력한 키워드와 함께 검색되는 연관 키워드를 확인합니다.':'한 단어를 입력하면 예상 검색량 흐름을 자세히 확인합니다.';document.getElementById('keyword-input-hint').textContent=bulkMode?'한 줄에 하나씩 입력 · 최대 10개 · 띄어쓰기 없이 입력':'띄어쓰기 없이 한 단어로 입력해야 정확한 키워드로 인식됩니다.';document.getElementById('naver-keywords').setAttribute('placeholder',bulkMode||relatedMode?'':'예: 강남맛집');document.getElementById('btn-naver-search').textContent=bulkMode?'검색량 대량조회':relatedMode?'연관 키워드 조회':'키워드 상세 조회';var modeControls=document.querySelector('.datalab-controls');if(modeControls)modeControls.style.display=(bulkMode||relatedMode)?'none':'flex';}
@@ -2033,6 +2063,17 @@
     relatedButton.addEventListener('click',refreshKeywordApiPresentation);
     updateApiMode();
     refreshKeywordApiPresentation();
+    function applyDemoApiCards(){
+      if(!isDemoMode()) return;
+      var labels=document.querySelectorAll('.stats-grid .stat-label'),values=document.querySelectorAll('.stats-grid .stat-value'),subs=document.querySelectorAll('.stats-grid .stat-sub');
+      if(labels[0]) labels[0].textContent='샘플 데이터'; if(values[0]) values[0].innerHTML='준비됨'; if(subs[0]) subs[0].textContent='실제 네이버 호출 없음';
+      if(labels[1]) labels[1].textContent='데모 분석기'; if(values[1]) values[1].innerHTML='3<span class="stat-unit">종</span>'; if(subs[1]) subs[1].textContent='상세·연관·대량조회';
+      if(labels[2]) labels[2].textContent='데모 API 상태'; if(subs[2]) subs[2].textContent='실제 네이버 수치가 아닙니다.';
+    }
+    applyDemoApiCards();
+    document.getElementById('btn-single-mode').addEventListener('click',applyDemoApiCards);
+    document.getElementById('btn-bulk-mode').addEventListener('click',applyDemoApiCards);
+    relatedButton.addEventListener('click',applyDemoApiCards);
     function estimateKeywordVolumes(monthlyVolume,points,startDate,endDate){var start=new Date((startDate||points[0].period)+'T00:00:00Z'),end=new Date((endDate||points[points.length-1].period)+'T00:00:00Z'),days=Math.max(1,Math.round((end-start)/86400000)+1),target=Math.max(0,monthlyVolume)*(days/30.4375),weight=points.reduce(function(sum,p){return sum+(Number(p.ratio)||0);},0)||1,raw=points.map(function(p){return target*(Number(p.ratio)||0)/weight;}),rounded=raw.map(Math.round),delta=Math.round(target)-rounded.reduce(function(sum,value){return sum+value;},0);if(rounded.length)rounded[rounded.length-1]+=delta;return points.map(function(p,index){return {period:p.period,ratio:Number(p.ratio)||0,estimate:Math.max(0,rounded[index])};});}
     function keywordVolumeNumber(value){var text=String(value==null?'':value);if(text.indexOf('<')>=0)return 5;return Number(text.replace(/[^0-9.]/g,''))||0;}
     async function runSingleDataLabSearch(event){
@@ -2043,7 +2084,7 @@
       if(start&&end&&start>end){result.innerHTML='<div class="empty-state"><div class="es-title">날짜 범위를 확인해 주세요</div><div class="es-sub">시작일은 종료일보다 늦을 수 없습니다.</div></div>';return;}
       btn.disabled=true;result.innerHTML='<div class="datalab-trend-card"><div class="datalab-trend-head"><strong>'+esc(keyword)+' 검색 관심도 추이</strong><span>네이버 데이터랩 · 상대 지수</span></div><div class="empty-state"><div class="es-sub">그래프를 불러오는 중입니다.</div></div></div>';
       try{
-        var responses=await Promise.all([fetch('/api/naver-keyword',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+authToken},body:JSON.stringify({keywords:[keyword]})}),fetch('/api/naver-datalab',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+authToken},body:JSON.stringify({keyword:keyword,timeUnit:unit==='year'?'month':unit,startDate:start||undefined,endDate:end||undefined})})]),keywordData=await responses[0].json(),data=await responses[1].json();if(!responses[0].ok)throw new Error(keywordData.error||'월간 검색량 조회 실패');if(!responses[1].ok)throw new Error(data.error||'데이터랩 조회 실패');
+        var responses=await Promise.all([keywordApiFetch('/api/naver-keyword',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+authToken},body:JSON.stringify({keywords:[keyword]})}),keywordApiFetch('/api/naver-datalab',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+authToken},body:JSON.stringify({keyword:keyword,timeUnit:unit==='year'?'month':unit,startDate:start||undefined,endDate:end||undefined})})]),keywordData=await responses[0].json(),data=await responses[1].json();if(!responses[0].ok)throw new Error(keywordData.error||'월간 검색량 조회 실패');if(!responses[1].ok)throw new Error(data.error||'데이터랩 조회 실패');
         var returned=Array.isArray(keywordData.keywordList)?keywordData.keywordList:[],exact=returned.find(function(item){return String(item.relKeyword||'').replace(/\s/g,'')===keyword.replace(/\s/g,'');})||returned[0],monthlyPc=keywordVolumeNumber(exact&&exact.monthlyPcQcCnt),monthlyMobile=keywordVolumeNumber(exact&&exact.monthlyMobileQcCnt),monthlyVolume=monthlyPc+monthlyMobile,points=data.results&&data.results[0]&&data.results[0].data||[];if(unit==='year'){var byYear={};points.forEach(function(point){var year=String(point.period).slice(0,4);if(!byYear[year])byYear[year]={period:year,ratio:0,count:0};byYear[year].ratio+=Number(point.ratio)||0;byYear[year].count++;});points=Object.keys(byYear).sort().map(function(year){return {period:year,ratio:byYear[year].ratio/byYear[year].count};});}points=points.slice().sort(function(a,b){return String(a.period).localeCompare(String(b.period));});if(!points.length)throw new Error('선택한 기간에 표시할 데이터가 없습니다.');if(!monthlyVolume)throw new Error('월간 검색량을 확인할 수 없습니다.');
         var estimated=estimateKeywordVolumes(monthlyVolume,points,start,end),maxEstimate=Math.max.apply(null,estimated.map(function(p){return p.estimate;}))||1,w=760,h=260,left=58,right=14,top=18,bottom=34,step=(w-left-right)/Math.max(estimated.length-1,1),coords=estimated.map(function(p,i){return [left+i*step,top+(h-top-bottom)*(1-p.estimate/maxEstimate)];}),line=coords.map(function(p){return p[0].toFixed(1)+','+p[1].toFixed(1);}).join(' '),unitLabel=unit==='year'?'연간':unit==='month'?'월간':unit==='week'?'주간':'일간',dailyAverage=monthlyVolume/30.4375,weeklyAverage=monthlyVolume*12/52,grid=[1,.75,.5,.25,0].map(function(factor){var y=top+(h-top-bottom)*(1-factor),value=Math.round(maxEstimate*factor);return '<line x1="'+left+'" y1="'+y+'" x2="'+(w-right)+'" y2="'+y+'" stroke="#e8edf4"/><text x="'+(left-8)+'" y="'+(y+4)+'" text-anchor="end" fill="#718096" font-size="12" font-weight="650">'+value.toLocaleString('ko-KR')+'</text>';}).join(''),dots=coords.map(function(point,index){var label=estimated[index].period+' '+estimated[index].estimate.toLocaleString('ko-KR')+'회';return '<circle class="datalab-hit" tabindex="0" role="button" aria-label="'+esc(label)+'" aria-describedby="datalab-chart-tooltip" data-period="'+esc(estimated[index].period)+'" data-volume="'+estimated[index].estimate.toLocaleString('ko-KR')+'" cx="'+point[0]+'" cy="'+point[1]+'" r="14"></circle><circle class="datalab-dot" cx="'+point[0]+'" cy="'+point[1]+'" r="3"></circle>';}).join(''),rows=estimated.slice().reverse().map(function(item){return '<tr><td><span class="period-index">'+esc(item.period)+'</span></td><td style="text-align:right"><strong>'+item.estimate.toLocaleString('ko-KR')+'회</strong></td><td style="text-align:right"><span class="period-index-badge">'+item.ratio.toFixed(1)+'</span></td></tr>';}).join('');
         result.innerHTML='<div class="datalab-trend-card"><div class="datalab-trend-head"><strong>'+esc(keyword)+' 예상 검색량 추이</strong><span>키워드 도구 + 네이버 데이터랩 · '+unitLabel+'</span></div><div class="keyword-summary"><div class="keyword-summary-card datalab-summary-card"><span class="metric-label">월간 검색량</span><span class="metric-context">현재 월 기준</span><div class="metric-number"><strong class="metric-value">'+monthlyVolume.toLocaleString('ko-KR')+'</strong><span class="metric-unit">회</span></div><div class="metric-breakdown"><b>PC '+monthlyPc.toLocaleString('ko-KR')+'</b><b>모바일 '+monthlyMobile.toLocaleString('ko-KR')+'</b></div></div><div class="keyword-summary-card datalab-summary-card"><span class="metric-label">일평균 검색량</span><span class="metric-context">월간 검색량 환산</span><div class="metric-number"><strong class="metric-value">'+Math.round(dailyAverage).toLocaleString('ko-KR')+'</strong><span class="metric-unit">회</span></div></div><div class="keyword-summary-card datalab-summary-card"><span class="metric-label">월평균 검색량</span><span class="metric-context">최근 1년 기준</span><div class="metric-number"><strong class="metric-value">'+monthlyVolume.toLocaleString('ko-KR')+'</strong><span class="metric-unit">회</span></div></div><div class="keyword-summary-card datalab-summary-card"><span class="metric-label">주평균 검색량</span><span class="metric-context">최근 6개월 기준</span><div class="metric-number"><strong class="metric-value">'+Math.round(weeklyAverage).toLocaleString('ko-KR')+'</strong><span class="metric-unit">회</span></div></div></div><div class="datalab-chart-wrap"><div class="datalab-chart-tooltip" id="datalab-chart-tooltip" role="tooltip"></div><svg class="datalab-chart" style="height:260px" viewBox="0 0 '+w+' '+h+'" role="img" aria-label="'+esc(keyword)+' 예상 검색량 추이">'+grid+'<polyline class="datalab-line" points="'+line+'"></polyline>'+dots+'</svg></div><div class="datalab-axis" style="padding-left:58px"><span>'+esc(estimated[0].period)+'</span><span>'+esc(estimated[estimated.length-1].period)+'</span></div><div class="datalab-note">키워드 도구 월간 검색량과 데이터랩 상대 추이를 조합한 추정치입니다. 실제 광고 노출·클릭 수와는 다를 수 있습니다.</div></div><div class="table-wrap period-volume-table" style="margin-top:18px;max-height:420px;overflow:auto"><table><thead><tr><th>기간</th><th style="text-align:right">예상 검색량</th><th style="text-align:right">관심도 지수</th></tr></thead><tbody>'+rows+'</tbody></table></div>';animateDataLabLine(result.querySelector('.datalab-line'));bindDataLabPointTooltips(result,w,h);
@@ -2468,7 +2509,7 @@
     contract=Object.assign(blankContract(),contract||{});
     function row(label,value){ return '<div class="contract-print-row"><span>'+esc(label)+'</span><strong>'+esc(value||"-")+'</strong></div>'; }
     var signature=contract.signatureDataUrl?'<img class="contract-print-signature" src="'+esc(contract.signatureDataUrl)+'" alt="서명">':'<div class="contract-print-signature-empty">서명 미입력</div>';
-    return '<main class="contract-print-sheet"><header><div class="contract-print-kicker">CONTRACT</div><h1>계약서</h1><p>업체 관리 대시보드 계약 원본</p></header><section><h2>계약 정보</h2>'+row("업체명",contract.clientName)+row("계약 구분",contract.contractType==="renewal"?"재계약 "+(contract.renewalCount||1)+"회차":"신규")+row("계약 시작일",contract.startDate)+row("계약 기간",(contract.contractMonths||"-")+"개월")+'</section><section><h2>상품 및 금액</h2>'+row("상품명",contract.productName||contract.productType)+row("공급가",contract.supplyPrice)+row("최종 금액",contract.fee)+row("결제 방식",contract.paymentMethod==="transfer"?"계좌이체":"카드")+'</section><section><h2>주요 조건</h2><div class="contract-print-text">'+esc(contract.terms||"-")+'</div></section><section><h2>기재 사항</h2>'+row("사업자등록번호",contract.businessNumber)+row("연락처",contract.contact)+row("이메일",contract.email)+row("담당자",contract.owner)+'</section><section><h2>특약 및 기본 계약 내용</h2><div class="contract-print-text">'+esc(contract.specialTerms||"")+"\n"+esc(contract.baseTerms||"")+'</div></section><section class="contract-print-sign"><h2>서명</h2>'+row("서명자",contract.signerName)+signature+'</section><footer>저장일시: '+esc(contract.updatedAt?new Date(contract.updatedAt).toLocaleString("ko-KR"):"-")+'</footer></main>';
+    return '<main class="contract-print-sheet"><header><div class="contract-print-kicker">'+(isDemoMode()?'DEMO DOCUMENT':'CONTRACT')+'</div><h1>계약서</h1><p>'+(isDemoMode()?'학습용 데모 문서 · 실제 계약 효력이 없습니다':'업체 관리 대시보드 계약 원본')+'</p></header><section><h2>계약 정보</h2>'+row("업체명",contract.clientName)+row("계약 구분",contract.contractType==="renewal"?"재계약 "+(contract.renewalCount||1)+"회차":"신규")+row("계약 시작일",contract.startDate)+row("계약 기간",(contract.contractMonths||"-")+"개월")+'</section><section><h2>상품 및 금액</h2>'+row("상품명",contract.productName||contract.productType)+row("공급가",contract.supplyPrice)+row("최종 금액",contract.fee)+row("결제 방식",contract.paymentMethod==="transfer"?"계좌이체":"카드")+'</section><section><h2>주요 조건</h2><div class="contract-print-text">'+esc(contract.terms||"-")+'</div></section><section><h2>기재 사항</h2>'+row("사업자등록번호",contract.businessNumber)+row("연락처",contract.contact)+row("이메일",contract.email)+row("담당자",contract.owner)+'</section><section><h2>특약 및 기본 계약 내용</h2><div class="contract-print-text">'+esc(contract.specialTerms||"")+"\n"+esc(contract.baseTerms||"")+'</div></section><section class="contract-print-sign"><h2>서명</h2>'+row("서명자",contract.signerName)+signature+'</section><footer>저장일시: '+esc(contract.updatedAt?new Date(contract.updatedAt).toLocaleString("ko-KR"):"-")+'</footer></main>';
   }
   async function printContractDocument(contract){
     contract=Object.assign(blankContract(),contract||{});
@@ -2484,7 +2525,7 @@
     if(!contract.id || !/^contract_/.test(contract.id)) contract=Object.assign(newContractDraft(),contract);
     if(!contract.baseTerms && state.contractBaseTermsTemplate) contract.baseTerms=state.contractBaseTermsTemplate;
     var origin=(typeof location!=="undefined"&&location.origin)?location.origin:"";
-    var publicLink=origin+"/?contract="+encodeURIComponent(contract.id);
+    var publicLink=isDemoMode()?"데모 미리보기 · 외부 계약 링크는 발급되지 않습니다":origin+"/?contract="+encodeURIComponent(contract.id);
     return '<div class="topbar"><div class="brand"><span class="brand-mark"></span>업체 등록</div><button class="btn btn-text" id="btn-back">← 돌아가기</button></div>'+
       '<div class="form-card fade-in">'+
         '<div class="fsection"><div class="fsec-num">CONTRACT</div><h3 class="fsec-title">계약 신청서</h3><p class="fsec-hint">계약서를 먼저 작성하면 계약서와 업체 정보가 함께 저장됩니다.</p>'+
@@ -2648,6 +2689,7 @@
       index.push({ id:state.currentContract.id, clientId:state.currentContract.clientId, clientName:state.currentContract.clientName||"계약서 작성 대기", contractType:state.currentContract.contractType, renewalCount:state.currentContract.renewalCount, productName:state.currentContract.productName, startDate:state.currentContract.startDate, contractMonths:state.currentContract.contractMonths, fee:state.currentContract.fee, signerName:state.currentContract.signerName, submittedAt:state.currentContract.submittedAt, hasSignature:!!state.currentContract.signatureDataUrl, updatedAt:state.currentContract.updatedAt });
       state.contracts=index;
       await setP("contracts-index",index);
+      if(isDemoMode()){ showToast("데모 계약서 상태를 브라우저에 저장했습니다. 실제 링크는 발급되지 않습니다."); return; }
       copyText(location.origin+"/?contract="+encodeURIComponent(state.currentContract.id));
     };
     var printContract=document.getElementById("btn-print-contract");
@@ -2842,7 +2884,7 @@
     var savedAt=guide.updatedAt||guide.createdAt;
     var timestampHtml='<span class="muted">최근 저장 '+fmtGuideTimestamp(savedAt)+'</span>';
     if(guide.submittedAt) timestampHtml+='<span class="muted">제출 '+fmtGuideTimestamp(guide.submittedAt)+'</span>';
-    var link=location.origin+"/guide.html?id="+encodeURIComponent(guide.id);
+    var link=(typeof isDemoMode==="function"&&isDemoMode())?"데모 미리보기 · 외부 링크는 발급되지 않습니다":location.origin+"/guide.html?id="+encodeURIComponent(guide.id);
     var summary=guideSummary(answers);
     var summaryHtml=summary.length?summary.map(function(item){return '<div class="guide-summary-row"><strong>'+esc(item.label)+'</strong><span>'+esc(item.value)+'</span></div>';}).join(""):'<div class="muted">아직 요약할 정보가 없습니다.</div>';
     var answerFields=[
@@ -2945,16 +2987,16 @@
       }
       state.currentGuideLoadState="ready";
       renderClientWorkspace(client);
-      showToast("설문 링크를 발급했습니다");
+      showToast(isDemoMode()?"데모에서는 외부 링크 없이 미리보기 상태만 저장됩니다.":"설문 링크를 발급했습니다");
     };
     var retry=document.getElementById("btn-retry-guide");
     if(retry) retry.onclick=function(){ selectClientWorkspaceTab(client,"guide"); };
     if(!guide || !guide.id) return;
     var link=location.origin+"/guide.html?id="+encodeURIComponent(guide.id);
     var copy=document.getElementById("btn-copy-guide");
-    if(copy) copy.onclick=function(){ copyText(link); };
+    if(copy) copy.onclick=function(){ if(isDemoMode()){showToast("데모에서는 실제 링크를 발급하지 않습니다.");return;} copyText(link); };
     var preview=document.getElementById("btn-preview-guide");
-    if(preview) preview.onclick=function(){ window.open(link,"_blank","noopener,noreferrer"); };
+    if(preview) preview.onclick=function(){ if(isDemoMode()){showToast("데모 안내문 미리보기입니다. 외부 전송은 되지 않습니다.");return;} window.open(link,"_blank","noopener,noreferrer"); };
     var saveReview=document.getElementById("btn-save-guide-review");
     if(saveReview&&guideReviewLoadState!=="error") saveReview.onclick=async function(){
       saveReview.disabled=true; saveReview.textContent="저장 중…";
@@ -3282,9 +3324,11 @@
     }; });
     app.querySelectorAll("[data-open-contract-link]").forEach(function(b){ b.onclick=function(){
       var id=b.getAttribute("data-open-contract-link");
+      if(isDemoMode()){ showToast("데모에서는 실제 계약 링크를 발급하지 않습니다."); return; }
       window.open(location.origin+"/?contract="+encodeURIComponent(id),"_blank");
     }; });
     app.querySelectorAll("[data-copy-contract-link]").forEach(function(b){ b.onclick=function(){
+      if(isDemoMode()){ showToast("데모에서는 실제 계약 링크를 복사하지 않습니다."); return; }
       copyText(location.origin+"/?contract="+encodeURIComponent(b.getAttribute("data-copy-contract-link")));
     }; });
     app.querySelectorAll("[data-print-contract]").forEach(function(b){ b.onclick=async function(){
