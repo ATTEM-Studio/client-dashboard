@@ -41,8 +41,9 @@ assert.match(dayCard, /aria-label="1일차 1번째 업무 아래로 이동"/, 't
 assert.match(dayCard, /aria-label="1일차 2번째 업무 위로 이동"/, 'the second daily task can move up');
 assert.match(dayCard, /aria-label="1일차 2번째 업무 아래로 이동" disabled/, 'the final daily task cannot move below its day boundary');
 
-const draftNavigation = html.match(/(function setChecklistCollectionOpen[\s\S]*?\n  }\n  function setClientWorkspaceTab[\s\S]*?\n  })/);
-assert.ok(draftNavigation, 'checklist set draft navigation helpers must exist');
+const collectionNavigation = html.match(/(function setChecklistCollectionOpen[\s\S]*?\n  })(?=\n  var _clientTabMotionPending)/);
+const tabNavigation = html.match(/(function setClientWorkspaceTab[\s\S]*?\n  })(?=\n  function renderClientWorkspace)/);
+assert.ok(collectionNavigation && tabNavigation, 'checklist set draft navigation helpers must exist');
 
 const draft = { name: 'before typing', items: [{ day: 1, text: 'before typing' }] };
 let syncCalls = 0;
@@ -54,7 +55,7 @@ const sandbox = {
     draft.items[0].text = 'typed task';
   }
 };
-vm.runInNewContext(draftNavigation[1], sandbox);
+vm.runInNewContext([collectionNavigation[1], tabNavigation[1]].join('\n'), sandbox);
 
 sandbox.setChecklistCollectionOpen(false);
 assert.strictEqual(sandbox.state.setCollectionOpen, false, 'visibility toggle must collapse the collection');
@@ -98,6 +99,8 @@ const workspaceApp = {
 };
 const workspaceRenderSandbox = {
   state: { clientTab: 'calendar', reports: [], setCollectionOpen: true },
+  _clientTabMotionPending: false,
+  _calendarMotionDirection: '',
   syncChecklistSetEditor(){
     workspaceRenderSawSyncedDraft = true;
   },
@@ -109,7 +112,8 @@ const workspaceRenderSandbox = {
   document: { getElementById(){ return {}; } },
   bindCalendarPanel(){},
   bindChecklistPanel(){},
-  bindReportPanel(){}
+  bindReportPanel(){},
+  bindPressFeedback(){}
 };
 vm.runInNewContext(workspaceRenderEntry[1], workspaceRenderSandbox);
 workspaceRenderSandbox.renderClientWorkspace({
