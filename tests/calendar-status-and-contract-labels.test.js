@@ -166,6 +166,7 @@ async function main() {
   const body = { innerHTML: '', querySelectorAll: () => [] };
   const dashboardSandbox = {
     state: { month: '2026-07' },
+    app: body,
     document: { getElementById: (id) => id === 'dash-body' ? body : null, querySelector: () => null },
     loadAllClients: async () => [
       { id: 'new', name: 'New Co', contractType: 'new', status: 'active' },
@@ -178,7 +179,8 @@ async function main() {
     monthLabel: () => '2026년 7월',
     esc: (value) => String(value == null ? '' : value),
     thirtyDayProgress: () => ({ state: 'missing' }),
-    contractEndKey: () => null
+    contractEndKey: () => null,
+    bindPressFeedback: () => {}
   };
   vm.runInNewContext([
     functionSource('contractLabel'),
