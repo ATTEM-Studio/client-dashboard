@@ -22,6 +22,9 @@ assert(html.includes('월간 검색량')&&html.includes('일평균 검색량'),'
 assert(html.includes('period-volume-table'),'Estimated period-volume table missing');
 assert(html.includes('키워드 도구 월간 검색량과 데이터랩 상대 추이를 조합한 추정치'),'Estimate disclosure missing');
 assert(/function syncMode\(\)[\s\S]*?datalab-controls[\s\S]*?bulkMode\|\|relatedMode/.test(html),'Mode sync must hide DataLab date controls outside the single-keyword tab');
+assert(/function syncMode\(\)[\s\S]*?relatedButton\.classList\.toggle\('active',relatedMode\)/.test(html),'Mode sync must exclusively update the related-keyword tab active state');
+assert(html.includes('function resetKeywordModeView('),'Keyword mode changes must clear the previous input and result state');
+assert(/function syncMode\(\)[\s\S]*?resetKeywordModeView\(\)/.test(html),'Every keyword mode change must reset the previous view');
 assert(html.includes('<option value="year">연간</option>'),'Annual graph filter missing');
 assert(html.includes('function setDataLabDefaultRange('),'Automatic period range helper missing');
 assert(html.includes('function localInputDate('),'Local calendar date helper missing');
