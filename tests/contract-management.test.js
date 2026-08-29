@@ -14,7 +14,7 @@ function functionSource(name) {
   return match[1];
 }
 
-assert.match(html, /id="btn-new-client"/, 'dashboard must keep the client registration button');
+assert.match(html, /id="btn-menu-new-client"/, 'dashboard menu must keep the client registration action');
 assert.doesNotMatch(html, /id="btn-new-contract"/, 'dashboard must not expose a separate contract creation button');
 assert.match(html, /data-client-tab="contracts"/, 'client detail must include a contracts tab');
 assert.match(html, /id="c-renewal-count"/, 'client form must expose a renewal-count input');
@@ -34,6 +34,8 @@ assert.match(html, /await getS\("contract:"\+id\)/,
   'opening a saved contract original must reload the full contract document, not the lightweight index row');
 
 const contractSandbox = {
+  origin: 'https://example.com',
+  isDemoMode: () => false,
   state: {
     clients: [],
     contracts: [
@@ -118,6 +120,8 @@ const newContractForm = contractSandbox.renderContractForm({
 assert.match(newContractForm, /id="contract-renewal-count-field" style="display:none"/, 'new contract form must hide renewal count');
 
 const saveSandbox = {
+  origin: 'https://example.com',
+  isDemoMode: () => false,
   Date: { now: () => 12345 },
   state: {
     clients: [],
