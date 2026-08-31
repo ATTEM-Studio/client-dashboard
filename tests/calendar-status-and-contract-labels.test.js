@@ -218,6 +218,7 @@ async function main() {
   });
   const savedRenewals = [];
   const savedIndexes = [];
+  const pendingActions = new Map();
   const renewalSandbox = {
     state: { month: '2026-09', checklistSets: [{ id: 'set-1', name: 'Basic' }], clients: [{ id: 'client-1', name: 'Client' }] },
     document: { getElementById: (id) => renewalNodes[id] },
@@ -236,6 +237,12 @@ async function main() {
     }),
     setS: async (key, value) => { savedRenewals.push({ key, value: json(value) }); return true; },
     setP: async (key, value) => { savedIndexes.push({ key, value: json(value) }); return true; },
+    withPendingAction(key, action) {
+      if (pendingActions.has(key)) return pendingActions.get(key);
+      const promise = Promise.resolve().then(action).finally(() => pendingActions.delete(key));
+      pendingActions.set(key, promise);
+      return promise;
+    },
     renderClientWorkspace: (client) => { renewalSandbox.renderedClient = json(client); },
     showToast: () => {}
   };

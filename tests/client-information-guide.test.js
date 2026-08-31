@@ -10,9 +10,11 @@ assert.match(html, /location\.origin\+"\/guide\.html\?id="/, 'dashboard should i
 assert.match(html, /\/api\/data\?key=" \+ encodeURIComponent\("guide:"\+guideId\)/, 'guide reads need an authenticated fallback path');
 assert.match(html, /localStorage\.setItem\("guide-draft:/, 'guide drafts should survive reopening after a failed save');
 assert.match(html, /localStorage\.getItem\("guide-draft:/, 'guide should restore a newer local draft');
+assert.match(html, /withPendingAction\("guide:submit:"\+guide\.id/, 'public guide submission must coalesce duplicate clicks');
 assert.match(html, /서버 저장에 실패했습니다/, 'guide should distinguish a local backup from a server save');
 assert.doesNotMatch(html, /guide\.localOnly\?"offline"/, 'local backup must never be treated as an official save');
 const dataApi = require('../api/data.js');
+const { issueSession } = require('../api/_session');
 const validGuideKey = 'guide:guide_abcdefghijklmnopqrstuvwx';
 const validReviewKey = 'guide-review:guide_abcdefghijklmnopqrstuvwx';
 
@@ -42,6 +44,12 @@ function responseDouble() {
     status(code) { this.statusCode = code; return this; },
     json(body) { this.body = body; return this; }
   };
+}
+
+function staffHeaders() {
+  const res = responseDouble();
+  issueSession(res);
+  return { cookie: String(res.headers['Set-Cookie']).split(';')[0] };
 }
 
 async function requestApi(request) {
@@ -213,15 +221,16 @@ test('public draft operation merges only whitelisted answers into the existing s
     }
     const command = JSON.parse(options.body);
     assert.strictEqual(command[0], 'EVAL');
-    assert.strictEqual(command[2], 2);
+    assert.strictEqual(command[2], 3);
     assert.deepStrictEqual(command.slice(3, 9), [
       'rs:guide:guide_abcdefghijklmnopqrstuvwx',
       'rs:guide-issue:client-issued',
+      'rs:idempotency:guide:guide_abcdefghijklmnopqrstuvwx:guide-submit:guide_abcdefghijklmnopqrstuvwx',
       'guide_abcdefghijklmnopqrstuvwx',
       'client-issued',
-      '0',
-      JSON.stringify({ concern: 'changed', goal: 'new goal', review: 'secret', unknown: 'drop me' })
+      '0'
     ]);
+    assert.deepStrictEqual(JSON.parse(command[9]), { concern: 'changed', goal: 'new goal' });
     const guide = {
       id: stored.id, clientId: stored.clientId, createdAt: stored.createdAt,
       updatedAt: 200, submittedAt: null, serviceContext: 'SNS 운영',
@@ -346,10 +355,10 @@ test('public submit operation assigns submittedAt server-side and later drafts p
     const command = JSON.parse(options.body);
     assert.strictEqual(command[0], 'EVAL');
     const guide = JSON.parse(stored);
-    const requestedAnswers = JSON.parse(command[8]);
+    const requestedAnswers = JSON.parse(command[9]);
     serverNow += 10;
     guide.updatedAt = serverNow;
-    if (command[7] === '1' && guide.submittedAt === null) guide.submittedAt = serverNow;
+    if (command[8] === '1' && guide.submittedAt === null) guide.submittedAt = serverNow;
     guide.answers = { ...guide.answers, ...requestedAnswers };
     stored = JSON.stringify(guide);
     return {
@@ -412,13 +421,13 @@ test('a paused stale draft cannot undo a public guide submission that completes 
       const command = JSON.parse(options.body);
       if (command[0] === 'EVAL') {
         evalCommands.push(command);
-        assert.strictEqual(command[2], 2);
+        assert.strictEqual(command[2], 3);
         const atomicGuideKey = command[3];
         const atomicIssueKey = command[4];
-        const requestedGuideId = command[5];
-        const requestedClientId = command[6];
-        const submitted = command[7] === '1';
-        const requestedAnswers = JSON.parse(command[8]);
+        const requestedGuideId = command[6];
+        const requestedClientId = command[7];
+        const submitted = command[8] === '1';
+        const requestedAnswers = JSON.parse(command[9]);
         const guide = JSON.parse(redisStore.get(atomicGuideKey));
         const reservation = JSON.parse(redisStore.get(atomicIssueKey));
         assert.strictEqual(guide.id, requestedGuideId);
@@ -505,11 +514,11 @@ test('internal guide review keys require authentication for reads and writes', a
   }
 
   const authenticatedRead = await requestApi({
-    method: 'GET', headers: { 'x-team-token': 'team-secret' }, query: { key: validReviewKey }
+    method: 'GET', headers: staffHeaders(), query: { key: validReviewKey }
   });
   assert.strictEqual(authenticatedRead.response.statusCode, 200);
   const authenticatedWrite = await requestApi({
-    method: 'POST', headers: { 'x-team-token': 'team-secret' },
+    method: 'POST', headers: staffHeaders(),
     body: { key: validReviewKey, value: '{"status":"reviewed","memo":"secret"}' }
   });
   assert.strictEqual(authenticatedWrite.response.statusCode, 200);
@@ -552,7 +561,7 @@ test('authenticated guide issuance reservation atomically returns one stored gui
   const firstResponse = responseDouble();
   const secondResponse = responseDouble();
   const request = {
-    method: 'POST', headers: { 'x-team-token': 'team-secret' },
+    method: 'POST', headers: staffHeaders(),
     body: { operation: 'reserve-guide-issue', clientId: 'client-one' }, query: {}
   };
   try {
@@ -617,7 +626,7 @@ test('authenticated issuance verifies the client and persists the public guide w
   const response = responseDouble();
   try {
     await dataApi({
-      method: 'POST', headers: { 'x-team-token': 'team-secret' }, query: {},
+      method: 'POST', headers: staffHeaders(), query: {},
       body: { operation: 'reserve-guide-issue', clientId: 'client-one' }
     }, response);
   } finally {
@@ -670,8 +679,8 @@ test('existing report reads stay public while every non-guide write stays authen
 
   const authenticatedWrite = await requestApi({
     method: 'POST',
-    headers: { 'x-team-token': 'team-secret' },
-    body: { key: 'client:client-1', value: '{}' }
+    headers: staffHeaders(),
+    body: { key: 'client:client-1', value: '{"id":"client-1","checklist":[]}' }
   });
   assert.strictEqual(authenticatedWrite.response.statusCode, 200);
   assert.strictEqual(authenticatedWrite.calls.length, 1);
@@ -771,6 +780,7 @@ test('guide reads distinguish confirmed absence from transport and invalid JSON 
   ];
   const sandbox = {
     JSON,
+    isSessionControlError(error) { return error && (error.code === 'session_expired' || error.code === 'stale_session_request'); },
     storageBackend: {
       async get() {
         const outcome = outcomes.shift();
@@ -823,6 +833,7 @@ test('public guide transport errors render a retry state while invalid IDs rende
     app: { innerHTML: '' },
     document: { getElementById(id) { return id === 'btn-retry-public-guide' ? retry : null; } },
     storageBackend: { async getPublicGuide() { throw new Error('network'); } },
+    isSessionControlError(error) { return error && (error.code === 'session_expired' || error.code === 'stale_session_request'); },
     guideStatus() { return 'draft'; },
     renderGuideComplete() { return 'complete'; },
     mountPublicGuide() {},
@@ -937,9 +948,16 @@ test('input during an in-flight submit preserves submittedAt and reaches complet
   const writes = [];
   let releaseSubmit;
   const submitButton = { disabled: false, textContent: '제출하기' };
+  const pendingActions = new Map();
   const sandbox = {
     JSON,
     Promise,
+    withPendingAction(key, action) {
+      if (pendingActions.has(key)) return pendingActions.get(key);
+      const promise = Promise.resolve().then(action).finally(() => pendingActions.delete(key));
+      pendingActions.set(key, promise);
+      return promise;
+    },
     publicGuideSaveChain: Promise.resolve(true),
     publicGuideSaveTimer: null,
     publicGuideRevision: 0,

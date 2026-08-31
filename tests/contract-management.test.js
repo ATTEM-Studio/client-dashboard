@@ -30,6 +30,7 @@ assert.match(html, /data-print-contract/, 'saved contract cards must expose PDF 
 assert.match(html, /archivedAt/, 'contract PDF archive timestamp must persist');
 assert.match(html, /window\.print\(\)/, 'PDF action must invoke the browser print dialog');
 assert.match(html, /mutatePublicContract/, 'browser transport must support public contract saves');
+assert.match(html, /withPendingAction\("contract:submit:"\+contract\.id/, 'public contract submission must coalesce duplicate clicks');
 assert.match(html, /await getS\("contract:"\+id\)/,
   'opening a saved contract original must reload the full contract document, not the lightweight index row');
 

@@ -98,11 +98,17 @@ assert.match(html, /데모에서는 실제 링크를 발급하지 않습니다/,
 assert.match(html, /<script src="demo-data\.js"><\/script>\s*<script>/,
   'the dashboard must load demo storage helpers before its inline application script');
 const storageStart = html.indexOf('  var workspaceMode = sessionStorage.getItem(\'rs:workspace-mode\')');
-const modeEnd = html.indexOf('\n  function authHeaders', storageStart);
+const modeEnd = html.indexOf('\n  function preserveVisibleDrafts', storageStart);
 const helperStart = html.indexOf('  async function readS(', modeEnd);
 const storageEnd = html.indexOf('  async function reserveGuideIssue(', helperStart);
 assert.ok(storageStart >= 0 && modeEnd > storageStart && helperStart > modeEnd && storageEnd > helperStart,
   'mode-aware storage helpers must exist');
+const demoEntry = html.match(/(async function enterDemoMode\(\)[\s\S]*?\n  \})/);
+assert.ok(demoEntry, 'demo entry transition must remain independently testable');
+assert.doesNotMatch(demoEntry[1], /fetch\(|\/api\/(?:auth|data|guide|naver-)/,
+  'entering demo mode must not call staff, guide, or Naver APIs');
+assert.match(html, /if\(!isDemoMode\(\)\) return staffFetch\(url, options\);/,
+  'the keyword tool must return local demo data before it can call a Naver API');
 const storageSource = html.slice(storageStart, modeEnd) + html.slice(helperStart, storageEnd);
 const fetches = [];
 const browserStorage = fakeStorage();

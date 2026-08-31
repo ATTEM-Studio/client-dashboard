@@ -212,7 +212,7 @@ function saveSandbox(revenueValue, options = {}) {
     },
     collectChannels() { return []; },
     collectRows() { return []; },
-    uid() { return 'rpt-1'; },
+    publicId() { return 'rpt_0123456789abcdef0123456789abcdef0123456789abcdef'; },
     async setS(key, value) { stored.push({ key, value }); return true; },
     async setP() { return true; },
     showToast() {},

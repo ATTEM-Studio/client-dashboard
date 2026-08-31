@@ -48,13 +48,20 @@ Vercel KV는 더 이상 제공되지 않습니다. 대신 Marketplace의 Upstash
 `KV_REST_API_URL`과 `KV_REST_API_TOKEN`이 자동으로 주입됩니다.
 별도로 값을 복사할 필요는 없습니다.
 
-### 4. 팀 비밀번호 설정
+### 4. 환경 변수 설정
 
-프로젝트 **Settings → Environment Variables**에서 추가합니다.
+프로젝트 **Settings → Environment Variables**에서 아래 이름을 설정합니다. 값은 저장소, 문서, 로그에 기록하지 않습니다.
 
-| 이름 | 값 |
+| 이름 | 용도 |
 | --- | --- |
-| `TEAM_PASSWORD` | 팀원에게 공유할 비밀번호 |
+| `TEAM_PASSWORD` | 팀 대시보드 로그인 |
+| `KV_REST_API_URL` | Upstash Redis REST 연결 |
+| `KV_REST_API_TOKEN` | Upstash Redis REST 인증 |
+| `NAVER_AD_API_LICENSE` | 네이버 검색광고 키워드 조회 |
+| `NAVER_AD_API_SECRET` | 네이버 검색광고 키워드 조회 |
+| `NAVER_AD_CUSTOMER_ID` | 네이버 검색광고 키워드 조회 |
+| `NAVER_DATALAB_CLIENT_ID` | 네이버 데이터랩 조회 |
+| `NAVER_DATALAB_CLIENT_SECRET` | 네이버 데이터랩 조회 |
 
 Production, Preview, Development 모두에 적용한 뒤 **재배포**합니다.
 환경변수는 배포 시점에 주입되므로, 추가 후 반드시 다시 배포해야 반영됩니다.
@@ -77,13 +84,19 @@ npm i -g vercel
 vercel dev
 ```
 
-`.env.local`에 아래 값을 넣으면 로컬에서도 동작합니다.
+로컬 실행도 위 환경 변수 이름을 사용합니다. 실제 값은 버전 관리나 터미널 출력에 남기지 마세요.
 
+## 검증 및 릴리스 게이트
+
+로컬과 GitHub Actions는 동일한 전체 테스트 명령을 사용합니다.
+
+```bash
+for file in tests/*.test.js; do node "$file" || exit 1; done
 ```
-TEAM_PASSWORD=원하는_비밀번호
-KV_REST_API_URL=https://...upstash.io
-KV_REST_API_TOKEN=...
-```
+
+GitHub의 `Dashboard Quality` 상태 확인과 Vercel Preview가 모두 통과한 커밋만 운영으로 승격합니다. Preview에서는 로그인·새로고침·로그아웃, 데모의 staff API 호출 0회, 기존 안내문·계약서·리포트 링크, 390px 가로 넘침, 런타임 오류 0건을 확인합니다.
+
+운영 승격 후에는 배포 SHA가 `main`과 같고 상태가 `READY`인지 확인한 뒤, 세션 없는 보호 API가 401을 반환하고 공개 API가 허용 필드만 반환하는지 요청으로 검증합니다. 해당 스모크 요청 뒤에도 런타임 오류가 0건이어야 합니다.
 
 ## 데이터 백업
 

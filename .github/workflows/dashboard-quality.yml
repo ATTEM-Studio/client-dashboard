@@ -1,0 +1,29 @@
+name: Dashboard Quality
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Verify Node runtime and API syntax
+        run: |
+          set -e
+          node --version
+          for file in api/*.js; do
+            node --check "$file"
+          done
+      - name: Run dashboard tests
+        run: |
+          set -e
+          for file in tests/*.test.js; do
+            node "$file"
+          done

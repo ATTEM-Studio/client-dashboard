@@ -1,4 +1,5 @@
 const dataApi = require("./data.js");
+const MAX_REQUEST_BYTES = 2_000_000;
 
 function responseProxy(res) {
   return {
@@ -20,7 +21,15 @@ module.exports = async function guideApi(req, res) {
   if (req.method === "POST" && (action === "save" || action === "submit")) {
     let body = req.body;
     if (typeof body === "string") {
-      try { body = JSON.parse(body); } catch { body = {}; }
+      if (Buffer.byteLength(body, "utf8") > MAX_REQUEST_BYTES) {
+        return res.status(413).json({ error: "저장할 데이터가 너무 큽니다" });
+      }
+      try { body = JSON.parse(body); } catch {
+        return res.status(400).json({ error: "안내문 입력값이 올바르지 않습니다" });
+      }
+    }
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return res.status(400).json({ error: "안내문 입력값이 올바르지 않습니다" });
     }
     return dataApi({
       method: "POST",
@@ -29,6 +38,7 @@ module.exports = async function guideApi(req, res) {
         operation: action === "submit" ? "submit-public-guide" : "save-public-guide",
         guideId: id,
         answers: body && body.answers,
+        idempotencyKey: body && body.idempotencyKey,
       },
     }, responseProxy(res));
   }
