@@ -10,7 +10,7 @@
         { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' 'sha256-/SP0M89pF1mxYf1rHHV5QffUj0irlAB3dZ+Akuxnut0=' 'sha256-xcLvdv+5baErjqqx6oiPN4upFbEF8E//gSKtgdssh4k='; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'"
+          "value": "default-src 'self'; script-src 'self' 'sha256-meJUO9yKbf/44FKxpcYNG+J8xySNGBq+9Xy6sKT3H+M=' 'sha256-xcLvdv+5baErjqqx6oiPN4upFbEF8E//gSKtgdssh4k='; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'"
         }
       ]
     }
