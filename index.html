@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>업체 관리 대시보드</title>
+<title>업체 관리 대시보드</title>\n<meta property="og:title" content="그리온컴퍼니 계약서" />\n<meta property="og:description" content="그리온컴퍼니 계약서 내용을 확인하고 서명해 주세요." />\n<meta property="og:image" content="/grion-contract-bg.svg" />\n<meta name="twitter:card" content="summary_large_image" />
 <style>
   :root{
     --bg-page:#F2F4F6;
@@ -52,7 +52,7 @@
   .dashboard-menu.open .menu-chevron{ transform:rotate(180deg); }
   .dashboard-menu-panel{ position:absolute; right:0; top:calc(100% + 8px); z-index:20; min-width:170px; padding:6px; border:1px solid var(--line); border-radius:14px; background:#fff; box-shadow:var(--shadow-pop); opacity:0; transform:translateY(-6px) scale(.98); transform-origin:top right; pointer-events:none; transition:opacity var(--motion-short) var(--ease-out),transform var(--motion-short) var(--ease-out); }
   .dashboard-menu.open .dashboard-menu-panel{ opacity:1; transform:translateY(0) scale(1); pointer-events:auto; }
-  .dashboard-menu-item{ display:flex; width:100%; align-items:center; gap:9px; border:0; border-radius:10px; padding:11px 12px; background:transparent; color:var(--ink-700); font-size:13px; font-weight:700; text-align:left; opacity:0; transform:translateY(-4px); }
+  .dashboard-menu-item{ display:flex; width:100%; align-items:center; gap:9px; border:0; border-radius:10px; padding:11px 12px; background:transparent; color:var(--ink-700); font-size:13px; font-weight:700; text-align:left; text-decoration:none; cursor:pointer; opacity:0; transform:translateY(-4px); }
   .dashboard-menu-item:hover{ background:var(--brand-light); color:var(--brand-dark); }
   .dashboard-menu.open .dashboard-menu-item{ transition:transform var(--motion-short) var(--ease-out),opacity var(--motion-short) var(--ease-out); }
   .dashboard-menu.open .dashboard-menu-item{ opacity:1; transform:translateY(0); }
@@ -590,7 +590,7 @@
   .guide-save-row[data-state="saved"]{ color:#0B8F55; }
   .guide-save-row[data-state="failed"]{ color:var(--stop); }
   .guide-retry{ border:0; border-radius:8px; padding:6px 9px; background:var(--stop-light); color:var(--stop); font-size:11.5px; font-weight:800; }
-  .contract-readonly-card{ display:grid; gap:10px; padding:16px; border:1px solid rgba(229,232,235,.95); border-radius:18px; background:linear-gradient(180deg,#fff,#FAFBFF); box-shadow:0 10px 24px rgba(25,31,40,.05); }
+  .contract-public .public-guide-head{ padding:0; margin-bottom:18px; border-radius:22px; overflow:hidden; color:#fff; background:linear-gradient(135deg,rgba(20,42,110,.72),rgba(49,130,246,.28)),url("/grion-contract-bg.svg") center/cover; box-shadow:0 12px 28px rgba(25,31,40,.14); }\n  .contract-public .public-guide-head > *{ margin-left:24px; margin-right:24px; }\n  .contract-public .public-guide-brand{ padding-top:24px; color:#fff; }\n  .contract-public .public-guide-kicker{ color:rgba(255,255,255,.82); }\n  .contract-public .public-guide-head h1{ padding-bottom:24px; }\n  .contract-public .public-guide-intro{ padding-bottom:24px; color:rgba(255,255,255,.88); }\n  .contract-readonly-card{ display:grid; gap:10px; padding:16px; border:1px solid rgba(229,232,235,.95); border-radius:18px; background:linear-gradient(180deg,#fff,#FAFBFF); box-shadow:0 10px 24px rgba(25,31,40,.05); }
   .contract-readonly-row{ display:flex; justify-content:space-between; gap:14px; padding:11px 0; border-bottom:1px solid rgba(229,232,235,.72); }
   .contract-readonly-row:last-child{ border-bottom:0; }
   .contract-readonly-label{ color:var(--ink-500); font-size:12.5px; font-weight:800; }
@@ -2834,7 +2834,7 @@
       return '<div class="contract-readonly-row"><span class="contract-readonly-label">'+esc(label)+'</span><span class="contract-readonly-value">'+esc(display)+'</span></div>';
     }
     if(submitted){
-      return '<div class="public-guide public-contract"><div class="public-guide-head"><div class="public-guide-brand"><span class="brand-mark"></span>계약 신청서</div><p class="public-guide-kicker">CONTRACT</p><h1>계약서 제출이 완료되었습니다</h1><p class="public-guide-intro">아래 계약 정보와 저장된 서명을 함께 확인할 수 있습니다.</p><span class="contract-signed-status">✓ 서명 저장 완료</span></div>'+
+      return '<div class="public-guide public-contract"><div class="public-guide-head"><div class="public-guide-brand"><span class="brand-mark"></span>그리온컴퍼니</div><p class="public-guide-kicker">CONTRACT</p><h1>'+esc((contract.clientName||"그리온컴퍼니")+" 계약서")+'</h1><p class="public-guide-intro">아래 계약 정보와 저장된 서명을 함께 확인할 수 있습니다.</p><span class="contract-signed-status">✓ 서명 저장 완료</span></div>'+
       '<div class="guide-form">'+
         '<section class="guide-section"><div class="guide-section-label">01</div><h2>계약 내용</h2>'+
           '<div class="contract-readonly-card">'+
@@ -2866,7 +2866,7 @@
         '</section>'+
       '</div></div>';
     }
-    return '<div class="public-guide public-contract"><div class="public-guide-head"><div class="public-guide-brand"><span class="brand-mark"></span>계약 신청서</div><p class="public-guide-kicker">CONTRACT</p><h1>계약 내용을 확인하고 서명해 주세요</h1><p class="public-guide-intro">계약 조건은 담당자가 먼저 작성했습니다. 내용을 확인한 뒤 필요한 연락 정보와 서명만 남겨주세요.</p></div>'+
+    return '<div class="public-guide public-contract"><div class="public-guide-head"><div class="public-guide-brand"><span class="brand-mark"></span>계약 신청서</div><p class="public-guide-kicker">CONTRACT</p><h1>'+esc((contract.clientName||"그리온컴퍼니")+" 계약서")+'</h1><p class="public-guide-intro">계약 조건은 담당자가 먼저 작성했습니다. 내용을 확인한 뒤 필요한 연락 정보와 서명만 남겨주세요.</p></div>'+
       '<div class="guide-form">'+
         '<section class="guide-section"><div class="guide-section-label">01</div><h2>계약 내용</h2><p class="guide-section-desc">아래 항목은 담당자가 작성한 계약 조건입니다.</p>'+
           '<div class="contract-readonly-card">'+
