@@ -38,6 +38,7 @@ const contractSandbox = {
   origin: 'https://example.com',
   isDemoMode: () => false,
   state: {
+    contractBaseTermsTemplate: 'Saved reusable base terms',
     clients: [],
     contracts: [
       { id: 'ct_1', clientId: 'cl_1', clientName: 'Client One', contractType: 'renewal', renewalCount: 2, signerName: 'Owner', submittedAt: 12345, hasSignature: true, updatedAt: 10 },
@@ -112,6 +113,14 @@ assert.match(renderedForm, /id="btn-save-contract"/);
 assert.doesNotMatch(renderedForm, /signature-preview/, 'signature area should not render a separate preview box under the canvas');
 assert.doesNotMatch(renderedForm, /예: 최진혁\(경기\)/, 'owner placeholder example should be removed');
 assert.match(renderedForm, /id="contract-start"[\s\S]*id="contract-months"[\s\S]*PRODUCT/, 'contract months should sit beside the start date in the contract application section');
+const existingBlankTermsForm = contractSandbox.renderContractForm({
+  id: 'contract_existing_blank_123456789012345678901234',
+  clientId: 'cl_existing',
+  clientName: 'Existing Client',
+  baseTerms: ''
+});
+assert.doesNotMatch(existingBlankTermsForm, /Saved reusable base terms/,
+  'opening an existing contract must not inject the current reusable template');
 const newContractForm = contractSandbox.renderContractForm({
   id: 'contract_secret_new_123456789012345678901',
   clientId: 'cl_new_secret',
@@ -178,6 +187,52 @@ vm.runInNewContext([
 const draft = saveSandbox.newContractDraft();
 assert.match(draft.id, /^contract_/);
 assert.match(draft.clientId, /^cl_/);
+
+const registrationSandbox = {
+  Date: { now: () => 22222 },
+  crypto: {
+    getRandomValues(bytes) {
+      for (let index = 0; index < bytes.length; index += 1) bytes[index] = index + 1;
+      return bytes;
+    }
+  },
+  state: {
+    editingClient: { id: 'old-client' },
+    currentClient: { id: 'old-client' },
+    currentContract: {
+      id: 'contract_old_123456789012345678901234',
+      clientId: 'old-client',
+      clientName: 'Previous Company',
+      signerName: 'Previous Signer',
+      signatureDataUrl: 'data:image/png;base64,previous',
+      baseTerms: 'Previous contract-specific terms'
+    },
+    contractBaseTermsTemplate: 'Saved reusable base terms',
+    view: 'dashboard'
+  },
+  uid(prefix) { return prefix + '_fresh'; },
+  render() { registrationSandbox.rendered = true; }
+};
+vm.runInNewContext([
+  functionSource('blankContract'),
+  functionSource('newContractDraft'),
+  functionSource('beginNewClientRegistration')
+].join('\n'), registrationSandbox);
+registrationSandbox.beginNewClientRegistration();
+assert.strictEqual(registrationSandbox.state.view, 'clientForm');
+assert.strictEqual(registrationSandbox.state.editingClient, null);
+assert.strictEqual(registrationSandbox.state.currentClient, null);
+assert.strictEqual(registrationSandbox.state.currentContract.clientName, '',
+  'new client registration must not reuse the previous company name');
+assert.strictEqual(registrationSandbox.state.currentContract.signerName, '',
+  'new client registration must not reuse the previous signer');
+assert.strictEqual(registrationSandbox.state.currentContract.signatureDataUrl, '',
+  'new client registration must not reuse the previous signature');
+assert.strictEqual(registrationSandbox.state.currentContract.baseTerms, 'Saved reusable base terms',
+  'new client registration should copy only the reusable base-terms template');
+assert.notStrictEqual(registrationSandbox.state.currentContract.clientId, 'old-client',
+  'new client registration must receive an independent client id');
+assert.strictEqual(registrationSandbox.rendered, true);
 const publicPayload = saveSandbox.publicContractPayload({
   id: 'contract_public',
   clientId: 'cl_public',
