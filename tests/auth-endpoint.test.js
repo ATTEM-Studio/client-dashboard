@@ -60,9 +60,13 @@ function redisDouble() {
       }
       const [name, script, keyCount, ...args] = command;
 
-      if (name === 'EVAL' && keyCount === 2) {
-        const [ipBlock, anonymousBlock] = args;
+      if (name === 'EVAL' && keyCount === 4 && script.includes("redis.call('DEL'")) {
+        const [ipCounter, ipBlock, anonymousCounter, anonymousBlock] = args;
         const result = [blocks.has(ipBlock) ? 1 : 0, blocks.has(anonymousBlock) ? 1 : 0];
+        if (!result.some(Boolean)) {
+          counters.delete(ipCounter);
+          counters.delete(anonymousCounter);
+        }
         return { ok: true, async json() { return { result }; } };
       }
       if (name === 'EVAL' && keyCount === 4) {
@@ -96,12 +100,15 @@ async function main() {
   global.fetch = redis.fetch;
 
   try {
+    const successCallCount = redis.calls.length;
     const success = await call('correct-team-password');
     assert.equal(success.statusCode, 200);
     assert.deepEqual(success.body, { ok: true });
     assert.equal(Object.hasOwn(success.body, 'token'), false);
     assert.equal(Object.hasOwn(success.body, 'redisConfigured'), false);
     assert.match(String(success.headers['set-cookie']), /HttpOnly/);
+    assert.equal(redis.calls.length - successCallCount, 1,
+      'a successful login must complete rate-limit verification and counter cleanup in one Redis round trip');
 
     const spoofedForwardedFor = '198.18.0.1';
     const failures = await Promise.all(Array.from({ length: 5 }, () =>

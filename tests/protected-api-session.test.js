@@ -76,8 +76,7 @@ async function main() {
 
   for (const [method, options] of [
     ['POST', { body: { key: 'client:one', value: '{}' } }],
-    ['DELETE', { query: { key: 'client:one' } }],
-    ['POST', { body: { operation: 'reserve-guide-issue', clientId: 'one' } }]
+    ['DELETE', { query: { key: 'client:one' } }]
   ]) {
     for (const headers of [{}, ...legacyHeaders]) {
       const result = await invoke(dataApi, request(method, { ...options, headers }));
@@ -103,36 +102,6 @@ async function main() {
   }));
   assert.equal(staffDelete.res.statusCode, 400, 'client deletion must use the atomic mutation endpoint');
   assert.equal(staffDelete.calls, 0);
-
-  const guideIssue = await invoke(dataApi, request('POST', {
-    headers: { cookie }, body: { operation: 'reserve-guide-issue', clientId: 'one' }
-  }), async (url, options = {}) => {
-    if (url === process.env.KV_REST_API_URL && options.method === 'POST') {
-      return { ok: true, async json() { return { result: 'OK' }; }, async text() { return ''; } };
-    }
-    return {
-      ok: true,
-      async json() { return { result: JSON.stringify({ id: 'one' }) }; },
-      async text() { return ''; }
-    };
-  });
-  assert.equal(guideIssue.res.statusCode, 200, 'a valid session cookie authorizes protected guide issuance');
-  assert.equal(guideIssue.calls, 3);
-
-  const publicGuide = await invoke(dataApi, request('GET', {
-    query: { key: 'guide:guide_abcdefghijklmnopqrstuvwx' }
-  }), {
-    ok: true,
-    status: 200,
-    async json() {
-      return { result: JSON.stringify({
-        id: 'guide_abcdefghijklmnopqrstuvwx', clientId: 'client-one',
-        createdAt: 1, updatedAt: 1, submittedAt: null, answers: {}
-      }) };
-    },
-    async text() { return ''; }
-  });
-  assert.equal(publicGuide.res.statusCode, 200, 'public guide reads remain unauthenticated');
 
   const publicContract = await invoke(dataApi, request('GET', {
     query: { key: 'contract:contract_abcdefghijklmnopqrstuvwx' }

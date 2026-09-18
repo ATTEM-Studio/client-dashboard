@@ -94,13 +94,12 @@ assert.match(html, /id="btn-menu-logout"/, 'staff dashboard menu must expose log
 assert.match(html, /DEMO/, 'demo chrome must visibly identify demo mode');
 assert.match(html, /keywordApiFetch/, 'analyzer must route demo requests through prepared sample data');
 assert.match(html, /데모에서는 실제 계약 링크를 발급하지 않습니다/, 'demo contracts must not issue public links');
-assert.match(html, /데모에서는 실제 링크를 발급하지 않습니다/, 'demo guides must not issue public links');
 assert.match(html, /<script src="demo-data\.js"><\/script>\s*<script>/,
   'the dashboard must load demo storage helpers before its inline application script');
 const storageStart = html.indexOf('  var workspaceMode = sessionStorage.getItem(\'rs:workspace-mode\')');
 const modeEnd = html.indexOf('\n  function preserveVisibleDrafts', storageStart);
 const helperStart = html.indexOf('  async function readS(', modeEnd);
-const storageEnd = html.indexOf('  async function reserveGuideIssue(', helperStart);
+const storageEnd = html.indexOf('  async function renewClientMutation(', helperStart);
 assert.ok(storageStart >= 0 && modeEnd > storageStart && helperStart > modeEnd && storageEnd > helperStart,
   'mode-aware storage helpers must exist');
 const demoEntry = html.match(/(async function enterDemoMode\(\)[\s\S]*?\n  \})/);

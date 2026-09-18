@@ -912,19 +912,6 @@
       }
       return { key: key, value: value };
     },
-    async reserveGuideIssue(clientId){
-      var res = await staffFetch("/api/data", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ operation: "reserve-guide-issue", clientId: clientId })
-      });
-      if (!res.ok) {
-        var e = await res.json().catch(function(){ return {}; });
-        throw new Error(e.error || ("guide reservation failed " + res.status));
-      }
-      var data = await res.json();
-      return data.reservation || null;
-    },
     async renewClient(client, clientsIndex){
       var res = await staffFetch("/api/data", {
         method: "POST",
@@ -946,31 +933,6 @@
       var res=await staffFetch("/api/data",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({operation:"delete-client",clientId:clientId,reportIds:reportIds,reportsIndex:reportsIndex,clientsIndex:clientsIndex,idempotencyKey:"delete-client:"+clientId})});
       if(!res.ok){ var e=await res.json().catch(function(){return {};}); throw new Error(e.error||("client delete failed "+res.status)); }
       return res.json();
-    },
-    async mutatePublicGuide(guideId, answers, submitted, idempotencyKey){
-      var res = await fetch("/api/guide?id=" + encodeURIComponent(guideId) + "&action=" + (submitted ? "submit" : "save"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ answers: answers, idempotencyKey: submitted ? idempotencyKey : undefined })
-      });
-      if (!res.ok) {
-        var e = await res.json().catch(function(){ return {}; });
-        throw new Error(e.error || ("public guide save failed " + res.status));
-      }
-      var data = await res.json();
-      return data.guide || null;
-    },
-    async getPublicGuide(guideId){
-      var res = await staffFetch("/api/guide?id=" + encodeURIComponent(guideId), { cache: "no-store" });
-      if (res.ok) {
-        var data = await res.json();
-        return data.value ? JSON.parse(data.value) : (data.guide || null);
-      }
-      if (res.status === 404) { var missing = new Error("guide not found"); missing.code = "not_found"; throw missing; }
-      var legacy=await staffFetch("/api/data?key=" + encodeURIComponent("guide:"+guideId), { cache: "no-store" });
-      if (!legacy.ok) throw new Error("guide get failed " + res.status);
-      var legacyData=await legacy.json();
-      return legacyData.value ? JSON.parse(legacyData.value) : (legacyData.guide || null);
     },
     async mutatePublicContract(contractId, contract, submitted){
       var res = await staffFetch("/api/data", {
@@ -1064,71 +1026,6 @@
     return prefix+"_"+Array.prototype.map.call(bytes,function(byte){
       return byte.toString(16).padStart(2,"0");
     }).join("");
-  }
-  function newGuide(clientId){
-    var bytes=new Uint8Array(24);
-    crypto.getRandomValues(bytes);
-    var id="guide_"+Array.prototype.map.call(bytes,function(byte){return byte.toString(16).padStart(2,"0");}).join("");
-    var now=Date.now();
-    return {
-      id:id, clientId:clientId, createdAt:now, updatedAt:now, submittedAt:null,
-      answers:{
-        concern:"", goal:"", priorityMenu:"", currentCustomers:"", desiredCustomers:"",
-        strengths:"", story:"", contentTone:"", avoidExpressions:"", materialStatus:"",
-        approverName:"", approverContact:"", operatingNotes:""
-      }
-    };
-    var trendObserver=new MutationObserver(function(){var root=document.getElementById('naver-result');var trend=root&&root.querySelector('.datalab-trend-card');if(trend&&trend.parentNode)trend.parentNode.insertBefore(trend,trend.parentNode.firstChild);if(!bulkMode&&!relatedMode&&root){Array.from(root.querySelectorAll('*')).forEach(function(el){if(el.children.length===0&&el.textContent.trim()==='연관 검색어'){var box=el.closest('div[style]')||el.parentNode;if(box)box.remove();}});var table=root.querySelector('table');if(table&&!root.querySelector('.keyword-summary')){var cells=table.querySelectorAll('tbody tr:first-child td');if(cells.length>=4){var summary=document.createElement('div');summary.className='keyword-summary';[['PC 검색량',cells[1].textContent],['모바일 검색량',cells[2].textContent],['총 검색량',String((parseInt(cells[1].textContent.replace(/[^0-9]/g,''),10)||0)+(parseInt(cells[2].textContent.replace(/[^0-9]/g,''),10)||0))],['평균 클릭',cells[3].textContent]].forEach(function(item){summary.innerHTML+='<div class="keyword-summary-card"><span>'+item[0]+'</span><strong>'+esc(item[1])+'</strong></div>';});table.parentNode.parentNode.insertBefore(summary,table.parentNode);}}}});
-    trendObserver.observe(document.getElementById('naver-result'),{childList:true,subtree:true});
-    var singleResultObserver=new MutationObserver(function(){if(!bulkMode&&!relatedMode){var rows=document.querySelectorAll('#naver-result table tbody tr');Array.from(rows).slice(1).forEach(function(row){row.style.display='none';});}});
-    singleResultObserver.observe(document.getElementById('naver-result'),{childList:true,subtree:true});
-  }
-  function newGuideReview(guide){
-    return {guideId:guide.id,clientId:guide.clientId,status:"unreviewed",memo:""};
-  }
-  function guideSummary(answers){
-    var source=answers&&typeof answers==="object"?answers:{};
-    return [
-      ["goal","최우선 마케팅 목표"],
-      ["priorityMenu","우선 홍보 메뉴"],
-      ["desiredCustomers","유치하고 싶은 고객"],
-      ["strengths","매장 핵심 강점"],
-      ["story","꼭 알리고 싶은 이야기"]
-    ].map(function(field){
-      return {label:field[1],value:String(source[field[0]]==null?"":source[field[0]]).trim()};
-    }).filter(function(item){return item.value!=="";});
-  }
-  function guideFollowUps(answers){
-    var source=answers&&typeof answers==="object"?answers:{};
-    var fields=[
-      ["concern","현재 매장의 가장 큰 고민"],
-      ["goal","최우선 마케팅 목표"],
-      ["priorityMenu","우선 홍보 메뉴"],
-      ["currentCustomers","현재 주요 고객"],
-      ["desiredCustomers","유치하고 싶은 고객"],
-      ["strengths","매장 핵심 강점"],
-      ["story","꼭 알리고 싶은 이야기"],
-      ["contentTone","원하는 콘텐츠 분위기"],
-      ["avoidExpressions","피하고 싶은 표현"],
-      ["approverName","검수 및 승인 담당자 이름"],
-      ["approverContact","검수 및 승인 담당자 연락 수단"],
-      ["operatingNotes","운영 시 주의사항"]
-    ];
-    var result=[];
-    fields.forEach(function(field){
-      if(Object.prototype.hasOwnProperty.call(source,field[0]) && !String(source[field[0]]==null?"":source[field[0]]).trim()) result.push(field[1]);
-    });
-    if(Object.prototype.hasOwnProperty.call(source,"materialStatus")){
-      var materialStatus=String(source.materialStatus==null?"":source.materialStatus).trim();
-      if(!materialStatus) result.push("보유 사진·영상 자료 상태");
-      else if(materialStatus==="별도 전달 예정") result.push("자료 별도 전달 확인");
-    }
-    return result;
-  }
-  function guideStatus(guide){
-    if(guide&&guide.submittedAt!==null&&guide.submittedAt!==undefined) return "submitted";
-    if(guide&&Number(guide.updatedAt)>Number(guide.createdAt)) return "draft";
-    return "not_started";
   }
   function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
   function toNum(v){ if(v==null) return NaN; return parseFloat(String(v).replace(/,/g,"").trim()); }
@@ -1833,14 +1730,6 @@
   async function getS(k){ if(isDemoMode()) return cloneDemoValue(ensureDemoWorkspace().values[k]); try{ var r=await storageBackend.get(k,true); return r&&r.value?JSON.parse(r.value):null; }catch(e){ if(isSessionControlError(e)) throw e; return null; } }
   async function setS(k,v){ if(isDemoMode()){ demoWorkspace=DemoData.saveDemoValue(localStorage,k,v); return {key:k,value:v}; } try{ return await storageBackend.set(k,JSON.stringify(v),true); }catch(e){ if(isSessionControlError(e)) throw e; console.error(e); return null; } }
   async function delS(k){ if(isDemoMode()){ demoWorkspace=DemoData.saveDemoValue(localStorage,k,undefined); delete demoWorkspace.values[k]; return {key:k,deleted:true}; } try{ return await storageBackend.delete(k,true); }catch(e){ if(isSessionControlError(e)) throw e; return null; } }
-  async function reserveGuideIssue(clientId){
-    if(isDemoMode()){
-      var guide=newGuide(clientId); guide.id="demo-guide-"+clientId; guide.demo=true;
-      await setS("guide:"+guide.id,guide);
-      return {guide:guide,demo:true};
-    }
-    try{ return await storageBackend.reserveGuideIssue(clientId); }catch(e){ if(isSessionControlError(e)) throw e; console.error(e); return null; }
-  }
   async function renewClientMutation(client,index){
     if(isDemoMode()){
       var saved=await setS("client:"+client.id,client);
@@ -1863,290 +1752,12 @@
     }
     try{return await storageBackend.deleteClient(id,reportIds,reportsIndex,clientsIndex);}catch(e){if(isSessionControlError(e))throw e;console.error(e);return null;}
   }
-  async function mutatePublicGuide(guideId,answers,submitted,idempotencyKey){
-    if(isDemoMode()){
-      var guide=await getS("guide:"+guideId); if(!guide) return null;
-      guide.answers=Object.assign({},guide.answers||{},answers||{}); guide.updatedAt=Date.now(); if(submitted) guide.submittedAt=guide.updatedAt; guide.demo=true;
-      await setS("guide:"+guideId,guide); return guide;
-    }
-    try{ return await storageBackend.mutatePublicGuide(guideId,answers,submitted,idempotencyKey); }catch(e){ if(isSessionControlError(e)) throw e; console.error(e); return null; }
-  }
-  async function readPublicGuide(guideId){
-    if(isDemoMode()){ var localGuide=await getS("guide:"+guideId); return localGuide?{status:"found",value:localGuide}:{status:"missing"}; }
-    try{ return {status:"found",value:await storageBackend.getPublicGuide(guideId)}; }
-    catch(e){ if(isSessionControlError(e)) throw e; return {status:e&&e.code==="not_found"?"missing":"error",error:e}; }
-  }
   async function mutatePublicContract(contractId,contract,submitted){
     if(isDemoMode()){
       var local=Object.assign({},contract||{},{id:contractId,demo:true,updatedAt:Date.now()}); if(submitted) local.submittedAt=local.updatedAt;
       await setS("contract:"+contractId,local); return local;
     }
     try{ return await storageBackend.mutatePublicContract(contractId,contract,submitted); }catch(e){ if(isSessionControlError(e)) throw e; console.error(e); return null; }
-  }
-
-  /* ============ public client information guide ============ */
-  var publicGuideSaveChain=Promise.resolve(true);
-  var publicGuideSaveTimer=null;
-  var publicGuideSection=0;
-  var publicGuideRevision=0;
-  var publicGuideSubmitting=false;
-  var publicGuideSavePending=false;
-
-  function renderPublicGuide(guide){
-    var answers=guide&&guide.answers&&typeof guide.answers==="object"?guide.answers:{};
-    var currentStatus=guideStatus(guide);
-    var statusLabel=currentStatus==="submitted"?"제출된 답변 · 계속 수정 가능":(currentStatus==="draft"?"임시 저장된 답변":"처음 작성 중");
-    var serviceContext=guide&&typeof guide.serviceContext==="string"?guide.serviceContext.trim():"";
-    var serviceContextHtml=serviceContext?'<div class="guide-progress-card"><strong>계약 서비스</strong><p class="muted" style="margin-top:6px;">'+esc(serviceContext)+'에 맞춰 참고할 내용을 편하게 알려주세요.</p></div>':"";
-    function value(name){ return esc(answers[name]||""); }
-    function optional(){ return '<span class="guide-optional">선택</span>'; }
-    function textField(name,label,placeholder,autocomplete){
-      return '<div class="guide-question"><label for="guide-'+name+'">'+label+optional()+'</label>'+
-        '<input type="text" id="guide-'+name+'" data-guide-field="'+name+'" value="'+value(name)+'" placeholder="'+placeholder+'"'+(autocomplete?' autocomplete="'+autocomplete+'"':'')+' /></div>';
-    }
-    function textArea(name,label,placeholder){
-      return '<div class="guide-question"><label for="guide-'+name+'">'+label+optional()+'</label>'+
-        '<textarea id="guide-'+name+'" data-guide-field="'+name+'" placeholder="'+placeholder+'">'+value(name)+'</textarea></div>';
-    }
-    function materialRadio(option){
-      return '<label class="guide-radio"><input type="radio" name="materialStatus" data-guide-field="materialStatus" value="'+option+'"'+(answers.materialStatus===option?' checked':'')+' /><span>'+option+'</span></label>';
-    }
-    return '<main class="public-guide fade-in">'+
-      '<header class="public-guide-head">'+
-        '<div class="public-guide-brand"><span class="brand-mark"></span>함께 만드는 매장 안내</div>'+
-        '<p class="public-guide-kicker">CLIENT INFORMATION GUIDE</p>'+
-        '<h1>매장을 더 잘 이해할 수 있도록 알려주세요</h1>'+
-        '<p class="public-guide-intro">편하게 답할 수 있는 내용만 적어주세요. 모든 질문은 선택이며, 입력한 답변은 잠시 후 자동으로 저장됩니다.</p>'+
-        '<span class="guide-state">'+statusLabel+'</span>'+
-      '</header>'+
-      serviceContextHtml+
-      '<div class="guide-progress-card" aria-label="작성 진행 상황">'+
-        '<div class="guide-progress-copy"><strong id="guide-progress-title">매장과 목표</strong><span id="guide-progress-count">1 / 3</span></div>'+
-        '<div class="guide-progress-track"><div class="guide-progress-fill" id="guide-progress-fill" style="width:33.333%"></div></div>'+
-      '</div>'+
-      '<form class="guide-form" id="public-guide-form">'+
-        '<section class="guide-section" data-guide-section="0">'+
-          '<div class="guide-section-label">SECTION 1</div><h2>매장과 목표</h2><p class="guide-section-desc">요즘 가장 신경 쓰이는 일과 우선순위를 알려주세요.</p>'+
-          textArea("concern","현재 매장의 가장 큰 고민","예: 평일 저녁 방문 고객이 줄었어요")+
-          textArea("goal","최우선 마케팅 목표","예: 신메뉴 인지도 높이기, 재방문 늘리기")+
-          textField("priorityMenu","우선 홍보 메뉴","예: 시그니처 파스타")+
-        '</section>'+
-        '<section class="guide-section" data-guide-section="1" hidden>'+
-          '<div class="guide-section-label">SECTION 2</div><h2>고객과 메시지</h2><p class="guide-section-desc">우리 매장을 누구에게, 어떤 모습으로 소개하면 좋을지 들려주세요.</p>'+
-          textArea("currentCustomers","현재 주요 고객","예: 인근 직장인과 30대 커플")+
-          textArea("desiredCustomers","유치하고 싶은 고객","예: 주말 가족 고객")+
-          textArea("strengths","매장 핵심 강점","예: 매일 직접 만드는 소스와 친절한 응대")+
-          textArea("story","꼭 알리고 싶은 이야기","매장의 시작, 철학, 특별한 에피소드가 있다면 적어주세요")+
-          textField("contentTone","원하는 콘텐츠 분위기","예: 따뜻하고 친근하게")+
-          textArea("avoidExpressions","피하고 싶은 표현","사용하지 않았으면 하는 말이나 이미지가 있다면 적어주세요")+
-        '</section>'+
-        '<section class="guide-section" data-guide-section="2" hidden>'+
-          '<div class="guide-section-label">SECTION 3</div><h2>운영과 확인</h2><p class="guide-section-desc">자료 전달과 검수 과정에 필요한 내용을 확인할게요.</p>'+
-          '<fieldset class="guide-question" style="border:0;padding:0;"><legend>보유 사진·영상 자료 상태'+optional()+'</legend><div class="guide-radio-group">'+
-            materialRadio("보유함")+materialRadio("별도 전달 예정")+materialRadio("없음")+
-          '</div></fieldset>'+
-          textField("approverName","검수 및 승인 담당자 이름","예: 홍길동","name")+
-          textField("approverContact","담당자 연락 수단","예: 010-0000-0000 또는 이메일","tel")+
-          textArea("operatingNotes","운영 시 주의사항","휴무일, 촬영 가능 시간, 사전 확인이 필요한 내용 등을 적어주세요")+
-        '</section>'+
-        '<div class="guide-save-row" data-state="saved"><span id="guide-save-status" role="status" aria-live="polite">불러온 답변이 저장되어 있습니다.</span><button type="button" class="guide-retry" id="guide-retry-save" hidden>다시 시도</button></div>'+
-        '<div class="guide-actions">'+
-          '<button type="button" class="btn btn-plain" id="guide-prev" hidden>이전</button>'+
-          '<button type="button" class="btn btn-primary" id="guide-next">다음</button>'+
-          '<button type="submit" class="btn btn-primary" id="guide-submit" hidden>제출하기</button>'+
-        '</div>'+
-      '</form>'+
-    '</main>';
-  }
-  async function savePublicGuide(guide, submitted){
-    var answers=JSON.parse(JSON.stringify(guide&&guide.answers&&typeof guide.answers==="object"?guide.answers:{}));
-    try{ localStorage.setItem("guide-draft:"+guide.id,JSON.stringify(guide)); }catch(e){}
-    var write=publicGuideSaveChain.catch(function(){ return false; }).then(async function(){
-      try{
-        if(submitted&&!guide._submitIdempotencyKey) guide._submitIdempotencyKey="guide-submit:"+guide.id+":"+Date.now().toString(36);
-        var result=await mutatePublicGuide(guide.id,answers,submitted,guide._submitIdempotencyKey);
-        if(!result) return false;
-        guide.updatedAt=result.updatedAt;
-        guide.submittedAt=result.submittedAt;
-        guide.localOnly=false;
-        if(typeof result.serviceContext==="string") guide.serviceContext=result.serviceContext;
-        try{ sessionStorage.setItem("guide-draft:"+guide.id,JSON.stringify(guide)); localStorage.setItem("guide-draft:"+guide.id,JSON.stringify(guide)); }catch(e){}
-        return true;
-      }catch(e){
-        if(isSessionControlError(e)) throw e;
-        return false;
-      }
-    });
-    publicGuideSaveChain=write;
-    return write;
-  }
-  function renderGuideComplete(guide){
-    var answers=guide&&guide.answers&&typeof guide.answers==="object"?guide.answers:{};
-    var summary=guideSummary(answers);
-    var followUps=guideFollowUps(answers);
-    var summaryHtml=summary.length?'<div class="guide-complete-summary">'+summary.map(function(item){
-      return '<div><strong>'+esc(item.label)+'</strong>'+esc(item.value)+'</div>';
-    }).join("")+'</div>':"";
-    var followUpNote=followUps.length?'<p class="guide-complete-note">비워 둔 질문 '+followUps.length+'개는 필요할 때 같은 링크에서 보완할 수 있어요.</p>':"";
-    return '<main class="public-guide fade-in"><div class="public-guide-brand" style="padding-top:8px;"><span class="brand-mark"></span>함께 만드는 매장 안내</div>'+
-      '<section class="guide-complete"><div class="guide-complete-icon">✓</div><h1>답변을 전달했어요</h1>'+
-      '<p class="guide-complete-copy">소중한 내용을 바탕으로 매장을 더 잘 알릴 방법을 준비할게요. 이 같은 링크로 언제든 돌아와 답변을 수정할 수 있습니다.</p>'+
-      summaryHtml+followUpNote+'<button type="button" class="btn btn-ghost btn-block" id="guide-edit-answers">답변 수정하기</button></section></main>';
-  }
-  function setGuideSaveStatus(stateName,message,retryAction){
-    var status=document.getElementById("guide-save-status");
-    var retry=document.getElementById("guide-retry-save");
-    if(!status||!retry) return;
-    status.parentElement.setAttribute("data-state",stateName);
-    status.textContent=message;
-    retry.hidden=!retryAction;
-    retry.onclick=retryAction||null;
-  }
-  function syncPublicGuideSection(){
-    var names=["매장과 목표","고객과 메시지","운영과 확인"];
-    app.querySelectorAll("[data-guide-section]").forEach(function(section){
-      section.hidden=Number(section.getAttribute("data-guide-section"))!==publicGuideSection;
-    });
-    var title=document.getElementById("guide-progress-title");
-    var count=document.getElementById("guide-progress-count");
-    var fill=document.getElementById("guide-progress-fill");
-    if(title) title.textContent=names[publicGuideSection];
-    if(count) count.textContent=(publicGuideSection+1)+" / 3";
-    if(fill) fill.style.width=((publicGuideSection+1)/3*100)+"%";
-    var previous=document.getElementById("guide-prev");
-    var next=document.getElementById("guide-next");
-    var submit=document.getElementById("guide-submit");
-    if(previous) previous.hidden=publicGuideSection===0;
-    if(next) next.hidden=publicGuideSection===2;
-    if(submit) submit.hidden=publicGuideSection!==2;
-  }
-  function queuePublicGuideSave(guide){
-    clearTimeout(publicGuideSaveTimer);
-    if(publicGuideSubmitting){ publicGuideSavePending=true; return; }
-    var revision=++publicGuideRevision;
-    setGuideSaveStatus("saving","저장 대기 중…",null);
-    publicGuideSaveTimer=setTimeout(function(){ persistPublicGuideDraft(guide,revision); },500);
-  }
-  async function persistPublicGuideDraft(guide,revision){
-    clearTimeout(publicGuideSaveTimer);
-    if(publicGuideSubmitting){ publicGuideSavePending=true; return false; }
-    var saveRevision=revision||++publicGuideRevision;
-    setGuideSaveStatus("saving","저장 중…",null);
-    var saved=await savePublicGuide(guide,false);
-    if(saveRevision!==publicGuideRevision) return saved;
-    if(saved){
-      setGuideSaveStatus("saved","서버에 저장되었습니다",null);
-    }else{
-      setGuideSaveStatus("failed","서버 저장에 실패했습니다 · 이 기기에 임시 보관됨",function(){ persistPublicGuideDraft(guide,++publicGuideRevision); });
-    }
-    return saved;
-  }
-  function submitPublicGuide(guide){
-    return withPendingAction("guide:submit:"+guide.id,async function(){
-    if(publicGuideSubmitting) return false;
-    clearTimeout(publicGuideSaveTimer);
-    ++publicGuideRevision;
-    publicGuideSubmitting=true;
-    publicGuideSavePending=false;
-    var submit=document.getElementById("guide-submit");
-    if(submit){ submit.disabled=true; submit.textContent="제출 중…"; }
-    app.querySelectorAll("[data-guide-field],#guide-prev,#guide-next").forEach(function(control){ control.disabled=true; });
-    setGuideSaveStatus("saving","제출 내용을 저장 중…",null);
-    try{
-    var saved=await savePublicGuide(guide,true);
-    while(saved&&publicGuideSavePending){
-      publicGuideSavePending=false;
-      saved=await savePublicGuide(guide,false);
-    }
-    if(!saved){
-      setGuideSaveStatus("failed","저장에 실패했습니다",function(){ submitPublicGuide(guide); });
-      return;
-    }
-    app.innerHTML=renderGuideComplete(guide);
-    var edit=document.getElementById("guide-edit-answers");
-    if(edit) edit.addEventListener("click",function(){ delete guide._submitIdempotencyKey; mountPublicGuide(guide); });
-    }finally{
-      publicGuideSubmitting=false;
-      if(submit&&submit.isConnected!==false){ submit.disabled=false; submit.textContent="제출하기"; }
-      app.querySelectorAll("[data-guide-field],#guide-prev,#guide-next").forEach(function(control){ control.disabled=false; });
-    }
-    });
-  }
-  function bindPublicGuide(guide){
-    app.querySelectorAll("[data-guide-field]").forEach(function(field){
-      field.addEventListener("input",function(){
-        if(field.type==="radio"&&!field.checked) return;
-        guide.answers[field.getAttribute("data-guide-field")]=field.value;
-        queuePublicGuideSave(guide);
-      });
-    });
-    var previous=document.getElementById("guide-prev");
-    var next=document.getElementById("guide-next");
-    if(previous) previous.addEventListener("click",function(){
-      persistPublicGuideDraft(guide,++publicGuideRevision);
-      publicGuideSection=Math.max(0,publicGuideSection-1); syncPublicGuideSection();
-    });
-    if(next) next.addEventListener("click",function(){
-      persistPublicGuideDraft(guide,++publicGuideRevision);
-      publicGuideSection=Math.min(2,publicGuideSection+1); syncPublicGuideSection();
-    });
-    var form=document.getElementById("public-guide-form");
-    if(form) form.addEventListener("submit",function(event){ event.preventDefault(); submitPublicGuide(guide); });
-    syncPublicGuideSection();
-  }
-  function mountPublicGuide(guide){
-    clearTimeout(publicGuideSaveTimer);
-    publicGuideSection=0;
-    app.innerHTML=renderPublicGuide(guide);
-    bindPublicGuide(guide);
-  }
-
-  function renderPublicGuideUnavailable(stateName){
-    if(stateName==="missing"){
-      return '<main class="public-guide fade-in"><div class="empty-state" style="margin-top:60px;">'+
-        '<div class="es-title">찾을 수 없는 안내문입니다</div><div class="es-sub">주소를 다시 확인하거나 안내문을 전달한 담당자에게 문의해 주세요.</div></div></main>';
-    }
-    return '<main class="public-guide fade-in"><div class="empty-state" style="margin-top:60px;">'+
-      '<div class="es-title">안내문을 불러오지 못했습니다</div><div class="es-sub">연결 상태를 확인한 뒤 다시 시도해 주세요.</div>'+
-      '<button class="btn btn-ghost btn-sm" id="btn-retry-public-guide">다시 시도</button></div></main>';
-  }
-  async function loadPublicGuidePage(publicGuideId){
-    if(!/^guide_[A-Za-z0-9_-]{24,}$/.test(publicGuideId||"")){
-      app.innerHTML=renderPublicGuideUnavailable("missing");
-      return "missing";
-    }
-    app.innerHTML='<div style="padding:60px;text-align:center;color:#8B95A1;">안내문을 불러오는 중…</div>';
-    var result;
-    try{ result=(typeof storageBackend!=="undefined"&&storageBackend.getPublicGuide) ? {status:"found",value:await storageBackend.getPublicGuide(publicGuideId)} : await readS("guide:"+publicGuideId); }
-    catch(e){ if(isSessionControlError(e)) return "session-expired"; result={status:e&&e.code==="not_found"?"missing":"error",error:e}; }
-    var guide=result.status==="found"?result.value:null;
-    if(result.status!=="found"||!guide||typeof guide!=="object"||guide.id!==publicGuideId||!guide.answers||typeof guide.answers!=="object"){
-      if(result.status==="error"){
-        try{
-            var cached=JSON.parse(sessionStorage.getItem("guide-draft:"+publicGuideId)||localStorage.getItem("guide-draft:"+publicGuideId)||"null");
-          if(cached&&cached.id===publicGuideId&&cached.answers&&typeof cached.answers==="object"){
-            mountPublicGuide(cached);
-            setGuideSaveStatus("failed","연결이 복구되면 서버에 동기화됩니다",function(){ loadPublicGuidePage(publicGuideId); });
-            return "ready";
-          }
-        }catch(e){}
-      }
-      var stateName=result.status==="missing"?"missing":"error";
-      app.innerHTML=renderPublicGuideUnavailable(stateName);
-      if(stateName==="error"){
-        var retry=document.getElementById("btn-retry-public-guide");
-        if(retry) retry.onclick=function(){ loadPublicGuidePage(publicGuideId); };
-      }
-      return stateName;
-    }
-    if(guideStatus(guide)==="submitted"){
-      app.innerHTML=renderGuideComplete(guide);
-      var editPublicGuide=document.getElementById("guide-edit-answers");
-      if(editPublicGuide) editPublicGuide.addEventListener("click",function(){ mountPublicGuide(guide); });
-    }else{
-      mountPublicGuide(guide);
-    }
-    return "ready";
   }
 
   /* ============ state ============ */
@@ -2158,10 +1769,6 @@
     contracts:[],
     checklistSets:[],
     currentClient:null,
-    currentGuide:null,
-    currentGuideReview:null,
-    currentGuideLoadState:"idle",
-    currentGuideReviewLoadState:"idle",
     currentReport:null,
     currentContract:null,
     editingClient:null,
@@ -2182,12 +1789,6 @@
   async function init(){
     var params = new URLSearchParams(location.search);
     if (isDemoMode()) { await loadWorkspace(); return; }
-    // 고객 안내문(?guide=ID)은 팀 로그인보다 먼저 불러오며 해당 안내문 데이터만 사용한다.
-    var publicGuideId=params.get("guide");
-    if(params.has("guide")){
-      await loadPublicGuidePage(publicGuideId);
-      return;
-    }
     var publicContractId=params.get("contract");
     if(params.has("contract")){
       await loadPublicContractPage(publicContractId);
@@ -2221,11 +1822,19 @@
     function isCurrentWorkspace(){ return mode===workspaceMode && (mode==="demo" || isCurrentStaffGeneration(generation)); }
     if(!isCurrentWorkspace()) throw createSessionExpiredError();
     app.innerHTML = '<div style="padding:60px;text-align:center;color:#8B95A1;">불러오는 중…</div>';
-    var c = await getP("clients-index"); if(!isCurrentWorkspace()) throw createSessionExpiredError(); state.clients = Array.isArray(c) ? c : [];
-    var r = await getP("reports-index"); if(!isCurrentWorkspace()) throw createSessionExpiredError(); state.reports = Array.isArray(r) ? r : [];
-    var contracts = await getP("contracts-index"); if(!isCurrentWorkspace()) throw createSessionExpiredError(); state.contracts = Array.isArray(contracts) ? contracts : [];
-    var baseTermsTemplate = await getS("contract-base-terms-template"); if(!isCurrentWorkspace()) throw createSessionExpiredError(); state.contractBaseTermsTemplate = typeof baseTermsTemplate === "string" ? baseTermsTemplate : "";
-    var sets = await getP("checklist-sets"); if(!isCurrentWorkspace()) throw createSessionExpiredError();
+    var workspaceValues = await Promise.all([
+      getP("clients-index"),
+      getP("reports-index"),
+      getP("contracts-index"),
+      getS("contract-base-terms-template"),
+      getP("checklist-sets")
+    ]);
+    if(!isCurrentWorkspace()) throw createSessionExpiredError();
+    var c=workspaceValues[0], r=workspaceValues[1], contracts=workspaceValues[2], baseTermsTemplate=workspaceValues[3], sets=workspaceValues[4];
+    state.clients = Array.isArray(c) ? c : [];
+    state.reports = Array.isArray(r) ? r : [];
+    state.contracts = Array.isArray(contracts) ? contracts : [];
+    state.contractBaseTermsTemplate = typeof baseTermsTemplate === "string" ? baseTermsTemplate : "";
     state.checklistSets = Array.isArray(sets) ? sets : defaultChecklistSets();
     if (!Array.isArray(sets)) await setP("checklist-sets", state.checklistSets);
     if(!isCurrentWorkspace()) throw createSessionExpiredError();
@@ -3139,210 +2748,8 @@
     var reports=state.reports.filter(function(r){ return r.clientId===cl.id; }).sort(function(a,b){ return (b.updatedAt||0)-(a.updatedAt||0); });
     return reports.length ? reports.map(function(r){ return '<div class="report-row"><div class="rr-main" data-open-report="'+esc(r.id)+'"><div class="rr-title">'+esc(r.period||"")+'</div><div class="rr-date">'+fmtDate(r.updatedAt)+' 저장</div></div><button class="btn btn-danger btn-sm" data-del-report="'+esc(r.id)+'">삭제</button></div>'; }).join("") : '<div class="muted">작성된 리포트가 없습니다.</div>';
   }
-  function fmtGuideTimestamp(timestamp){
-    if(!timestamp) return "기록 없음";
-    var date=new Date(timestamp);
-    if(isNaN(date.getTime())) return "기록 없음";
-    return date.getFullYear()+"."+String(date.getMonth()+1).padStart(2,"0")+"."+String(date.getDate()).padStart(2,"0")+" "+String(date.getHours()).padStart(2,"0")+":"+String(date.getMinutes()).padStart(2,"0");
-  }
-  function informationGuidePanel(client,guide,guideReview,guideLoadState,guideReviewLoadState){
-    if(!client.guideId){
-      return '<div class="panel fade-in"><div class="guide-issue-card"><h3>업체 정보 안내문</h3><p>업체가 운영 방향과 홍보에 필요한 정보를 직접 작성할 수 있는 전용 안내문입니다. 링크는 한 번만 발급되며 같은 주소로 계속 수정할 수 있습니다.</p><button class="btn btn-primary" id="btn-issue-guide">설문 링크 발급</button></div></div>';
-    }
-    var resolvedGuideState=guideLoadState||(guide===null?"loading":(guide&&guide.id===client.guideId?"ready":"missing"));
-    if(resolvedGuideState==="loading"||resolvedGuideState==="idle"){
-      return '<div class="panel fade-in"><div class="muted" style="padding:26px;text-align:center">안내문을 불러오는 중…</div></div>';
-    }
-    if(resolvedGuideState==="missing"){
-      return '<div class="panel fade-in"><div class="empty-state"><div class="es-title">안내문을 찾을 수 없습니다</div><div class="es-sub">발급된 링크 정보는 유지됩니다. 담당자에게 저장 상태를 확인해 주세요.</div></div></div>';
-    }
-    if(resolvedGuideState==="error"||!guide || guide.id!==client.guideId){
-      return '<div class="panel fade-in"><div class="empty-state"><div class="es-title">안내문을 불러오지 못했습니다</div><div class="es-sub">저장된 링크 정보는 유지됩니다. 잠시 후 다시 불러와 주세요.</div><button class="btn btn-ghost btn-sm" id="btn-retry-guide">다시 불러오기</button></div></div>';
-    }
-    var answers=guide.answers&&typeof guide.answers==="object"?guide.answers:{};
-    var status=guideStatus(guide);
-    var statusLabels={not_started:"미작성",draft:"작성 중",submitted:"제출 완료"};
-    var savedAt=guide.updatedAt||guide.createdAt;
-    var timestampHtml='<span class="muted">최근 저장 '+fmtGuideTimestamp(savedAt)+'</span>';
-    if(guide.submittedAt) timestampHtml+='<span class="muted">제출 '+fmtGuideTimestamp(guide.submittedAt)+'</span>';
-    var link=(typeof isDemoMode==="function"&&isDemoMode())?"데모 미리보기 · 외부 링크는 발급되지 않습니다":location.origin+"/guide.html?id="+encodeURIComponent(guide.id);
-    var summary=guideSummary(answers);
-    var summaryHtml=summary.length?summary.map(function(item){return '<div class="guide-summary-row"><strong>'+esc(item.label)+'</strong><span>'+esc(item.value)+'</span></div>';}).join(""):'<div class="muted">아직 요약할 정보가 없습니다.</div>';
-    var answerFields=[
-      ["concern","현재 매장의 가장 큰 고민"],["goal","최우선 마케팅 목표"],["priorityMenu","우선 홍보 메뉴"],
-      ["currentCustomers","현재 주요 고객"],["desiredCustomers","유치하고 싶은 고객"],["strengths","매장 핵심 강점"],
-      ["story","꼭 알리고 싶은 이야기"],["contentTone","원하는 콘텐츠 분위기"],["avoidExpressions","피하고 싶은 표현"],
-      ["materialStatus","보유 사진·영상 자료 상태"],["approverName","검수 및 승인 담당자 이름"],
-      ["approverContact","검수 및 승인 담당자 연락 수단"],["operatingNotes","운영 시 주의사항"]
-    ];
-    var answersHtml=answerFields.map(function(field){
-      var value=String(answers[field[0]]==null?"":answers[field[0]]).trim();
-      return '<div class="guide-answer-row"><strong>'+esc(field[1])+'</strong><span>'+(value?esc(value):'<span class="muted">답변 없음</span>')+'</span></div>';
-    }).join("");
-    var followUps=guideFollowUps(answers);
-    var followUpHtml=followUps.length?'<ul class="guide-followups">'+followUps.map(function(item){return '<li>'+esc(item)+'</li>';}).join("")+'</ul>':'<div class="muted">추가로 확인할 내용이 없습니다.</div>';
-    var review=guideReview&&typeof guideReview==="object"?guideReview:{};
-    var reviewStatus=["unreviewed","reviewing","reviewed"].indexOf(review.status)>=0?review.status:"unreviewed";
-    var reviewReadFailed=guideReviewLoadState==="error";
-    var disabled=reviewReadFailed?' disabled':'';
-    var reviewLoadError=reviewReadFailed?'<div class="empty-state" style="margin-bottom:12px;"><div class="es-title">검토 정보를 불러오지 못했습니다</div><div class="es-sub">기존 검토 내용을 보호하기 위해 저장을 잠시 막았습니다.</div><button class="btn btn-ghost btn-sm" id="btn-retry-guide">다시 불러오기</button></div>':"";
-    return '<div class="panel fade-in">'+
-      '<div class="guide-manage-head"><div><h3 class="panel-title">정보 안내문</h3><div class="guide-status-line"><span class="guide-status-pill">'+statusLabels[status]+'</span>'+timestampHtml+'</div></div></div>'+
-      '<div class="guide-link-box"><code>'+esc(link)+'</code><div class="guide-link-actions"><button class="btn btn-plain btn-sm" id="btn-copy-guide">링크 복사</button><button class="btn btn-ghost btn-sm" id="btn-preview-guide">미리보기</button></div></div>'+
-      '<div class="guide-dashboard-grid"><section class="guide-dashboard-card"><h4>핵심 정보 요약</h4>'+summaryHtml+'</section><section class="guide-dashboard-card"><h4>추가 확인 필요</h4>'+followUpHtml+'</section></div>'+
-      '<details class="guide-source"><summary>원문 답변 보기</summary><div class="guide-source-body">'+answersHtml+'</div></details>'+
-      '<section class="guide-dashboard-card"><h4>내부 검토</h4>'+reviewLoadError+'<div class="guide-review-fields"><label>검토 상태<select id="guide-review-status"'+disabled+'><option value="unreviewed"'+(reviewStatus==="unreviewed"?' selected':'')+'>미확인</option><option value="reviewing"'+(reviewStatus==="reviewing"?' selected':'')+'>확인 중</option><option value="reviewed"'+(reviewStatus==="reviewed"?' selected':'')+'>확인 완료</option></select></label><label>내부 메모<textarea id="guide-review-memo"'+disabled+' placeholder="팀 내부에서만 볼 메모를 남겨주세요.">'+esc(review.memo||"")+'</textarea></label></div><div class="guide-review-actions"><button class="btn btn-primary btn-sm" id="btn-save-guide-review"'+disabled+'>검토 내용 저장</button></div></section>'+
-      '</div>';
-  }
-  async function issueGuideForClient(client){
-    if(!client || !client.id) return null;
-    var storedClient=await getS("client:"+client.id);
-    if(!storedClient){
-      storedClient=Object.assign({},client);
-      var recovered=await setS("client:"+client.id,storedClient);
-      if(!recovered) return null;
-    }
-    if(storedClient.guideId){
-      client.guideId=storedClient.guideId;
-      return await getS("guide:"+storedClient.guideId);
-    }
-    var reservation=await reserveGuideIssue(client.id);
-    var guide=reservation&&reservation.guide&&reservation.guide.clientId===client.id?reservation.guide:null;
-    if(!guide) return null;
-    var reviewKey="guide-review:"+guide.id;
-    var storedReview=await readS(reviewKey);
-    if(storedReview.status==="error") return null;
-    if(storedReview.status==="found"&&(
-      !storedReview.value||typeof storedReview.value!=="object"||
-      storedReview.value.guideId!==guide.id||storedReview.value.clientId!==guide.clientId||
-      ["unreviewed","reviewing","reviewed"].indexOf(storedReview.value.status)<0||
-      typeof storedReview.value.memo!=="string"
-    )) return null;
-    if(storedReview.status==="missing"){
-      var reviewSaved=await setS(reviewKey,newGuideReview(guide));
-      if(!reviewSaved) return null;
-    }
-    var linkedClient=Object.assign({},storedClient,{guideId:guide.id});
-    var clientSaved=await setS("client:"+client.id,linkedClient);
-    if(!clientSaved) return null;
-    client.guideId=guide.id;
-    return guide;
-  }
-  async function saveGuideReview(guide,guideReview){
-    if(!guide || !guide.id) return false;
-    if(!guideReview || guideReview.guideId!==guide.id) return false;
-    var statusControl=document.getElementById("guide-review-status");
-    var memoControl=document.getElementById("guide-review-memo");
-    if(!statusControl || !memoControl) return false;
-    var allowedStatuses=["unreviewed","reviewing","reviewed"];
-    var status=allowedStatuses.indexOf(statusControl.value)>=0?statusControl.value:"unreviewed";
-    var review={
-      guideId:guide.id,
-      clientId:guide.clientId,
-      status:status,
-      memo:memoControl.value.trim(),
-      updatedAt:Date.now()
-    };
-    var saved=await setS("guide-review:"+guide.id,review);
-    if(!saved) return false;
-    Object.assign(guideReview,review);
-    return true;
-  }
-  function bindGuidePanel(client,guide,guideReview,guideLoadState,guideReviewLoadState){
-    var issue=document.getElementById("btn-issue-guide");
-    if(issue) issue.onclick=async function(){
-      issue.disabled=true; issue.textContent="발급 중…";
-      var issued=await issueGuideForClient(client);
-      if(!issued){ issue.disabled=false; issue.textContent="설문 링크 발급"; showToast("안내문 발급에 실패했습니다"); return; }
-      state.currentGuide=issued;
-      var issuedReview=await readS("guide-review:"+issued.id);
-      if(issuedReview.status==="found"&&issuedReview.value&&issuedReview.value.guideId===issued.id&&issuedReview.value.clientId===issued.clientId&&["unreviewed","reviewing","reviewed"].indexOf(issuedReview.value.status)>=0&&typeof issuedReview.value.memo==="string"){
-        state.currentGuideReview=issuedReview.value;
-        state.currentGuideReviewLoadState="ready";
-      }else if(issuedReview.status==="missing"){
-        state.currentGuideReview=newGuideReview(issued);
-        state.currentGuideReviewLoadState="missing";
-      }else{
-        state.currentGuideReview=null;
-        state.currentGuideReviewLoadState="error";
-      }
-      state.currentGuideLoadState="ready";
-      renderClientWorkspace(client);
-      showToast(isDemoMode()?"데모에서는 외부 링크 없이 미리보기 상태만 저장됩니다.":"설문 링크를 발급했습니다");
-    };
-    var retry=document.getElementById("btn-retry-guide");
-    if(retry) retry.onclick=function(){ selectClientWorkspaceTab(client,"guide"); };
-    if(!guide || !guide.id) return;
-    var link=location.origin+"/guide.html?id="+encodeURIComponent(guide.id);
-    var copy=document.getElementById("btn-copy-guide");
-    if(copy) copy.onclick=function(){ if(isDemoMode()){showToast("데모에서는 실제 링크를 발급하지 않습니다.");return;} copyText(link); };
-    var preview=document.getElementById("btn-preview-guide");
-    if(preview) preview.onclick=function(){ if(isDemoMode()){showToast("데모 안내문 미리보기입니다. 외부 전송은 되지 않습니다.");return;} window.open(link,"_blank","noopener,noreferrer"); };
-    var saveReview=document.getElementById("btn-save-guide-review");
-    if(saveReview&&guideReviewLoadState!=="error") saveReview.onclick=async function(){
-      saveReview.disabled=true; saveReview.textContent="저장 중…";
-      var saved=await saveGuideReview(guide,guideReview);
-      if(!saved){ saveReview.disabled=false; saveReview.textContent="검토 내용 저장"; showToast("검토 내용 저장에 실패했습니다"); return; }
-      renderClientWorkspace(client);
-      showToast("검토 내용을 저장했습니다");
-    };
-  }
-  async function selectClientWorkspaceTab(client,tab){
+  function selectClientWorkspaceTab(client,tab){
     setClientWorkspaceTab(tab);
-    if(tab!=="guide"){ renderClientWorkspace(client); return; }
-    state.currentGuide=null;
-    state.currentGuideReview=null;
-    state.currentGuideLoadState="loading";
-    state.currentGuideReviewLoadState="idle";
-    renderClientWorkspace(client);
-    if(!client.guideId){
-      var reservation=await reserveGuideIssue(client.id);
-      if(state.currentClient!==client || state.clientTab!=="guide" || client.guideId) return;
-      var reservedGuide=reservation&&reservation.guide&&reservation.guide.clientId===client.id?reservation.guide:null;
-      if(!reservedGuide || !reservedGuide.id){
-        state.currentGuideLoadState="idle";
-        renderClientWorkspace(client);
-        return;
-      }
-      client.guideId=reservedGuide.id;
-      await setS("client:"+client.id,Object.assign({},client,{guideId:reservedGuide.id}));
-    }
-    var guideId=client.guideId;
-    var guideResult;
-    try{ guideResult=(typeof storageBackend!=="undefined"&&storageBackend.getPublicGuide) ? {status:"found",value:await storageBackend.getPublicGuide(guideId)} : await readS("guide:"+guideId); }
-    catch(e){ if(isSessionControlError(e)) return; guideResult={status:e&&e.code==="not_found"?"missing":"error",error:e}; }
-    if(state.currentClient!==client || state.clientTab!=="guide" || client.guideId!==guideId) return;
-    if(guideResult.status!=="found"){
-      state.currentGuide=null;
-      state.currentGuideLoadState=guideResult.status==="missing"?"missing":"error";
-      state.currentGuideReview=null;
-      state.currentGuideReviewLoadState="idle";
-      renderClientWorkspace(client);
-      return;
-    }
-    var guide=guideResult.value;
-    if(!guide||typeof guide!=="object"||guide.id!==guideId){
-      state.currentGuide=null;
-      state.currentGuideLoadState="error";
-      state.currentGuideReview=null;
-      state.currentGuideReviewLoadState="idle";
-      renderClientWorkspace(client);
-      return;
-    }
-    state.currentGuide=guide;
-    state.currentGuideLoadState="ready";
-    var reviewResult=await readS("guide-review:"+guideId);
-    if(state.currentClient!==client || state.clientTab!=="guide" || client.guideId!==guideId) return;
-    if(reviewResult.status==="found"&&reviewResult.value&&typeof reviewResult.value==="object"&&reviewResult.value.guideId===guideId&&reviewResult.value.clientId===guide.clientId&&["unreviewed","reviewing","reviewed"].indexOf(reviewResult.value.status)>=0&&typeof reviewResult.value.memo==="string"){
-      state.currentGuideReview=reviewResult.value;
-      state.currentGuideReviewLoadState="ready";
-    }else if(reviewResult.status==="missing"){
-      state.currentGuideReview=newGuideReview(guide);
-      state.currentGuideReviewLoadState="missing";
-    }else{
-      state.currentGuideReview=null;
-      state.currentGuideReviewLoadState="error";
-    }
     renderClientWorkspace(client);
   }
   function setChecklistCollectionOpen(open){
@@ -3367,10 +2774,9 @@
     if(activeTab==="checklist") content=checklistPanel(cl, tasks, done);
     if(activeTab==="reports") content='<div class="panel fade-in"><div class="panel-head"><h3 class="panel-title">리포트</h3><span class="count muted">'+state.reports.filter(function(r){return r.clientId===cl.id;}).length+'건</span></div><div class="report-actions" style="margin-bottom:16px"><button class="btn btn-primary btn-sm" id="btn-new-weekly">+ 주간 리포트</button><button class="btn btn-ghost btn-sm" id="btn-new-monthly">+ 월간 리포트</button></div>'+reportRows(cl)+revenueTrendPanel(cl.id,state.reports,state.month)+"</div>";
     if(activeTab==="contracts") content=contractsPanel(cl);
-    if(activeTab==="guide") content=informationGuidePanel(cl,state.currentGuide,state.currentGuideReview,state.currentGuideLoadState,state.currentGuideReviewLoadState);
     app.innerHTML='<div class="report-top"><button class="back-btn" id="btn-back">←</button><div class="report-actions"><button class="btn btn-plain btn-sm" id="btn-renew">재계약 처리</button><button class="btn btn-plain btn-sm" id="btn-edit-client">정보 수정</button></div></div>'+
       '<div class="detail-head fade-in"><div class="dh-tagrow"><span class="status-pill">'+(cl.contractType==="renewal"?"재계약":"신규")+'</span></div><h2 class="dh-name">'+esc(cl.name)+'</h2><div class="dh-meta"><span>'+esc(cl.industry||"")+'</span><span>시작 '+esc(cl.startDate||"미등록")+'</span></div></div>'+
-      '<div class="detail-tabs"><button class="detail-tab '+(activeTab==="calendar"?"active":"")+'" data-client-tab="calendar">일정 달력</button><button class="detail-tab '+(activeTab==="checklist"?"active":"")+'" data-client-tab="checklist">업무 체크리스트 <small>'+done+'/'+tasks.length+'</small></button><button class="detail-tab '+(activeTab==="reports"?"active":"")+'" data-client-tab="reports">리포트</button><button class="detail-tab '+(activeTab==="contracts"?"active":"")+'" data-client-tab="contracts">계약서</button><button class="detail-tab '+(activeTab==="guide"?"active":"")+'" data-client-tab="guide">정보 안내문</button></div>'+content;
+      '<div class="detail-tabs"><button class="detail-tab '+(activeTab==="calendar"?"active":"")+'" data-client-tab="calendar">일정 달력</button><button class="detail-tab '+(activeTab==="checklist"?"active":"")+'" data-client-tab="checklist">업무 체크리스트 <small>'+done+'/'+tasks.length+'</small></button><button class="detail-tab '+(activeTab==="reports"?"active":"")+'" data-client-tab="reports">리포트</button><button class="detail-tab '+(activeTab==="contracts"?"active":"")+'" data-client-tab="contracts">계약서</button></div>'+content;
     if(typeof activateDataMotion==="function")activateDataMotion(app);
     if(_clientTabMotionPending){
       var tabs=app.querySelector('.detail-tabs'), tabContent=tabs&&tabs.nextElementSibling;
@@ -3387,7 +2793,6 @@
     app.querySelectorAll("[data-client-tab]").forEach(function(b){ b.onclick=function(){ selectClientWorkspaceTab(cl,b.getAttribute("data-client-tab")); }; });
     bindCalendarPanel(cl); bindChecklistPanel(cl); bindReportPanel(cl);
     if(typeof bindContractsPanel==="function") bindContractsPanel(cl);
-    if(activeTab==="guide") bindGuidePanel(cl,state.currentGuide,state.currentGuideReview,state.currentGuideLoadState,state.currentGuideReviewLoadState);
     bindPressFeedback(app);
     _clientTabMotionPending=false;
   }

@@ -7,11 +7,14 @@ const MAX_FAILURES = 5;
 const REDIS_TIMEOUT_MS = 2_000;
 const anonymousCookieName = '__Host-client-dashboard-anonymous';
 
-const BLOCK_STATUS_SCRIPT = `
-return {
-  redis.call('EXISTS', KEYS[1]),
-  redis.call('EXISTS', KEYS[2])
-}`;
+const COMPLETE_SUCCESSFUL_LOGIN_SCRIPT = `
+local ipBlocked = redis.call('EXISTS', KEYS[2])
+local anonymousBlocked = redis.call('EXISTS', KEYS[4])
+if ipBlocked == 1 or anonymousBlocked == 1 then
+  return { ipBlocked, anonymousBlocked }
+end
+redis.call('DEL', KEYS[1], KEYS[3])
+return { 0, 0 }`;
 
 const RECORD_FAILURE_SCRIPT = `
 if redis.call('EXISTS', KEYS[2]) == 1 or redis.call('EXISTS', KEYS[4]) == 1 then
@@ -107,9 +110,10 @@ function isBlocked(result) {
   return Array.isArray(result) && result.some((value) => Number(value) > 0);
 }
 
-async function blocked(keys) {
+async function completeSuccessfulLogin(keys) {
   return isBlocked(await redisCommand([
-    'EVAL', BLOCK_STATUS_SCRIPT, 2, keys.ipBlock, keys.anonymousBlock
+    'EVAL', COMPLETE_SUCCESSFUL_LOGIN_SCRIPT, 4,
+    keys.ipCounter, keys.ipBlock, keys.anonymousCounter, keys.anonymousBlock
   ]));
 }
 
@@ -119,10 +123,6 @@ async function recordFailure(keys) {
     keys.ipCounter, keys.ipBlock, keys.anonymousCounter, keys.anonymousBlock,
     String(COUNTER_TTL_SECONDS), String(MAX_FAILURES), String(BLOCK_TTL_SECONDS)
   ]));
-}
-
-async function clearFailures(keys) {
-  await redisCommand(['DEL', keys.ipCounter, keys.anonymousCounter]);
 }
 
 function unavailable(res, anonymous) {
@@ -154,14 +154,6 @@ module.exports = async (req, res) => {
 
   const anonymous = anonymousClient(req);
   const keys = rateLimitKeys(req, anonymous);
-  try {
-    if (await blocked(keys)) {
-      return respond(res, 429, { ok: false, error: '잠시 후 다시 시도해 주세요' }, anonymous);
-    }
-  } catch {
-    return unavailable(res, anonymous);
-  }
-
   const expected = process.env.TEAM_PASSWORD;
   if (!expected) {
     return respond(res, 503, { error: '인증 서비스를 일시적으로 사용할 수 없습니다. 잠시 후 다시 시도해 주세요' }, anonymous);
@@ -185,7 +177,9 @@ module.exports = async (req, res) => {
   }
 
   try {
-    await clearFailures(keys);
+    if (await completeSuccessfulLogin(keys)) {
+      return respond(res, 429, { ok: false, error: '잠시 후 다시 시도해 주세요' }, anonymous);
+    }
   } catch {
     return unavailable(res, anonymous);
   }

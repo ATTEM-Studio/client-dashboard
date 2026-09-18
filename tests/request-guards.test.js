@@ -4,7 +4,6 @@ const vm = require('node:vm');
 const test = require('node:test');
 
 const dataApi = require('../api/data');
-const guideApi = require('../api/guide');
 const { issueSession } = require('../api/_session');
 const html = fs.readFileSync('index.html', 'utf8');
 
@@ -55,14 +54,14 @@ test('pending action helper shares a single in-flight request and permits a safe
     calls += 1;
     return new Promise((resolve) => { release = resolve; });
   };
-  const first = sandbox.withPendingAction('guide:submit:guide_one', action);
-  const second = sandbox.withPendingAction('guide:submit:guide_one', action);
-  assert.strictEqual(first, second, 'double guide submits must share one transport Promise');
+  const first = sandbox.withPendingAction('contract:prepare:contract_one', action);
+  const second = sandbox.withPendingAction('contract:prepare:contract_one', action);
+  assert.strictEqual(first, second, 'duplicate document actions must share one transport Promise');
   await Promise.resolve();
   assert.strictEqual(calls, 1);
   release('saved');
   assert.strictEqual(await first, 'saved');
-  assert.strictEqual(await sandbox.withPendingAction('guide:submit:guide_one', async () => {
+  assert.strictEqual(await sandbox.withPendingAction('contract:prepare:contract_one', async () => {
     calls += 1;
     return 'retried';
   }), 'retried');
@@ -85,7 +84,6 @@ test('pending action helper shares a single in-flight request and permits a safe
 
 test('browser critical mutations use stable document-specific pending-action keys', () => {
   assert.match(html, /withPendingAction\("contract:submit:"\+contract\.id/, 'contract submissions must be deduplicated');
-  assert.match(html, /withPendingAction\("guide:submit:"\+guide\.id/, 'guide submissions must be deduplicated');
   assert.match(html, /withPendingAction\("client:renew:"\+client\.id/, 'renewal confirmation must be deduplicated');
   assert.match(html, /withPendingAction\("client:delete:"\+id/, 'deletes must be deduplicated');
   assert.match(html, /withPendingAction\("report:delete:"\+id/, 'report deletes must be deduplicated');
@@ -117,17 +115,7 @@ test('failed destructive report deletes preserve client state and surface a retr
   assert.strictEqual(sandbox.rendered, undefined);
 });
 
-test('server rejects malformed, oversized, and overlong public payloads before writes', async () => {
-  const oversized = await invoke({
-    method: 'POST', body: { operation: 'save-public-guide', guideId: 'guide_abcdefghijklmnopqrstuvwx', answers: { goal: 'x'.repeat(2_000_001) } }
-  }, emptyRedis());
-  assert.strictEqual(oversized.statusCode, 413);
-
-  const malformed = await invoke({
-    method: 'POST', body: { operation: 'save-public-guide', guideId: 'guide_abcdefghijklmnopqrstuvwx', answers: [] }
-  }, emptyRedis());
-  assert.strictEqual(malformed.statusCode, 400);
-
+test('server rejects oversized and overlong public payloads before writes', async () => {
   const longSignature = await invoke({
     method: 'POST', body: {
       operation: 'submit-public-contract', contractId: 'contract_abcdefghijklmnopqrstuvwx',
@@ -138,9 +126,6 @@ test('server rejects malformed, oversized, and overlong public payloads before w
 
   const rawWhitespace = await invoke({ method: 'POST', body: ' '.repeat(2_000_001) }, emptyRedis());
   assert.strictEqual(rawWhitespace.statusCode, 413, 'raw whitespace must count before JSON parsing');
-  const guideResponse = response();
-  await guideApi({ method: 'POST', query: { id: 'guide_abcdefghijklmnopqrstuvwx', action: 'save' }, headers: {}, body: ' '.repeat(2_000_001) }, guideResponse);
-  assert.strictEqual(guideResponse.statusCode, 413, 'dedicated guide endpoint must reject raw oversized bodies before filtering');
 });
 
 test('server rejects overlarge authenticated checklist collections and ignores unexpected public fields', async () => {
@@ -156,30 +141,6 @@ test('server rejects overlarge authenticated checklist collections and ignores u
   assert.strictEqual(tooManyItems.statusCode, 400);
   assert.strictEqual(writes, 0);
 
-  const malformedGuide = await invoke({
-    method: 'POST', headers: sessionHeaders(), body: { key: 'guide:guide_abcdefghijklmnopqrstuvwx', value: '{}' }
-  }, emptyRedis());
-  assert.strictEqual(malformedGuide.statusCode, 400, 'stored guides require their complete public shape');
-
-  const guide = { id: 'guide_abcdefghijklmnopqrstuvwx', clientId: 'client-one', createdAt: 1, updatedAt: 1, submittedAt: null, answers: {} };
-  const commands = [];
-  const ignored = await invoke({
-    method: 'POST', body: {
-      operation: 'save-public-guide', guideId: guide.id,
-      answers: { goal: 'allowed', unexpected: 'discarded' }, unexpected: { private: true }
-    }
-  }, async (url, options = {}) => {
-    if (options.body) {
-      commands.push(JSON.parse(options.body));
-      return { ok: true, async json() { return { result: JSON.stringify({ status: 'ok', guide: { ...guide, updatedAt: 2, answers: { goal: 'allowed' } } }) }; }, async text() { return ''; } };
-    }
-    const key = decodeURIComponent(String(url).split('/get/')[1] || '');
-    const result = key.includes('guide-issue:') ? JSON.stringify({ guide }) : JSON.stringify(guide);
-    return { ok: true, async json() { return { result }; }, async text() { return ''; } };
-  });
-  assert.strictEqual(ignored.statusCode, 200);
-  const evalCommand = commands.find((command) => command[0] === 'EVAL');
-  assert.deepStrictEqual(JSON.parse(evalCommand[9]), { goal: 'allowed' });
 });
 
 test('a retried public contract submission returns the signed document without a second write', async () => {

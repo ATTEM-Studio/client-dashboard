@@ -112,21 +112,8 @@ test('legacy report links remain publicly readable', async () => {
   assert.deepEqual(JSON.parse(res.body.value), { id, type: 'monthly', client: 'Acme', period: '2026년 8월' });
 });
 
-test('public guide and contract responses do not pass nested or unexpected values through', async () => {
-  // Weakening guide or contract response allowlists must make this test fail.
-  const guideId = 'guide_0123456789abcdef01234567';
-  const guide = {
-    id: guideId, clientId: 'cl_one', createdAt: 1, updatedAt: 2, submittedAt: null,
-    answers: { concern: 'More calls', goal: { internalMemo: 'secret' }, unexpected: 'secret' },
-    internalMemo: 'secret', owner: 'operator', unexpected: { secret: 'secret' },
-  };
-  const guideRes = await publicRead(`guide:${guideId}`, new Map([[`rs:guide:${guideId}`, JSON.stringify(guide)]]));
-  assert.equal(guideRes.statusCode, 200);
-  assert.deepEqual(JSON.parse(guideRes.body.value), {
-    id: guideId, clientId: 'cl_one', createdAt: 1, updatedAt: 2, submittedAt: null,
-    answers: { concern: 'More calls' },
-  });
-
+test('public contract responses do not pass nested or unexpected values through', async () => {
+  // Weakening the contract response allowlist must make this test fail.
   const contractId = 'contract_0123456789abcdef01234567';
   const contract = {
     id: contractId, clientId: 'cl_one', clientName: 'Acme', contractType: 'new', renewalCount: 1,
@@ -142,24 +129,15 @@ test('public guide and contract responses do not pass nested or unexpected value
   assert.equal(publicContract.unexpected, undefined);
 });
 
-test('signed staff reads retain private report, guide, and contract fields while public reads redact them', async () => {
+test('signed staff reads retain private report and contract fields while public reads redact them', async () => {
   // Unconditionally applying the public serializers must make the signed-read assertions fail.
   const reportId = 'rpt_0123456789abcdef0123456789abcdef0123456789abcdef';
-  const guideId = 'guide_0123456789abcdef01234567';
   const contractId = 'contract_0123456789abcdef01234567';
   const documents = [
     {
       key: `report:${reportId}`,
       privateField: 'internalMemo',
       document: { id: reportId, type: 'weekly', client: 'Acme', internalMemo: 'staff report note' },
-    },
-    {
-      key: `guide:${guideId}`,
-      privateField: 'internalReview',
-      document: {
-        id: guideId, clientId: 'cl_one', createdAt: 1, updatedAt: 2, submittedAt: null,
-        answers: { concern: 'More calls' }, internalReview: 'staff guide note',
-      },
     },
     {
       key: `contract:${contractId}`,

@@ -192,20 +192,18 @@ vm.runInNewContext([
   vm.runInNewContext([
     sourceBetween('  function isSessionControlError(error)', '  function isCurrentStaffGeneration'),
     sourceFor('readS'), sourceFor('getP'), sourceFor('setP'), sourceFor('getS'), sourceFor('setS'), sourceFor('delS'),
-    sourceFor('reserveGuideIssue'), sourceFor('mutatePublicGuide'), sourceFor('readPublicGuide'), sourceFor('mutatePublicContract')
+    sourceFor('mutatePublicContract')
   ].join('\n'), adapterSandbox);
   for (const code of controlErrorCodes) {
     const controlError = Object.assign(new Error(code), { code });
     adapterSandbox.storageBackend = {
-      get() { throw controlError; }, set() { throw controlError; }, delete() { throw controlError; }, reserveGuideIssue() { throw controlError; },
-      mutatePublicGuide() { throw controlError; }, getPublicGuide() { throw controlError; }, mutatePublicContract() { throw controlError; }
+      get() { throw controlError; }, set() { throw controlError; }, delete() { throw controlError; }, mutatePublicContract() { throw controlError; }
     };
     for (const [name, invoke] of [
       ['readS', () => adapterSandbox.readS('client:one')], ['getP', () => adapterSandbox.getP('clients-index')],
       ['setP', () => adapterSandbox.setP('clients-index', [])], ['getS', () => adapterSandbox.getS('client:one')],
       ['setS', () => adapterSandbox.setS('client:one', {})], ['delS', () => adapterSandbox.delS('client:one')],
-      ['reserveGuideIssue', () => adapterSandbox.reserveGuideIssue('client-one')], ['mutatePublicGuide', () => adapterSandbox.mutatePublicGuide('guide-one', {}, false)],
-      ['readPublicGuide', () => adapterSandbox.readPublicGuide('guide-one')], ['mutatePublicContract', () => adapterSandbox.mutatePublicContract('contract-one', {}, false)]
+      ['mutatePublicContract', () => adapterSandbox.mutatePublicContract('contract-one', {}, false)]
     ]) {
       await assert.rejects(invoke, (error) => error === controlError, `${name} must rethrow ${code} instead of converting session control flow`);
     }
@@ -228,16 +226,6 @@ vm.runInNewContext([
   assert.deepStrictEqual(persistCalls, ['set:client:client-one', 'set:clients-index'],
     'a stale index write must not trigger rollback or any follow-on storage write');
 
-  const publicSaveSandbox = {
-    publicGuideSaveChain: Promise.resolve(true),
-    localStorage: { setItem() {} }, sessionStorage: { setItem() {} },
-    isSessionControlError(error) { return error && (error.code === 'session_expired' || error.code === 'stale_session_request'); },
-    async mutatePublicGuide() { throw persistStale; }
-  };
-  vm.runInNewContext(sourceFor('savePublicGuide'), publicSaveSandbox);
-  await assert.rejects(() => publicSaveSandbox.savePublicGuide({ id: 'guide-one', answers: {} }, false),
-    (error) => error === persistStale, 'the public save wrapper must not convert stale control flow into a failed-save result');
-
   const unauthorized = Object.assign(new Error('expired'), { code: 'session_expired' });
   const readerSandbox = {
     isDemoMode() { return false; },
@@ -246,15 +234,6 @@ vm.runInNewContext([
   };
   vm.runInNewContext(sourceBetween('  async function readS(', '  async function getP('), readerSandbox);
   await assert.rejects(() => readerSandbox.readS('client:stale'), /expired/, 'readS must propagate session expiry rather than turn it into data state');
-
-  const reservationSandbox = {
-    isDemoMode() { return false; },
-    storageBackend: { async reserveGuideIssue() { throw unauthorized; } },
-    isSessionControlError(error) { return error && (error.code === 'session_expired' || error.code === 'stale_session_request'); },
-    console: { error() {} }
-  };
-  vm.runInNewContext(sourceBetween('  async function reserveGuideIssue(', '  async function mutatePublicGuide('), reservationSandbox);
-  await assert.rejects(() => reservationSandbox.reserveGuideIssue('client:stale'), /expired/, 'guide reservation must propagate session expiry rather than report an ordinary failure');
 
   let stalePaints = 0;
   const renderSandbox = {

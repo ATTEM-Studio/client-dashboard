@@ -5,7 +5,6 @@
 // 직접 설정해야 하는 환경변수:
 //   TEAM_PASSWORD  — 팀원이 대시보드에 접속할 때 입력하는 공용 비밀번호
 
-const crypto = require("crypto");
 const { isAuthenticated } = require("./_session");
 
 const PREFIX = "rs:";
@@ -57,17 +56,18 @@ async function redisCommand(parts) {
   return res.json();
 }
 
-function isPublicGuideKey(key) {
-  return typeof key === "string" && /^guide:guide_[A-Za-z0-9_-]{24,}$/.test(key);
-}
 function isPublicContractKey(key) {
   return typeof key === "string" && /^contract:contract_[A-Za-z0-9_-]{24,}$/.test(key);
 }
 
-// 리포트와 고엔트로피 안내문 링크는 인증 없이 읽기 허용
+// 리포트와 계약서의 고엔트로피 공유 링크만 인증 없이 읽기 허용
 function isPublicReadable(key) {
-  return typeof key === "string" && (key.startsWith("report:") || isPublicGuideKey(key) || isPublicContractKey(key));
+  return typeof key === "string" && (key.startsWith("report:") || isPublicContractKey(key));
 }
+
+const RETIRED_GUIDE_OPERATIONS = new Set([
+  "reserve-guide-issue", "save-public-guide", "submit-public-guide"
+]);
 
 const MAX_PUBLIC_STRING_LENGTH = 20_000;
 const MAX_PUBLIC_SIGNATURE_LENGTH = 1_500_000;
@@ -162,17 +162,6 @@ function upsertBoundedIndex(index, entry) {
   return next;
 }
 
-function validatePublicGuideAnswers(value) {
-  if (!isPlainObject(value)) return null;
-  const answers = {};
-  for (const field of PUBLIC_GUIDE_ANSWER_FIELDS) {
-    if (!Object.prototype.hasOwnProperty.call(value, field)) continue;
-    if (typeof value[field] !== "string" || value[field].length > MAX_PUBLIC_STRING_LENGTH) return null;
-    answers[field] = value[field];
-  }
-  return answers;
-}
-
 function validatePublicContractInput(value) {
   if (!isPlainObject(value)) return false;
   for (const field of PUBLIC_CONTRACT_CUSTOMER_FIELDS) {
@@ -193,14 +182,6 @@ function validateStoredDocument(key, value) {
     const withoutSignature = Object.assign({}, document);
     delete withoutSignature.signatureDataUrl;
     return hasOnlyBoundedStrings(withoutSignature);
-  }
-  if (key.startsWith("guide:")) {
-    const guideId = key.slice("guide:".length);
-    if (!isPlainObject(document) || document.id !== guideId || !isIdentifier(document.clientId) ||
-        !Number.isFinite(document.createdAt) || !Number.isFinite(document.updatedAt) ||
-        (document.submittedAt !== null && !Number.isFinite(document.submittedAt)) || !isPlainObject(document.answers)) return false;
-    return Object.entries(document.answers).every(([field, answer]) =>
-      PUBLIC_GUIDE_ANSWER_FIELDS.includes(field) && typeof answer === "string" && answer.length <= MAX_PUBLIC_STRING_LENGTH);
   }
   if (!hasOnlyBoundedStrings(document)) return false;
   if (key.startsWith("client:")) {
@@ -324,77 +305,6 @@ function sanitizePublicReportValue(value) {
   }
 }
 
-const PUBLIC_GUIDE_FIELDS = ["id", "clientId", "createdAt", "updatedAt", "submittedAt", "serviceContext", "answers"];
-const PUBLIC_GUIDE_ANSWER_FIELDS = [
-  "concern", "goal", "priorityMenu", "currentCustomers", "desiredCustomers", "strengths",
-  "story", "contentTone", "avoidExpressions", "materialStatus", "approverName",
-  "approverContact", "operatingNotes",
-];
-
-const PUBLIC_GUIDE_MUTATION_SCRIPT = `
-if ARGV[3] == "1" then
-  local prior = redis.call("GET", KEYS[3])
-  if prior then return prior end
-end
-local storedValue = redis.call("GET", KEYS[1])
-if not storedValue then return cjson.encode({ status = "missing-guide" }) end
-
-local guideOk, guide = pcall(cjson.decode, storedValue)
-if not guideOk or type(guide) ~= "table" or
-   guide.id ~= ARGV[1] or guide.clientId ~= ARGV[2] or
-   type(guide.createdAt) ~= "number" or type(guide.updatedAt) ~= "number" or
-   (guide.submittedAt ~= cjson.null and type(guide.submittedAt) ~= "number") or
-   type(guide.answers) ~= "table" then
-  return cjson.encode({ status = "invalid-guide" })
-end
-
-local issueValue = redis.call("GET", KEYS[2])
-if not issueValue then return cjson.encode({ status = "missing-issue" }) end
-local issueOk, reservation = pcall(cjson.decode, issueValue)
-if not issueOk or type(reservation) ~= "table" or type(reservation.guide) ~= "table" or
-   reservation.guide.id ~= ARGV[1] or reservation.guide.clientId ~= ARGV[2] then
-  return cjson.encode({ status = "invalid-issue" })
-end
-
-local answersOk, requestedAnswers = pcall(cjson.decode, ARGV[4])
-if not answersOk or type(requestedAnswers) ~= "table" then
-  return cjson.encode({ status = "invalid-answers" })
-end
-local answerFields = cjson.decode('${JSON.stringify(PUBLIC_GUIDE_ANSWER_FIELDS)}')
-local mergedAnswers = {}
-for _, field in ipairs(answerFields) do
-  if type(guide.answers[field]) == "string" then mergedAnswers[field] = guide.answers[field] end
-  if type(requestedAnswers[field]) == "string" then mergedAnswers[field] = requestedAnswers[field] end
-end
-
-local serverTime = redis.call("TIME")
-local now = (tonumber(serverTime[1]) * 1000) + math.floor(tonumber(serverTime[2]) / 1000)
-local updatedAt = now
-if guide.updatedAt > updatedAt then updatedAt = guide.updatedAt end
-if type(guide.submittedAt) == "number" and guide.submittedAt > updatedAt then updatedAt = guide.submittedAt end
-local submittedAt = guide.submittedAt
-if submittedAt == cjson.null and ARGV[3] == "1" then submittedAt = now end
-
-local mergedGuide = {
-  id = guide.id,
-  clientId = guide.clientId,
-  createdAt = guide.createdAt,
-  updatedAt = updatedAt,
-  submittedAt = submittedAt,
-  answers = mergedAnswers
-}
-if type(guide.serviceContext) == "string" then
-  local serviceContext = string.match(guide.serviceContext, "^%s*(.-)%s*$")
-  if serviceContext ~= "" then mergedGuide.serviceContext = serviceContext end
-end
-local mergedValue = cjson.encode(mergedGuide)
-if string.len(mergedValue) > 2000000 then return cjson.encode({ status = "too-large" }) end
-redis.call("SET", KEYS[1], mergedValue)
-local result = cjson.encode({ status = "ok", guide = mergedGuide })
-if ARGV[3] == "1" then redis.call("SET", KEYS[3], result) end
-return result
-`;
-
 const PUBLIC_CONTRACT_FIELDS = [
   "id", "clientId", "clientName", "contractType", "renewalCount", "productType", "productName",
   "supplyPrice", "paymentMethod", "businessNumber", "contact", "email", "startDate",
@@ -484,113 +394,6 @@ function sanitizePublicContractValue(value) {
   }
 }
 
-function newGuideIssueReservation(clientId, serviceContext) {
-  const now = Date.now();
-  const answers = {};
-  for (const field of PUBLIC_GUIDE_ANSWER_FIELDS) answers[field] = "";
-  const guide = {
-    id: `guide_${crypto.randomBytes(24).toString("hex")}`,
-    clientId,
-    createdAt: now,
-    updatedAt: now,
-    submittedAt: null,
-    answers,
-  };
-  if (typeof serviceContext === "string" && serviceContext.trim()) {
-    guide.serviceContext = serviceContext.trim();
-  }
-  return { guide };
-}
-
-function isValidGuideIssueReservation(value, clientId) {
-  return Boolean(
-    value && typeof value === "object" && !Array.isArray(value) &&
-    value.guide && typeof value.guide === "object" && !Array.isArray(value.guide) &&
-    typeof value.guide.id === "string" && /^guide_[A-Za-z0-9_-]{24,}$/.test(value.guide.id) &&
-    value.guide.clientId === clientId
-  );
-}
-
-function sanitizePublicGuideValue(value) {
-  try {
-    const source = JSON.parse(value);
-    if (!source || typeof source !== "object" || Array.isArray(source)) return null;
-    const sanitized = {};
-    for (const field of PUBLIC_GUIDE_FIELDS) {
-      if (field === "answers") continue;
-      const string = publicString(source[field]);
-      const number = publicFiniteNumber(source[field]);
-      if (string !== undefined) sanitized[field] = string;
-      else if (number !== undefined) sanitized[field] = number;
-      else if (field === "submittedAt" && source[field] === null) sanitized[field] = null;
-    }
-    const answers = source.answers && typeof source.answers === "object" && !Array.isArray(source.answers)
-      ? source.answers
-      : {};
-    sanitized.answers = {};
-    for (const field of PUBLIC_GUIDE_ANSWER_FIELDS) {
-      const answer = publicString(answers[field]);
-      if (answer !== undefined) sanitized.answers[field] = answer;
-    }
-    return JSON.stringify(sanitized);
-  } catch {
-    return null;
-  }
-}
-
-function parseStoredGuide(value, guideId) {
-  try {
-    const guide = JSON.parse(value);
-    if (guide.submittedAt === undefined) guide.submittedAt = null;
-    if (
-      !guide || typeof guide !== "object" || Array.isArray(guide) ||
-      guide.id !== guideId || typeof guide.clientId !== "string" ||
-      !Number.isFinite(guide.createdAt) || !Number.isFinite(guide.updatedAt) ||
-      (guide.submittedAt !== null && !Number.isFinite(guide.submittedAt)) ||
-      !guide.answers || typeof guide.answers !== "object"
-    ) {
-      return null;
-    }
-    if (Array.isArray(guide.answers)) {
-      if (guide.answers.length) return null;
-      guide.answers = {};
-    }
-    return guide;
-  } catch {
-    return null;
-  }
-}
-
-function normalizeMutatedGuide(value, guideId) {
-  if (
-    !value || typeof value !== "object" || Array.isArray(value) ||
-    value.id !== guideId || typeof value.clientId !== "string" ||
-    !Number.isFinite(value.createdAt) || !Number.isFinite(value.updatedAt) ||
-    (value.submittedAt !== null && !Number.isFinite(value.submittedAt))
-  ) {
-    return null;
-  }
-  const sourceAnswers = value.answers && typeof value.answers === "object" && !Array.isArray(value.answers)
-    ? value.answers
-    : {};
-  const answers = {};
-  for (const field of PUBLIC_GUIDE_ANSWER_FIELDS) {
-    if (typeof sourceAnswers[field] === "string") answers[field] = sourceAnswers[field];
-  }
-  const guide = {
-    id: value.id,
-    clientId: value.clientId,
-    createdAt: value.createdAt,
-    updatedAt: value.updatedAt,
-    submittedAt: value.submittedAt,
-    answers,
-  };
-  if (typeof value.serviceContext === "string" && value.serviceContext.trim()) {
-    guide.serviceContext = value.serviceContext.trim();
-  }
-  return guide;
-}
-
 module.exports = async (req, res) => {
   res.setHeader("Cache-Control", "no-store");
 
@@ -607,13 +410,6 @@ module.exports = async (req, res) => {
       const out = await redis("get", [PREFIX + key]);
       if (out.result === null || out.result === undefined) {
         return res.status(404).json({ error: "해당 키를 찾을 수 없습니다" });
-      }
-      if (!authenticated && isPublicGuideKey(key)) {
-        const guideId = key.slice("guide:".length);
-        const storedGuide = parseStoredGuide(out.result, guideId);
-        const value = storedGuide ? sanitizePublicGuideValue(JSON.stringify(storedGuide)) : null;
-        if (value === null) return res.status(500).json({ error: "안내문 데이터 형식이 올바르지 않습니다" });
-        return res.status(200).json({ key, value });
       }
       if (!authenticated && isPublicContractKey(key)) {
         const value = sanitizePublicContractValue(out.result);
@@ -636,6 +432,9 @@ module.exports = async (req, res) => {
       }
       if (!isPlainObject(body)) return rejectInvalidBody(res);
       if (rejectLargeBody(res, body)) return;
+      if (RETIRED_GUIDE_OPERATIONS.has(body.operation)) {
+        return res.status(410).json({ error: "정보 안내문 기능은 종료되었습니다" });
+      }
       if (body && (body.operation === "save-public-contract" || body.operation === "submit-public-contract")) {
         const contractId = body.contractId;
         const key = "contract:" + contractId;
@@ -718,122 +517,6 @@ module.exports = async (req, res) => {
         await redis("set", [PREFIX + "contracts-index"], JSON.stringify(contractsIndex));
         return res.status(200).json({ contract: sanitizePublicContractObject(fullContract) });
       }
-      if (body && (body.operation === "save-public-guide" || body.operation === "submit-public-guide")) {
-        const guideId = body.guideId;
-        const key = "guide:" + guideId;
-        if (!isPublicGuideKey(key)) {
-          return res.status(400).json({ error: "올바른 안내문 ID가 필요합니다" });
-        }
-        const requestedAnswers = validatePublicGuideAnswers(body.answers);
-        if (requestedAnswers === null) {
-          return res.status(400).json({ error: "안내문 입력값이 올바르지 않습니다" });
-        }
-        if (body.operation === "submit-public-guide" && body.idempotencyKey !== undefined && !validIdempotencyKey(body.idempotencyKey)) {
-          return res.status(400).json({ error: "중복 방지 키 형식이 올바르지 않습니다" });
-        }
-        const existingResult = await redis("get", [PREFIX + key]);
-        if (existingResult.result === null || existingResult.result === undefined) {
-          return res.status(404).json({ error: "해당 안내문을 찾을 수 없습니다" });
-        }
-        const existingGuide = parseStoredGuide(existingResult.result, guideId);
-        if (!existingGuide) {
-          return res.status(500).json({ error: "안내문 데이터 형식이 올바르지 않습니다" });
-        }
-        const issueResult = await redis("get", [PREFIX + "guide-issue:" + existingGuide.clientId]);
-        if (false && (issueResult.result === null || issueResult.result === undefined)) {
-          return res.status(404).json({ error: "발급된 안내문을 찾을 수 없습니다" });
-        }
-        let reservation = null;
-        try { reservation = JSON.parse(issueResult.result); } catch {}
-        if (issueResult.result === null || issueResult.result === undefined) {
-          reservation = { guide: existingGuide };
-          await redisCommand(["SET", PREFIX + "guide-issue:" + existingGuide.clientId, JSON.stringify(reservation), "NX"]);
-        } else if (
-          !isValidGuideIssueReservation(reservation, existingGuide.clientId) ||
-          reservation.guide.id !== guideId
-        ) {
-          return res.status(500).json({ error: "안내문 발급 정보가 올바르지 않습니다" });
-        }
-        const mutationResult = await redisCommand([
-          "EVAL",
-          PUBLIC_GUIDE_MUTATION_SCRIPT,
-          3,
-          PREFIX + key,
-          PREFIX + "guide-issue:" + existingGuide.clientId,
-          PREFIX + "idempotency:guide:" + guideId + ":" + (body.idempotencyKey || "guide-submit:" + guideId),
-          guideId,
-          existingGuide.clientId,
-          body.operation === "submit-public-guide" ? "1" : "0",
-          JSON.stringify(requestedAnswers),
-        ]);
-        let mutation = null;
-        try { mutation = JSON.parse(mutationResult.result); } catch {}
-        if (!mutation || typeof mutation !== "object" || Array.isArray(mutation)) {
-          throw new Error("PUBLIC_GUIDE_MUTATION_INVALID_RESULT");
-        }
-        if (mutation.status === "missing-guide") {
-          return res.status(404).json({ error: "해당 안내문을 찾을 수 없습니다" });
-        }
-        if (mutation.status === "missing-issue") {
-          return res.status(404).json({ error: "발급된 안내문을 찾을 수 없습니다" });
-        }
-        if (mutation.status === "too-large") {
-          return res.status(413).json({ error: "저장할 데이터가 너무 큽니다" });
-        }
-        const guide = mutation.status === "ok"
-          ? normalizeMutatedGuide(mutation.guide, guideId)
-          : null;
-        if (!guide || guide.clientId !== existingGuide.clientId) {
-          throw new Error(`PUBLIC_GUIDE_MUTATION_${String(mutation.status || "INVALID").toUpperCase()}`);
-        }
-        return res.status(200).json({ guide });
-      }
-      if (body && body.operation === "reserve-guide-issue") {
-        if (!isAuthenticated(req)) {
-          return res.status(401).json({ error: "?몄쬆???꾩슂?⑸땲??" });
-        }
-        const clientId = body.clientId;
-        if (typeof clientId !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(clientId)) {
-          return res.status(400).json({ error: "clientId ?뺤떇???щ컮瑜댁? ?딆뒿?덈떎" });
-        }
-
-        const clientResult = await redis("get", [PREFIX + "client:" + clientId]);
-        if (clientResult.result === null || clientResult.result === undefined) {
-          return res.status(404).json({ error: "해당 업체를 찾을 수 없습니다" });
-        }
-        let client = null;
-        try { client = JSON.parse(clientResult.result); } catch {}
-        if (!client || typeof client !== "object" || Array.isArray(client) || client.id !== clientId) {
-          throw new Error("GUIDE_ISSUE_CLIENT_INVALID");
-        }
-
-        const issueKey = PREFIX + "guide-issue:" + clientId;
-        const candidate = newGuideIssueReservation(clientId, client.service);
-        const created = await redisCommand(["SET", issueKey, JSON.stringify(candidate), "NX"]);
-        let reservation = candidate;
-        if (created.result !== "OK") {
-          const existingResult = await redis("get", [issueKey]);
-          try { reservation = JSON.parse(existingResult.result); } catch { reservation = null; }
-        }
-        if (!isValidGuideIssueReservation(reservation, clientId)) {
-          throw new Error("GUIDE_ISSUE_RESERVATION_INVALID");
-        }
-        const guideKey = PREFIX + "guide:" + reservation.guide.id;
-        const guideCreated = await redisCommand(["SET", guideKey, JSON.stringify(reservation.guide), "NX"]);
-        if (guideCreated.result !== "OK") {
-          const storedGuideResult = await redis("get", [guideKey]);
-          const storedGuide = parseStoredGuide(storedGuideResult.result, reservation.guide.id);
-          if (!storedGuide || storedGuide.clientId !== clientId) {
-            // A previous interrupted issuance may have left a malformed document
-            // under the permanent reservation. Keep the same ID and repair only
-            // that invalid document so the link remains stable.
-            await redis("set", [guideKey], JSON.stringify(reservation.guide));
-          } else {
-            reservation = { guide: storedGuide };
-          }
-        }
-        return res.status(200).json({ reservation, created: created.result === "OK" });
-      }
       if (body && body.operation === "renew-client") {
         if (!isAuthenticated(req)) return res.status(401).json({ error: "인증이 필요합니다" });
         if (!isIdentifier(body.clientId) || !validIdempotencyKey(body.idempotencyKey) ||
@@ -894,10 +577,7 @@ module.exports = async (req, res) => {
       if (typeof key !== "string" || key.length > 256) {
         return res.status(400).json({ error: "key 형식이 올바르지 않습니다" });
       }
-      const storedValue = isPublicGuideKey(key) ? sanitizePublicGuideValue(value) : value;
-      if (storedValue === null) {
-        return res.status(400).json({ error: "안내문 데이터 형식이 올바르지 않습니다" });
-      }
+      const storedValue = value;
       if (storedValue.length > 2_000_000) {
         return res.status(413).json({ error: "저장할 데이터가 너무 큽니다" });
       }

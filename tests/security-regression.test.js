@@ -5,7 +5,6 @@ const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
 const indexSource = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
-const guideSource = fs.readFileSync(path.join(root, 'guide.html'), 'utf8');
 const authSource = fs.readFileSync(path.join(root, 'api', 'auth.js'), 'utf8');
 const apiSource = fs.readdirSync(path.join(root, 'api'))
   .filter((file) => file.endsWith('.js'))
@@ -60,7 +59,7 @@ assert.match(csp, /script-src[^;]*'self'/, 'CSP must allow same-origin static sc
 assert.doesNotMatch(csp, /script-src[^;]*'unsafe-inline'/,
   'inline scripts must be authorized by hashes, not unsafe-inline');
 
-for (const hash of [...inlineScriptHashes(indexSource), ...inlineScriptHashes(guideSource)]) {
+for (const hash of inlineScriptHashes(indexSource)) {
   assert.ok(csp.includes("'" + hash + "'"),
     'CSP script-src hash must match the exact inline script contents: ' + hash);
 }
