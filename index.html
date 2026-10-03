@@ -1004,8 +1004,8 @@
   function moneyonImportHtml(base){
     if(isDemoMode()) return "";
     var range=moneyonDefaultRange(base);
-    return '<div class="moneyon-import" id="moneyon-import"><div class="mi-title">머니온에서 광고 성과·카드 매출 불러오기</div>'+
-      '<p class="mi-hint">머니온에 연결된 업체면 네이버 광고(노출·클릭·CTR·CPC·광고비)와 카드 매출(매출·결제 건수·결제단가·고객 수)을 채우고, 같은 길이의 직전 기간을 비교 값으로 넣습니다.</p>'+
+    return '<div class="moneyon-import" id="moneyon-import"><div class="mi-title">머니온에서 플레이스 유입·광고 성과·카드 매출 불러오기</div>'+
+      '<p class="mi-hint">머니온에 연결된 업체면 네이버 플레이스 유입(페이지뷰·유입 키워드·유입 채널), 네이버 광고(노출·클릭·CTR·CPC·광고비), 카드 매출(매출·결제 건수·결제단가·고객 수)을 채우고, 같은 길이의 직전 기간을 비교 값으로 넣습니다. 플레이스 요약 문장은 '+(base&&base.type==="weekly"?'결과':'사실')+' 칸에 추가됩니다.</p>'+
       '<label>시작일<input type="date" id="moneyon-since" value="'+esc(range.since)+'" /></label>'+
       '<label>종료일<input type="date" id="moneyon-until" value="'+esc(range.until)+'" /></label>'+
       '<button type="button" class="btn btn-plain btn-sm" id="btn-moneyon-import">불러오기</button>'+
@@ -1031,6 +1031,77 @@
     if(cur.customers!==null&&cur.customers!==undefined) list.push(metric("고객 수","customers","명"));
     return list;
   }
+  // 네이버 플레이스 유입 — 일별 페이지뷰는 리포트 기간 그대로, 유입 키워드·채널은 머니온에 올린 자료 단위(보통 한 달)
+  function moneyonCompareLabel(summary){
+    return summary.period&&summary.period.days===7?"지난주":"직전 "+(summary.period?summary.period.days:"")+"일";
+  }
+  function moneyonPeriodLabel(since, until){
+    if(!since||!until) return "";
+    var s=since.split("-"), u=until.split("-"), last=new Date(+u[0],+u[1],0).getDate();
+    if(s[0]===u[0]&&s[1]===u[1]&&+s[2]===1&&+u[2]===last) return (+s[1])+"월";
+    return (+s[1])+"/"+(+s[2])+"~"+(+u[1])+"/"+(+u[2]);
+  }
+  function moneyonPlaceMetrics(summary){
+    var p=summary.place, cur=p.current||{}, prev=p.previous||{}, label=p.previous?moneyonCompareLabel(summary):"";
+    var list=[];
+    if(cur.days){
+      list.push({ label:"플레이스 페이지뷰", value:moneyonNumber(cur.pv), unit:"회", compareValue:moneyonNumber(prev.pv), compareLabel:label });
+      list.push({ label:"하루 평균 페이지뷰", value:moneyonNumber(cur.avgPv), unit:"회", compareValue:moneyonNumber(prev.avgPv), compareLabel:label });
+    }
+    var ch=p.channels;
+    if(ch){
+      ["네이버검색","네이버지도"].forEach(function(name){
+        var it=ch.items.filter(function(x){ return x.name===name; })[0];
+        if(it) list.push({ label:name+" 유입 ("+moneyonPeriodLabel(ch.since,ch.until)+")", value:moneyonNumber(it.pv), unit:"회", compareValue:moneyonNumber(it.prevPv), compareLabel:ch.prevSince?moneyonPeriodLabel(ch.prevSince,ch.prevUntil):"" });
+      });
+    }
+    return list;
+  }
+  function moneyonBreakdownMetrics(b, withShare){
+    var label=b.prevSince?moneyonPeriodLabel(b.prevSince,b.prevUntil):"";
+    return b.items.map(function(it, i){
+      return { label:(i+1)+". "+it.name+(withShare&&it.share!==null?" ("+it.share+"%)":""), value:moneyonNumber(it.pv), unit:"회", compareValue:moneyonNumber(it.prevPv), compareLabel:label };
+    });
+  }
+  function moneyonPct(cur, prev, label){
+    if(!prev) return "";
+    var d=(cur-prev)/prev*100;
+    return " ("+label+" "+moneyonNumber(prev)+"회 대비 "+Math.abs(d).toFixed(1)+"% "+(d>=0?"증가":"감소")+")";
+  }
+  var MONEYON_PLACE_PREFIXES=["플레이스 페이지뷰 ","유입 키워드 상위","늘어난 유입 키워드","새로 상위에 든 유입 키워드","유입 채널 비중"];
+  function moneyonPlaceSentences(summary){
+    var p=summary.place, out=[], cur=p.current||{};
+    if(cur.days){
+      out.push("플레이스 페이지뷰 "+moneyonNumber(cur.pv)+"회, 하루 평균 "+moneyonNumber(cur.avgPv)+"회"+(p.previous?moneyonPct(cur.pv,p.previous.pv,moneyonCompareLabel(summary)):"")+(p.partial?" · "+cur.days+"일 자료 기준":""));
+    }
+    var kw=p.keywords;
+    if(kw&&kw.items.length){
+      var basis=" ("+moneyonPeriodLabel(kw.since,kw.until)+" 자료 기준)";
+      out.push("유입 키워드 상위: "+kw.items.slice(0,5).map(function(it){ return it.name+" "+moneyonNumber(it.pv)+"회"; }).join(", ")+basis);
+      if(kw.prevSince){
+        var prevLabel=moneyonPeriodLabel(kw.prevSince,kw.prevUntil);
+        var up=kw.items.filter(function(it){ return it.prevPv>0&&it.pv-it.prevPv>=10; }).sort(function(a,b){ return (b.pv-b.prevPv)-(a.pv-a.prevPv); }).slice(0,3);
+        if(up.length) out.push("늘어난 유입 키워드 ("+prevLabel+" 대비): "+up.map(function(it){ return it.name+" "+moneyonNumber(it.prevPv)+"→"+moneyonNumber(it.pv)+"회"; }).join(", "));
+        var fresh=kw.items.filter(function(it){ return it.prevPv===0; }).slice(0,3);
+        if(fresh.length) out.push("새로 상위에 든 유입 키워드: "+fresh.map(function(it){ return it.name+" "+moneyonNumber(it.pv)+"회"; }).join(", ")+" ("+prevLabel+"에는 없음)");
+      }
+    }
+    var ch=p.channels;
+    if(ch&&ch.items.length){
+      out.push("유입 채널 비중: "+ch.items.filter(function(it){ return it.share!==null&&it.share>=1; }).slice(0,4).map(function(it){ return it.name+" "+it.share+"%"; }).join(", ")+" ("+moneyonPeriodLabel(ch.since,ch.until)+" 자료 기준)");
+    }
+    return out;
+  }
+  function moneyonPutRows(id, lines){
+    var box=document.getElementById(id);
+    if(!box) return;
+    box.querySelectorAll(".row").forEach(function(row){
+      var input=row.querySelector(".row-input"), v=input?input.value:"";
+      if(!v.trim()||MONEYON_PLACE_PREFIXES.some(function(prefix){ return v.indexOf(prefix)===0; })) row.remove();
+    });
+    lines.forEach(function(line){ box.insertAdjacentHTML("beforeend",rowTpl("",line)); });
+    if(!box.querySelector(".row")) box.insertAdjacentHTML("beforeend",rowTpl("",""));
+  }
   function moneyonPutBlock(container, name, metrics){
     var block=channelBlockTpl({ name:name, metrics:metrics }), existing=null;
     container.querySelectorAll(".channel-block").forEach(function(item){ var el=item.querySelector(".channel-name"); if(!existing&&el&&el.value.trim()===name) existing=item; });
@@ -1053,14 +1124,22 @@
           await linkClientToMoneyon(cl);
         }
         var summary=await moneyonCall({ op:"summary", clientId:clientId, since:document.getElementById("moneyon-since").value, until:document.getElementById("moneyon-until").value });
-        if(!summary.ads&&!summary.sales){ status.textContent=[summary.adsNote||"불러올 광고 성과가 없습니다.",summary.salesNote].filter(Boolean).join(" · "); return; }
+        if(!summary.ads&&!summary.sales&&!summary.place){ status.textContent=[summary.placeNote,summary.adsNote||"불러올 광고 성과가 없습니다.",summary.salesNote].filter(Boolean).join(" · "); return; }
         var container=document.getElementById("channels-container");
         if(!container) return;
+        if(summary.place){
+          var placeMetrics=moneyonPlaceMetrics(summary);
+          if(placeMetrics.length) moneyonPutBlock(container,"네이버 플레이스 (머니온)",placeMetrics);
+          if(summary.place.keywords) moneyonPutBlock(container,"플레이스 유입 키워드 (머니온)",moneyonBreakdownMetrics(summary.place.keywords,false));
+          if(summary.place.channels) moneyonPutBlock(container,"플레이스 유입 채널 (머니온)",moneyonBreakdownMetrics(summary.place.channels,true));
+          moneyonPutRows(base.type==="weekly"?"rows-results":"rows-facts",moneyonPlaceSentences(summary));
+        }
         if(summary.ads) moneyonPutBlock(container,"네이버 검색광고",moneyonAdMetrics(summary));
         if(summary.sales) moneyonPutBlock(container,"카드 매출 (머니온)",moneyonSalesMetrics(summary));
         var period=summary.period||{}, notes=[];
         if(summary.ads) notes.push("광고비는 VAT 별도"); else if(summary.adsNote) notes.push(summary.adsNote);
         if(summary.salesNote) notes.push(summary.salesNote);
+        if(summary.placeNote) notes.push(summary.placeNote);
         status.textContent="채웠습니다 · "+(period.since||"")+" ~ "+(period.until||"")+" (비교: "+(period.prevSince||"")+" ~ "+(period.prevUntil||"")+")"+(notes.length?" · "+notes.join(" · "):"");
       }catch(e){
         if(isSessionControlError(e)) return;

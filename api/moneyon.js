@@ -9,7 +9,7 @@
 //   POST {op:"stores"}                                  → 머니온 업체 목록 (clientId로 연결 상태 확인)
 //   POST {op:"link", client:{id,name,industry,businessNumber,manager,startDate}}
 //   POST {op:"unlink", clientId}
-//   POST {op:"summary", clientId, since, until}         → 리포트 자동 채우기 (네이버 광고 성과 + 카드 매출)
+//   POST {op:"summary", clientId, since, until}         → 리포트 자동 채우기 (플레이스 유입 + 네이버 광고 성과 + 카드 매출)
 
 const { isAuthenticated } = require('./_session');
 
