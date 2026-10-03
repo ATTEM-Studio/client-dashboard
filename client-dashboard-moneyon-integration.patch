@@ -1,0 +1,701 @@
+From 4a3aa4414bad6457a84811dc585ec2ad2632e785 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 28 Sep 2026 11:35:21 +0900
+Subject: [PATCH 1/2] =?UTF-8?q?=EB=A8=B8=EB=8B=88=EC=98=A8=20=EC=97=B0?=
+ =?UTF-8?q?=EB=8F=99:=20=EC=97=85=EC=B2=B4=20=EC=97=B0=EA=B2=B0,=20?=
+ =?UTF-8?q?=EB=A6=AC=ED=8F=AC=ED=8A=B8=20=EA=B4=91=EA=B3=A0=20=EC=84=B1?=
+ =?UTF-8?q?=EA=B3=BC=20=EB=B6=88=EB=9F=AC=EC=98=A4=EA=B8=B0,=20=ED=82=A4?=
+ =?UTF-8?q?=EC=9B=8C=EB=93=9C=20=EB=8F=84=EA=B5=AC=20=ED=82=A4=20=ED=86=B5?=
+ =?UTF-8?q?=EC=9D=BC,=20=EB=B0=94=EB=A1=9C=EA=B0=80=EA=B8=B0?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_015FWrD3jyibzGMWtJgpMeNR
+---
+ README.md                         |  13 +++
+ api/moneyon.js                    | 123 ++++++++++++++++++++
+ api/naver-keyword.js              |  16 ++-
+ index.html                        | 180 +++++++++++++++++++++++++++++-
+ tests/moneyon-integration.test.js | 111 ++++++++++++++++++
+ vercel.json                       |   2 +-
+ 6 files changed, 439 insertions(+), 6 deletions(-)
+ create mode 100644 api/moneyon.js
+ create mode 100644 tests/moneyon-integration.test.js
+
+diff --git a/README.md b/README.md
+index 24ba720..14eded7 100644
+--- a/README.md
++++ b/README.md
+@@ -62,10 +62,23 @@ Vercel KV는 더 이상 제공되지 않습니다. 대신 Marketplace의 Upstash
+ | `NAVER_AD_CUSTOMER_ID` | 네이버 검색광고 키워드 조회 |
+ | `NAVER_DATALAB_CLIENT_ID` | 네이버 데이터랩 조회 |
+ | `NAVER_DATALAB_CLIENT_SECRET` | 네이버 데이터랩 조회 |
++| `MONEYON_API_URL` | (선택) 머니온 주소, 예: `https://moneyon-zeta.vercel.app` |
++| `MONEYON_API_KEY` | (선택) 머니온 업체 관리 → 클라이언트 대시보드 연동에서 만든 연동 키 |
+ 
+ Production, Preview, Development 모두에 적용한 뒤 **재배포**합니다.
+ 환경변수는 배포 시점에 주입되므로, 추가 후 반드시 다시 배포해야 반영됩니다.
+ 
++## 머니온 연동 (선택)
++
++머니온(카드 매출·네이버 광고 성과)과 업체를 짝지어 함께 씁니다. `MONEYON_API_URL`, `MONEYON_API_KEY`를 넣고 재배포하면 켜집니다.
++
++- **업체 연결** — 업체 화면의 **[머니온에 연결]**, 메뉴의 **머니온 전체 연결**. 머니온에서 사업자번호(계약서 기재값)·업체명이 같은 업체와 짝지어지고, 없으면 새로 만들어집니다.
++- **리포트 자동 채우기** — 리포트 작성의 **머니온에서 네이버 광고 성과 불러오기**. 노출수·클릭수·CTR·CPC·총광고비(VAT 별도)·전환수와 같은 길이의 직전 기간 비교 값을 `네이버 검색광고` 채널에 채웁니다.
++- **키워드 도구** — 연동이 켜져 있으면 머니온에 저장된 네이버 광고 키로 조회합니다(없으면 기존 `NAVER_AD_*`).
++- **바로가기** — 메뉴의 **머니온**, 머니온 업체 목록의 **대시보드 연결됨** 배지(`/?client=업체ID`로 열림).
++
++연동 키는 서버(`api/moneyon.js`)에만 있고 브라우저로 내려가지 않습니다. 데모 모드에서는 머니온을 호출하지 않습니다.
++
+ ## 접근 권한
+ 
+ - **팀원** — 비밀번호를 입력하면 모든 업체·리포트를 조회하고 편집할 수 있습니다.
+diff --git a/api/moneyon.js b/api/moneyon.js
+new file mode 100644
+index 0000000..545c54e
+--- /dev/null
++++ b/api/moneyon.js
+@@ -0,0 +1,123 @@
++// /api/moneyon.js — 머니온(카드 매출·네이버 광고 성과) 연동 프록시
++//
++// 필요한 환경변수:
++//   MONEYON_API_URL  머니온 주소 (예: https://moneyon-zeta.vercel.app)
++//   MONEYON_API_KEY  머니온 업체 관리 → 클라이언트 대시보드 연동에서 만든 연동 키 (mo_로 시작)
++//
++// 브라우저는 연동 키를 모른다. 팀 세션이 있는 요청만 서버가 키를 붙여 머니온에 전달한다.
++//   POST {op:"status"}                                  → 연동 설정 여부
++//   POST {op:"stores"}                                  → 머니온 업체 목록 (clientId로 연결 상태 확인)
++//   POST {op:"link", client:{id,name,industry,businessNumber,manager,startDate}}
++//   POST {op:"unlink", clientId}
++//   POST {op:"summary", clientId, since, until}         → 리포트 자동 채우기 (네이버 광고 성과)
++
++const { isAuthenticated } = require('./_session');
++
++const TIMEOUT_MS = 25_000;
++const IDENTIFIER = /^[A-Za-z0-9_-]{1,128}$/;
++const DATE = /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/;
++
++function config() {
++  const url = String(process.env.MONEYON_API_URL || '').trim().replace(/\/+$/, '');
++  const key = String(process.env.MONEYON_API_KEY || '').trim();
++  if (!/^https:\/\/[A-Za-z0-9.-]+(:[0-9]+)?$/.test(url) && !/^http:\/\/localhost(:[0-9]+)?$/.test(url)) return null;
++  if (!/^mo_[A-Za-z0-9]{40}$/.test(key)) return null;
++  return { url, key };
++}
++
++function text(value, maximum) {
++  return typeof value === 'string' ? value.trim().slice(0, maximum) : '';
++}
++
++function validDate(value) {
++  if (typeof value !== 'string' || !DATE.test(value)) return '';
++  const d = new Date(value + 'T00:00:00Z');
++  return Number.isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== value ? '' : value;
++}
++
++async function callMoneyon(cfg, method, path, body) {
++  const controller = new AbortController();
++  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
++  try {
++    const upstream = await fetch(cfg.url + path, {
++      method,
++      headers: Object.assign({ Authorization: 'Bearer ' + cfg.key }, body === undefined ? {} : { 'Content-Type': 'application/json' }),
++      body: body === undefined ? undefined : JSON.stringify(body),
++      signal: controller.signal
++    });
++    const data = await upstream.json().catch(() => ({}));
++    return { status: upstream.status, data };
++  } finally {
++    clearTimeout(timer);
++  }
++}
++
++function relay(res, result) {
++  if (result.status === 401) return res.status(502).json({ error: '머니온 연동 키가 올바르지 않거나 해제됐습니다. 머니온에서 새 키를 만들어 주세요.' });
++  const error = result.data && typeof result.data.error === 'string' ? result.data.error.slice(0, 200) : '';
++  if (result.status >= 400) return res.status(result.status >= 500 ? 502 : result.status).json({ error: error || '머니온 요청에 실패했습니다' });
++  return res.status(200).json(result.data);
++}
++
++function publicStore(store) {
++  if (!store || typeof store !== 'object') return null;
++  return {
++    id: text(store.id, 16), name: text(store.name, 60), clientId: text(store.clientId, 128) || null,
++    naverLinked: store.naverLinked === true, url: text(store.url, 300)
++  };
++}
++
++module.exports = async function (req, res) {
++  res.setHeader('Cache-Control', 'no-store');
++  if (req.method !== 'POST') { res.setHeader('Allow', 'POST'); return res.status(405).json({ error: 'POST only' }); }
++  if (!isAuthenticated(req)) return res.status(401).json({ error: '인증이 필요합니다' });
++
++  let body = req.body;
++  if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
++  body = body && typeof body === 'object' ? body : {};
++  const op = text(body.op, 20);
++  const cfg = config();
++  if (op === 'status') return res.status(200).json({ configured: !!cfg, url: cfg ? cfg.url : null });
++  if (!cfg) return res.status(503).json({ error: '머니온 연동이 설정되지 않았습니다 (MONEYON_API_URL, MONEYON_API_KEY)' });
++
++  try {
++    if (op === 'stores') {
++      const result = await callMoneyon(cfg, 'GET', '/api/integration/v1/stores');
++      if (result.status !== 200) return relay(res, result);
++      const stores = Array.isArray(result.data.stores) ? result.data.stores.slice(0, 500).map(publicStore).filter(Boolean) : [];
++      return res.status(200).json({ stores, url: cfg.url });
++    }
++    if (op === 'link') {
++      const client = body.client && typeof body.client === 'object' ? body.client : {};
++      const clientId = text(client.id, 128);
++      const name = text(client.name, 30);
++      if (!IDENTIFIER.test(clientId) || !name) return res.status(400).json({ error: '연결할 업체 정보가 올바르지 않습니다' });
++      const result = await callMoneyon(cfg, 'POST', '/api/integration/v1/stores', {
++        clientId, name,
++        industry: text(client.industry, 40),
++        businessNumber: text(client.businessNumber, 20),
++        manager: text(client.manager, 30),
++        startDate: validDate(client.startDate) || undefined
++      });
++      return relay(res, result);
++    }
++    if (op === 'unlink') {
++      const clientId = text(body.clientId, 128);
++      if (!IDENTIFIER.test(clientId)) return res.status(400).json({ error: '업체 정보가 올바르지 않습니다' });
++      return relay(res, await callMoneyon(cfg, 'DELETE', '/api/integration/v1/stores?clientId=' + encodeURIComponent(clientId)));
++    }
++    if (op === 'summary') {
++      const clientId = text(body.clientId, 128);
++      if (!IDENTIFIER.test(clientId)) return res.status(400).json({ error: '업체 정보가 올바르지 않습니다' });
++      const params = new URLSearchParams({ clientId });
++      const since = validDate(body.since), until = validDate(body.until);
++      if (since) params.set('since', since);
++      if (until) params.set('until', until);
++      return relay(res, await callMoneyon(cfg, 'GET', '/api/integration/v1/summary?' + params.toString()));
++    }
++    return res.status(400).json({ error: '지원하지 않는 요청입니다' });
++  } catch (e) {
++    return res.status(502).json({ error: e && e.name === 'AbortError' ? '머니온 응답이 늦어 중단했습니다. 잠시 뒤 다시 시도해 주세요' : '머니온에 연결하지 못했습니다' });
++  }
++};
++
+diff --git a/api/naver-keyword.js b/api/naver-keyword.js
+index 54279fa..99e4b0e 100644
+--- a/api/naver-keyword.js
++++ b/api/naver-keyword.js
+@@ -7,10 +7,22 @@ module.exports=async function(req,res){
+   res.setHeader('Cache-Control','no-store');
+   if(req.method!=='POST') { res.setHeader('Allow','POST'); return res.status(405).json({error:'POST only'}); }
+   if(!isAuthenticated(req)) return res.status(401).json({error:'인증이 필요합니다'});
+-  const license=process.env.NAVER_AD_API_LICENSE, secret=process.env.NAVER_AD_API_SECRET, customer=process.env.NAVER_AD_CUSTOMER_ID;
+-  if(!license||!secret||!customer) return res.status(503).json({error:'서비스를 일시적으로 사용할 수 없습니다'});
+   let body=req.body; if(typeof body==='string'){try{body=JSON.parse(body);}catch{body={};}}
+   const keywords=Array.isArray(body&&body.keywords)?body.keywords.map(v=>String(v).trim()).filter(Boolean).slice(0,10):[];
++  // 머니온 연동이 설정돼 있으면 머니온에 저장된 네이버 광고 키로 조회한다 (광고 키 하나로 통일)
++  const moneyonUrl=String(process.env.MONEYON_API_URL||'').trim().replace(/\/+$/,''), moneyonKey=String(process.env.MONEYON_API_KEY||'').trim();
++  if(/^https:\/\/[A-Za-z0-9.-]+(:[0-9]+)?$/.test(moneyonUrl)&&/^mo_[A-Za-z0-9]{40}$/.test(moneyonKey)){
++    if(!keywords.length) return res.status(400).json({error:'키워드를 입력해 주세요'});
++    try{
++      const upstream=await fetch(moneyonUrl+'/api/integration/v1/naver/keywordstool',{method:'POST',headers:{Authorization:'Bearer '+moneyonKey,'Content-Type':'application/json'},body:JSON.stringify({keywords})});
++      const data=await upstream.json().catch(()=>({}));
++      if(upstream.ok) return res.status(200).json(data);
++      if(upstream.status===429) return res.status(429).json({error:'요청이 많습니다. 잠시 뒤 다시 시도해 주세요'});
++      if(!process.env.NAVER_AD_API_LICENSE) return res.status(502).json({error:'외부 서비스 요청에 실패했습니다'});
++    }catch(e){ if(!process.env.NAVER_AD_API_LICENSE) return res.status(502).json({error:'네이버 키워드 API에 연결하지 못했습니다'}); }
++  }
++  const license=process.env.NAVER_AD_API_LICENSE, secret=process.env.NAVER_AD_API_SECRET, customer=process.env.NAVER_AD_CUSTOMER_ID;
++  if(!license||!secret||!customer) return res.status(503).json({error:'서비스를 일시적으로 사용할 수 없습니다'});
+   if(!keywords.length) return res.status(400).json({error:'키워드를 입력해 주세요'});
+   const path='/keywordstool'; const timestamp=String(Date.now());
+     const url=new URL('https://api.searchad.naver.com'+path);
+diff --git a/index.html b/index.html
+index dd8e0e1..a934165 100644
+--- a/index.html
++++ b/index.html
+@@ -270,6 +270,13 @@
+   @media(max-width:720px){ .metric-row{ grid-template-columns:1fr 1fr; } .metric-row .row-remove{ grid-column:span 2; width:100%; } }
+ 
+   .channel-quickadd{ display:flex; flex-wrap:wrap; gap:7px; margin-bottom:14px; }
++  .moneyon-import{ display:flex; flex-wrap:wrap; align-items:flex-end; gap:8px; margin:0 0 14px; padding:12px 14px; border:1px solid #D6E4FA; border-radius:12px; background:#F7FAFF; }
++  .moneyon-import .mi-title{ flex-basis:100%; font-size:12.5px; font-weight:800; color:#1d4ed8; }
++  .moneyon-import .mi-hint{ flex-basis:100%; margin:-4px 0 2px; font-size:11.5px; color:var(--ink-500); }
++  .moneyon-import label{ display:flex; flex-direction:column; gap:4px; font-size:11.5px; font-weight:700; color:var(--ink-600); }
++  .moneyon-import input[type=date]{ border:1px solid var(--line); border-radius:8px; padding:7px 9px; font-size:13px; background:#fff; }
++  .moneyon-import .mi-status{ flex-basis:100%; font-size:12px; color:var(--ink-600); }
++  .moneyon-badge{ display:inline-flex; align-items:center; gap:4px; font-size:12px; font-weight:700; color:#1d4ed8; text-decoration:none; }
+   .qa-chip{ border:1px dashed var(--line); background:#fff; color:var(--ink-600); font-size:12.5px; font-weight:700; padding:7px 12px; border-radius:999px; }
+   .qa-chip:hover{ border-color:var(--brand); color:var(--brand-dark); background:var(--brand-light); }
+   .channel-block{ border:1px solid var(--line); border-radius:14px; padding:14px; margin-bottom:10px; background:#FAFBFC; }
+@@ -888,6 +895,165 @@
+     return res;
+   }
+ 
++  /* ============ 머니온 연동 (카드 매출·네이버 광고 성과) ============ */
++  // 브라우저는 연동 키를 모른다. /api/moneyon 이 팀 세션을 확인하고 서버에서 머니온을 호출한다. 데모에서는 호출하지 않는다.
++  var MONEYON_DEFAULT_URL="https://moneyon-zeta.vercel.app";
++  var moneyonState={ loaded:false, configured:false, url:"", byClient:{}, pending:null, error:"" };
++  async function moneyonCall(payload){
++    if(isDemoMode()) throw new Error("데모에서는 머니온 연동을 사용할 수 없습니다");
++    var res=await staffFetch("/api/moneyon",{ method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload) });
++    var data=await res.json().catch(function(){ return {}; });
++    if(!res.ok) throw new Error(data.error||"머니온 요청에 실패했습니다");
++    return data;
++  }
++  function loadMoneyon(force){
++    if(isDemoMode()) return Promise.resolve(moneyonState);
++    if(moneyonState.loaded&&!force) return Promise.resolve(moneyonState);
++    if(moneyonState.pending) return moneyonState.pending;
++    moneyonState.pending=(async function(){
++      try{
++        var status=await moneyonCall({op:"status"});
++        moneyonState.configured=!!status.configured; moneyonState.url=status.url||""; moneyonState.error="";
++        var map={};
++        if(status.configured){
++          var list=await moneyonCall({op:"stores"});
++          (list.stores||[]).forEach(function(store){ if(store&&store.clientId) map[store.clientId]=store; });
++        }
++        moneyonState.byClient=map;
++      }catch(e){
++        if(isSessionControlError(e)) throw e;
++        moneyonState.error=e&&e.message||"머니온 연결 실패";
++      }finally{ moneyonState.loaded=true; moneyonState.pending=null; }
++      return moneyonState;
++    })();
++    return moneyonState.pending;
++  }
++  function moneyonBaseUrl(){ return moneyonState.url||MONEYON_DEFAULT_URL; }
++  function clientBusinessNumber(cl){
++    var found=clientContracts(cl.id).filter(function(c){ return c&&c.businessNumber; })[0];
++    return found?String(found.businessNumber):"";
++  }
++  async function linkClientToMoneyon(cl){
++    var result=await moneyonCall({ op:"link", client:{ id:cl.id, name:cl.name, industry:cl.industry||"", businessNumber:clientBusinessNumber(cl), manager:cl.manager||"", startDate:cl.startDate||"" } });
++    moneyonState.byClient[cl.id]={ id:result.storeId, name:cl.name, clientId:cl.id, url:result.url, naverLinked:false };
++    return result;
++  }
++  function moneyonClientActionHtml(cl){
++    if(isDemoMode()) return "";
++    var store=moneyonState.byClient[cl.id];
++    if(store&&store.url) return '<a class="btn btn-plain btn-sm" id="btn-moneyon" href="'+esc(store.url)+'" target="_blank" rel="noopener">머니온에서 보기 ↗</a>';
++    return '<button class="btn btn-plain btn-sm" id="btn-moneyon"'+(moneyonState.loaded&&!moneyonState.configured?' title="머니온 연동이 설정되지 않았습니다"':'')+'>머니온에 연결</button>';
++  }
++  function bindMoneyonClientAction(cl){
++    if(isDemoMode()) return;
++    var button=document.getElementById("btn-moneyon");
++    if(!button) return;
++    if(!moneyonState.loaded){
++      loadMoneyon().then(function(){
++        if(state.view!=="clientDetail"||!state.currentClient||state.currentClient.id!==cl.id) return;
++        var current=document.getElementById("btn-moneyon");
++        if(current){ current.outerHTML=moneyonClientActionHtml(cl); bindMoneyonClientAction(cl); }
++      }).catch(function(){});
++    }
++    if(button.tagName!=="BUTTON") return;
++    button.onclick=async function(){
++      await loadMoneyon();
++      if(!moneyonState.configured){ showToast(moneyonState.error||"머니온 연동이 설정되지 않았습니다. 관리자에게 머니온 연동 설정을 요청하세요"); return; }
++      button.disabled=true; button.textContent="연결 중…";
++      try{
++        var result=await linkClientToMoneyon(cl);
++        showToast(result.action==="created"?"머니온에 새 업체로 등록했습니다":"머니온 업체와 연결했습니다");
++        var current=document.getElementById("btn-moneyon");
++        if(current){ current.outerHTML=moneyonClientActionHtml(cl); bindMoneyonClientAction(cl); }
++      }catch(e){
++        if(isSessionControlError(e)) return;
++        showToast(e.message||"머니온 연결에 실패했습니다"); button.disabled=false; button.textContent="머니온에 연결";
++      }
++    };
++  }
++  async function linkAllClientsToMoneyon(){
++    await loadMoneyon(true);
++    if(!moneyonState.configured){ showToast(moneyonState.error||"머니온 연동이 설정되지 않았습니다"); return; }
++    var targets=state.clients.filter(function(c){ return c&&c.id&&!moneyonState.byClient[c.id]; });
++    if(!targets.length){ showToast("모든 업체가 이미 머니온과 연결돼 있습니다"); return; }
++    showToast("머니온에 "+targets.length+"곳 연결 중…");
++    var done=0, failed=0;
++    for(var i=0;i<targets.length;i++){
++      try{
++        var full=await getS("client:"+targets[i].id)||targets[i];
++        if(!full.name){ failed++; continue; }
++        await linkClientToMoneyon(full); done++;
++      }catch(e){ if(isSessionControlError(e)) return; failed++; }
++    }
++    showToast("머니온 연결 완료 "+done+"곳"+(failed?(" · 실패 "+failed+"곳"):""));
++  }
++  function localDateKey(date){ return date.getFullYear()+"-"+String(date.getMonth()+1).padStart(2,"0")+"-"+String(date.getDate()).padStart(2,"0"); }
++  function moneyonDefaultRange(base){
++    var yesterday=new Date(); yesterday.setDate(yesterday.getDate()-1);
++    var until=localDateKey(yesterday), since;
++    var month=base&&base.type==="monthly"?reportMonthKey(base.period):null;
++    if(month){
++      var parts=month.split("-"), first=new Date(+parts[0],+parts[1]-1,1), last=new Date(+parts[0],+parts[1],0);
++      since=localDateKey(first); if(localDateKey(last)<until) until=localDateKey(last);
++      if(since>until) since=until;
++    } else {
++      var start=new Date(yesterday); start.setDate(start.getDate()-6); since=localDateKey(start);
++    }
++    return { since:since, until:until };
++  }
++  function moneyonImportHtml(base){
++    if(isDemoMode()) return "";
++    var range=moneyonDefaultRange(base);
++    return '<div class="moneyon-import" id="moneyon-import"><div class="mi-title">머니온에서 네이버 광고 성과 불러오기</div>'+
++      '<p class="mi-hint">머니온에 연결된 업체면 노출·클릭·CTR·CPC·광고비를 채우고, 같은 길이의 직전 기간을 비교 값으로 넣습니다.</p>'+
++      '<label>시작일<input type="date" id="moneyon-since" value="'+esc(range.since)+'" /></label>'+
++      '<label>종료일<input type="date" id="moneyon-until" value="'+esc(range.until)+'" /></label>'+
++      '<button type="button" class="btn btn-plain btn-sm" id="btn-moneyon-import">불러오기</button>'+
++      '<div class="mi-status" id="moneyon-import-status" role="status"></div></div>';
++  }
++  function moneyonNumber(value, digits){
++    if(value===null||value===undefined||!isFinite(value)) return "";
++    return Number(value).toLocaleString("ko-KR",{ maximumFractionDigits:digits||0 });
++  }
++  function moneyonAdMetrics(summary){
++    var cur=summary.ads.current||{}, prev=summary.ads.previous||{}, label=summary.period&&summary.period.days===7?"지난주":"직전 "+(summary.period?summary.period.days:"")+"일";
++    function metric(name, key, unit, digits){
++      return { label:name, value:moneyonNumber(cur[key],digits), unit:unit, compareValue:moneyonNumber(prev[key],digits), compareLabel:label };
++    }
++    return [metric("노출수","imp",""),metric("클릭수","clk",""),metric("CTR","ctr","%",2),metric("CPC","cpc","원"),metric("총광고비","cost","원"),metric("전환수","conv","")];
++  }
++  function bindMoneyonImport(base){
++    var button=document.getElementById("btn-moneyon-import");
++    if(!button||isDemoMode()) return;
++    var status=document.getElementById("moneyon-import-status");
++    button.onclick=async function(){
++      var clientId=base.clientId||(state.currentClient?state.currentClient.id:null);
++      if(!clientId){ status.textContent="업체를 먼저 선택하세요."; return; }
++      button.disabled=true; status.textContent="불러오는 중…";
++      try{
++        await loadMoneyon();
++        if(!moneyonState.configured) throw new Error(moneyonState.error||"머니온 연동이 설정되지 않았습니다");
++        if(!moneyonState.byClient[clientId]){
++          var cl=state.currentClient&&state.currentClient.id===clientId?state.currentClient:await getS("client:"+clientId);
++          if(!cl) throw new Error("업체 정보를 찾을 수 없습니다");
++          await linkClientToMoneyon(cl);
++        }
++        var summary=await moneyonCall({ op:"summary", clientId:clientId, since:document.getElementById("moneyon-since").value, until:document.getElementById("moneyon-until").value });
++        if(!summary.ads){ status.textContent=summary.adsNote||"불러올 광고 성과가 없습니다."; return; }
++        var container=document.getElementById("channels-container");
++        if(!container) return;
++        var block=channelBlockTpl({ name:"네이버 검색광고", metrics:moneyonAdMetrics(summary) }), existing=null;
++        container.querySelectorAll(".channel-block").forEach(function(item){ var name=item.querySelector(".channel-name"); if(!existing&&name&&name.value.trim()==="네이버 검색광고") existing=item; });
++        if(existing) existing.outerHTML=block; else container.insertAdjacentHTML("beforeend",block);
++        var period=summary.period||{};
++        status.textContent="채웠습니다 · "+(period.since||"")+" ~ "+(period.until||"")+" (비교: "+(period.prevSince||"")+" ~ "+(period.prevUntil||"")+") · 광고비는 VAT 별도"+(summary.salesNote?" · "+summary.salesNote:"");
++      }catch(e){
++        if(isSessionControlError(e)) return;
++        status.textContent=e.message||"머니온에서 불러오지 못했습니다";
++      }finally{ button.disabled=false; }
++    };
++  }
++
+   var storageBackend = {
+     async get(key){
+       var res = await staffDataGet(key);
+@@ -1813,7 +1979,11 @@
+       return;
+     }
+ 
+-    try { await loadWorkspace(); }
++    try {
++      await loadWorkspace();
++      var linkedClientId=params.get("client");
++      if(linkedClientId && state.clients.some(function(c){ return c && c.id===linkedClientId; })) await openClient(linkedClientId);
++    }
+     catch(e) { if(!e || e.code!=="unauthorized") renderLogin("작업 공간을 불러오지 못했습니다. 다시 로그인해 주세요."); }
+   }
+ 
+@@ -2025,7 +2195,7 @@
+     app.innerHTML=
+       '<div class="topbar">'+
+         '<div class="brand"><span class="brand-mark"></span>업체 관리 대시보드'+(isDemoMode()?' <span class="tag tag-new" style="margin-left:7px">DEMO</span>':'')+'</div>'+
+-        '<div class="dashboard-menu" id="dashboard-menu"><button class="btn btn-primary dashboard-menu-toggle" id="btn-dashboard-menu" aria-expanded="false">메뉴 <span class="menu-chevron">⌄</span></button><div class="dashboard-menu-panel" role="menu"><button class="dashboard-menu-item" id="btn-menu-new-client" role="menuitem">＋ 업체 추가</button><button class="dashboard-menu-item" id="btn-menu-tools" role="menuitem">▥ 분석기</button><a class="dashboard-menu-item" id="btn-menu-ranking" role="menuitem" href="https://planking.vercel.app/">↗ 순위 추적</a>'+(isDemoMode()?'<button class="dashboard-menu-item" id="btn-menu-demo-reset" role="menuitem">↻ 데모 초기화</button><button class="dashboard-menu-item" id="btn-menu-staff-login" role="menuitem">직원 로그인으로 전환</button>':'<button class="dashboard-menu-item" id="btn-menu-logout" role="menuitem">로그아웃</button>')+'</div></div>'+
++        '<div class="dashboard-menu" id="dashboard-menu"><button class="btn btn-primary dashboard-menu-toggle" id="btn-dashboard-menu" aria-expanded="false">메뉴 <span class="menu-chevron">⌄</span></button><div class="dashboard-menu-panel" role="menu"><button class="dashboard-menu-item" id="btn-menu-new-client" role="menuitem">＋ 업체 추가</button><button class="dashboard-menu-item" id="btn-menu-tools" role="menuitem">▥ 분석기</button><a class="dashboard-menu-item" id="btn-menu-ranking" role="menuitem" href="https://planking.vercel.app/">↗ 순위 추적</a><a class="dashboard-menu-item" id="btn-menu-moneyon" role="menuitem" href="'+esc(typeof moneyonBaseUrl==="function"?moneyonBaseUrl():"https://moneyon-zeta.vercel.app")+'" target="_blank" rel="noopener">↗ 머니온 (매출·광고)</a>'+(isDemoMode()?'':'<button class="dashboard-menu-item" id="btn-menu-moneyon-link" role="menuitem">⇄ 머니온 전체 연결</button>')+(isDemoMode()?'<button class="dashboard-menu-item" id="btn-menu-demo-reset" role="menuitem">↻ 데모 초기화</button><button class="dashboard-menu-item" id="btn-menu-staff-login" role="menuitem">직원 로그인으로 전환</button>':'<button class="dashboard-menu-item" id="btn-menu-logout" role="menuitem">로그아웃</button>')+'</div></div>'+
+       '</div>'+
+       '<div class="hero">'+
+         '<p class="eyebrow">'+esc(monthLabel(state.month))+' 기준</p>'+
+@@ -2041,6 +2211,7 @@
+ 
+     document.getElementById("btn-menu-new-client").addEventListener("click", beginNewClientRegistration);
+     document.getElementById("btn-menu-tools").addEventListener("click", function(){ state.view="keywordTool"; render(); });
++    var moneyonLink=document.getElementById("btn-menu-moneyon-link"); if(moneyonLink) moneyonLink.addEventListener("click", function(){ linkAllClientsToMoneyon().catch(function(){}); });
+     var demoReset=document.getElementById("btn-menu-demo-reset"); if(demoReset) demoReset.addEventListener("click", resetDemoMode);
+     var staffSwitch=document.getElementById("btn-menu-staff-login"); if(staffSwitch) staffSwitch.addEventListener("click", leaveDemoMode);
+     var logoutButton=document.getElementById("btn-menu-logout"); if(logoutButton) logoutButton.addEventListener("click", staffLogout);
+@@ -2779,7 +2950,7 @@
+     if(activeTab==="checklist") content=checklistPanel(cl, tasks, done);
+     if(activeTab==="reports") content='<div class="panel fade-in"><div class="panel-head"><h3 class="panel-title">리포트</h3><span class="count muted">'+state.reports.filter(function(r){return r.clientId===cl.id;}).length+'건</span></div><div class="report-actions" style="margin-bottom:16px"><button class="btn btn-primary btn-sm" id="btn-new-weekly">+ 주간 리포트</button><button class="btn btn-ghost btn-sm" id="btn-new-monthly">+ 월간 리포트</button></div>'+reportRows(cl)+revenueTrendPanel(cl.id,state.reports,state.month)+"</div>";
+     if(activeTab==="contracts") content=contractsPanel(cl);
+-    app.innerHTML='<div class="report-top"><button class="back-btn" id="btn-back">←</button><div class="report-actions"><button class="btn btn-plain btn-sm" id="btn-renew">재계약 처리</button><button class="btn btn-plain btn-sm" id="btn-edit-client">정보 수정</button></div></div>'+
++    app.innerHTML='<div class="report-top"><button class="back-btn" id="btn-back">←</button><div class="report-actions">'+(typeof moneyonClientActionHtml==="function"?moneyonClientActionHtml(cl):"")+'<button class="btn btn-plain btn-sm" id="btn-renew">재계약 처리</button><button class="btn btn-plain btn-sm" id="btn-edit-client">정보 수정</button></div></div>'+
+       '<div class="detail-head fade-in"><div class="dh-tagrow"><span class="status-pill">'+(cl.contractType==="renewal"?"재계약":"신규")+'</span></div><h2 class="dh-name">'+esc(cl.name)+'</h2><div class="dh-meta"><span>'+esc(cl.industry||"")+'</span><span>시작 '+esc(cl.startDate||"미등록")+'</span></div></div>'+
+       '<div class="detail-tabs"><button class="detail-tab '+(activeTab==="calendar"?"active":"")+'" data-client-tab="calendar">일정 달력</button><button class="detail-tab '+(activeTab==="checklist"?"active":"")+'" data-client-tab="checklist">업무 체크리스트 <small>'+done+'/'+tasks.length+'</small></button><button class="detail-tab '+(activeTab==="reports"?"active":"")+'" data-client-tab="reports">리포트</button><button class="detail-tab '+(activeTab==="contracts"?"active":"")+'" data-client-tab="contracts">계약서</button></div>'+content;
+     if(typeof activateDataMotion==="function")activateDataMotion(app);
+@@ -2797,6 +2968,7 @@
+     document.getElementById("btn-renew").onclick=function(){ markRenewal(cl.id); };
+     app.querySelectorAll("[data-client-tab]").forEach(function(b){ b.onclick=function(){ selectClientWorkspaceTab(cl,b.getAttribute("data-client-tab")); }; });
+     bindCalendarPanel(cl); bindChecklistPanel(cl); bindReportPanel(cl);
++    if(typeof bindMoneyonClientAction==="function") bindMoneyonClientAction(cl);
+     if(typeof bindContractsPanel==="function") bindContractsPanel(cl);
+     bindPressFeedback(app);
+     _clientTabMotionPending=false;
+@@ -3504,6 +3676,7 @@
+     var quickHtml='<div class="channel-quickadd">'+
+       quick.map(function(n){ return '<button type="button" class="qa-chip" data-quickchannel="'+esc(n)+'">+ '+esc(n)+'</button>'; }).join("")+
+       '<button type="button" class="qa-chip" data-quickchannel="">+ 직접 입력</button></div>';
++    if(typeof moneyonImportHtml==="function") quickHtml=moneyonImportHtml(base)+quickHtml;
+     var chHtml='<div id="channels-container">'+channels.map(channelBlockTpl).join("")+'</div>';
+     var storedRevenue=revenueForReport(base);
+     function revenueFieldValue(key){
+@@ -3627,6 +3800,7 @@
+     document.getElementById("btn-back").addEventListener("click", back);
+     document.getElementById("btn-cancel").addEventListener("click", back);
+     document.getElementById("btn-save").addEventListener("click", saveReport);
++    if(typeof bindMoneyonImport==="function") bindMoneyonImport(base);
+   }
+ 
+   app.addEventListener("click", function(e){ editDelegated(e); });
+diff --git a/tests/moneyon-integration.test.js b/tests/moneyon-integration.test.js
+new file mode 100644
+index 0000000..8eac883
+--- /dev/null
++++ b/tests/moneyon-integration.test.js
+@@ -0,0 +1,111 @@
++const assert = require('node:assert/strict');
++const fs = require('node:fs');
++const path = require('node:path');
++
++process.env.TEAM_PASSWORD = 'moneyon-test-password';
++const moneyonApi = require('../api/moneyon');
++const keywordApi = require('../api/naver-keyword');
++const { issueSession } = require('../api/_session');
++
++const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
++const KEY = 'mo_' + 'A'.repeat(40);
++
++function response() {
++  return {
++    statusCode: null, body: null, headers: {},
++    setHeader(name, value) { this.headers[String(name).toLowerCase()] = value; },
++    status(code) { this.statusCode = code; return this; },
++    json(body) { this.body = body; return this; }
++  };
++}
++function cookie() {
++  const res = response();
++  issueSession(res);
++  return String(res.headers['set-cookie']).split(';')[0];
++}
++async function invoke(handler, body, options = {}) {
++  const calls = [];
++  const previous = global.fetch;
++  global.fetch = async (url, init) => {
++    calls.push({ url: String(url), init: init || {} });
++    const reply = options.reply ? options.reply(String(url), init || {}) : { status: 200, body: {} };
++    return { ok: reply.status < 400, status: reply.status, async json() { return reply.body; } };
++  };
++  const res = response();
++  try {
++    await handler({ method: options.method || 'POST', headers: options.headers || { cookie: cookie() }, body }, res);
++  } finally {
++    global.fetch = previous;
++  }
++  return { res, calls };
++}
++
++async function main() {
++  delete process.env.MONEYON_API_URL;
++  delete process.env.MONEYON_API_KEY;
++
++  // 세션 없는 요청은 머니온까지 가지 않는다
++  let r = await invoke(moneyonApi, { op: 'stores' }, { headers: {} });
++  assert.equal(r.res.statusCode, 401);
++  assert.equal(r.calls.length, 0);
++
++  // 설정 전: status는 configured=false, 나머지는 503
++  r = await invoke(moneyonApi, { op: 'status' });
++  assert.deepEqual(r.res.body, { configured: false, url: null });
++  r = await invoke(moneyonApi, { op: 'stores' });
++  assert.equal(r.res.statusCode, 503);
++  assert.equal(r.calls.length, 0);
++
++  process.env.MONEYON_API_URL = 'https://moneyon.example.test/';
++  process.env.MONEYON_API_KEY = KEY;
++  r = await invoke(moneyonApi, { op: 'status' });
++  assert.deepEqual(r.res.body, { configured: true, url: 'https://moneyon.example.test' });
++  assert.ok(!JSON.stringify(r.res.body).includes(KEY), 'the integration key must never reach the browser');
++
++  // 업체 목록: 키는 서버에서만 Bearer로 붙고, 허용 필드만 브라우저로
++  r = await invoke(moneyonApi, { op: 'stores' }, { reply: () => ({ status: 200, body: { stores: [{ id: 'u-abc12345', name: '꿈카페', clientId: 'client_1', naverLinked: true, url: 'https://moneyon.example.test/u-abc12345/dashboard', secret: 'x' }] } }) });
++  assert.equal(r.calls[0].url, 'https://moneyon.example.test/api/integration/v1/stores');
++  assert.equal(r.calls[0].init.headers.Authorization, 'Bearer ' + KEY);
++  assert.equal(r.res.statusCode, 200);
++  assert.deepEqual(Object.keys(r.res.body.stores[0]).sort(), ['clientId', 'id', 'name', 'naverLinked', 'url']);
++
++  // 연결: 잘못된 업체 id는 막고, 올바른 요청은 필요한 필드만 전달
++  r = await invoke(moneyonApi, { op: 'link', client: { id: 'bad id!', name: 'x' } });
++  assert.equal(r.res.statusCode, 400);
++  assert.equal(r.calls.length, 0);
++  r = await invoke(moneyonApi, { op: 'link', client: { id: 'client_1', name: '꿈카페 하단지점', industry: '카페', businessNumber: '220-81-62517', startDate: '2026-09-01', memo: '내부 메모' } },
++    { reply: () => ({ status: 200, body: { ok: true, storeId: 'u-abc12345', action: 'matched', url: 'https://moneyon.example.test/u-abc12345/dashboard' } }) });
++  const sent = JSON.parse(r.calls[0].init.body);
++  assert.equal(r.calls[0].init.method, 'POST');
++  assert.deepEqual(Object.keys(sent).sort(), ['businessNumber', 'clientId', 'industry', 'manager', 'name', 'startDate']);
++  assert.equal(r.res.body.action, 'matched');
++
++  // 요약: 날짜는 검증해서만 전달
++  r = await invoke(moneyonApi, { op: 'summary', clientId: 'client_1', since: '2026-09-01', until: 'not-a-date' },
++    { reply: () => ({ status: 200, body: { linked: true, ads: { current: { imp: 10 }, previous: { imp: 5 } } } }) });
++  assert.equal(r.calls[0].url, 'https://moneyon.example.test/api/integration/v1/summary?clientId=client_1&since=2026-09-01');
++  assert.equal(r.res.body.ads.current.imp, 10);
++
++  // 머니온이 키를 거절하면 브라우저에는 401이 아니라 502 (팀 세션 만료로 오해하지 않게)
++  r = await invoke(moneyonApi, { op: 'stores' }, { reply: () => ({ status: 401, body: { error: 'invalid' } }) });
++  assert.equal(r.res.statusCode, 502);
++
++  // 키워드 도구: 머니온 연동이 있으면 머니온에 저장된 광고 키로 조회
++  delete process.env.NAVER_AD_API_LICENSE;
++  r = await invoke(keywordApi, { keywords: ['하단카페'] }, { reply: () => ({ status: 200, body: { keywordList: [{ relKeyword: '하단카페' }] } }) });
++  assert.equal(r.calls[0].url, 'https://moneyon.example.test/api/integration/v1/naver/keywordstool');
++  assert.equal(r.calls[0].init.headers.Authorization, 'Bearer ' + KEY);
++  assert.equal(r.res.body.keywordList[0].relKeyword, '하단카페');
++
++  // 화면: 데모에서는 머니온을 부르지 않는다
++  assert.match(html, /function moneyonCall\(payload\)\{\s*if\(isDemoMode\(\)\) throw/);
++  assert.match(html, /function moneyonImportHtml\(base\)\{\s*if\(isDemoMode\(\)\) return ""/);
++  assert.match(html, /function moneyonClientActionHtml\(cl\)\{\s*if\(isDemoMode\(\)\) return ""/);
++  assert.ok(html.includes('"/api/moneyon"'), 'the dashboard must reach Moneyon only through its own API');
++  assert.ok(!/MONEYON_API_KEY/.test(html), 'the browser bundle must not reference the integration key');
++  assert.ok(html.includes('params.get("client")'), 'Moneyon deep links (?client=) must open the client');
++
++  console.log('moneyon integration: ok');
++}
++
++main().catch((error) => { console.error(error); process.exit(1); });
+diff --git a/vercel.json b/vercel.json
+index 4a8c4fe..a6952ed 100644
+--- a/vercel.json
++++ b/vercel.json
+@@ -10,7 +10,7 @@
+         { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+         {
+           "key": "Content-Security-Policy",
+-          "value": "default-src 'self'; script-src 'self' 'sha256-4VS5aA09Xt3N5gzhOA1Lh6WP866b4ENe338LB+xmRTI='; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'"
++          "value": "default-src 'self'; script-src 'self' 'sha256-wvlnst1nY+5FRo1dz6yP2vgE8CCnS7Il6gmp+Q1ehl4='; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'"
+         }
+       ]
+     }
+-- 
+2.43.0
+
+
+From 4d041a23940665952b4dff4a1d6e0e2b9d732601 Mon Sep 17 00:00:00 2001
+From: JIN <brandoit.choi@gmail.com>
+Date: Fri, 2 Oct 2026 21:21:48 +0900
+Subject: [PATCH 2/2] =?UTF-8?q?=EB=A8=B8=EB=8B=88=EC=98=A8=20=EC=97=B0?=
+ =?UTF-8?q?=EB=8F=99:=20=EB=A6=AC=ED=8F=AC=ED=8A=B8=EC=97=90=20=EC=B9=B4?=
+ =?UTF-8?q?=EB=93=9C=20=EB=A7=A4=EC=B6=9C(=EB=A7=A4=EC=B6=9C=C2=B7?=
+ =?UTF-8?q?=EA=B2=B0=EC=A0=9C=20=EA=B1=B4=EC=88=98=C2=B7=EA=B2=B0=EC=A0=9C?=
+ =?UTF-8?q?=EB=8B=A8=EA=B0=80=C2=B7=EA=B3=A0=EA=B0=9D=20=EC=88=98)?=
+ =?UTF-8?q?=EB=8F=84=20=EB=B6=88=EB=9F=AC=EC=98=A4=EA=B8=B0?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_015FWrD3jyibzGMWtJgpMeNR
+---
+ api/moneyon.js |  2 +-
+ index.html     | 31 +++++++++++++++++++++++--------
+ vercel.json    |  2 +-
+ 3 files changed, 25 insertions(+), 10 deletions(-)
+
+diff --git a/api/moneyon.js b/api/moneyon.js
+index 545c54e..a093fa1 100644
+--- a/api/moneyon.js
++++ b/api/moneyon.js
+@@ -9,7 +9,7 @@
+ //   POST {op:"stores"}                                  → 머니온 업체 목록 (clientId로 연결 상태 확인)
+ //   POST {op:"link", client:{id,name,industry,businessNumber,manager,startDate}}
+ //   POST {op:"unlink", clientId}
+-//   POST {op:"summary", clientId, since, until}         → 리포트 자동 채우기 (네이버 광고 성과)
++//   POST {op:"summary", clientId, since, until}         → 리포트 자동 채우기 (네이버 광고 성과 + 카드 매출)
+ 
+ const { isAuthenticated } = require('./_session');
+ 
+diff --git a/index.html b/index.html
+index a934165..5e35174 100644
+--- a/index.html
++++ b/index.html
+@@ -1004,8 +1004,8 @@
+   function moneyonImportHtml(base){
+     if(isDemoMode()) return "";
+     var range=moneyonDefaultRange(base);
+-    return '<div class="moneyon-import" id="moneyon-import"><div class="mi-title">머니온에서 네이버 광고 성과 불러오기</div>'+
+-      '<p class="mi-hint">머니온에 연결된 업체면 노출·클릭·CTR·CPC·광고비를 채우고, 같은 길이의 직전 기간을 비교 값으로 넣습니다.</p>'+
++    return '<div class="moneyon-import" id="moneyon-import"><div class="mi-title">머니온에서 광고 성과·카드 매출 불러오기</div>'+
++      '<p class="mi-hint">머니온에 연결된 업체면 네이버 광고(노출·클릭·CTR·CPC·광고비)와 카드 매출(매출·결제 건수·결제단가·고객 수)을 채우고, 같은 길이의 직전 기간을 비교 값으로 넣습니다.</p>'+
+       '<label>시작일<input type="date" id="moneyon-since" value="'+esc(range.since)+'" /></label>'+
+       '<label>종료일<input type="date" id="moneyon-until" value="'+esc(range.until)+'" /></label>'+
+       '<button type="button" class="btn btn-plain btn-sm" id="btn-moneyon-import">불러오기</button>'+
+@@ -1022,6 +1022,20 @@
+     }
+     return [metric("노출수","imp",""),metric("클릭수","clk",""),metric("CTR","ctr","%",2),metric("CPC","cpc","원"),metric("총광고비","cost","원"),metric("전환수","conv","")];
+   }
++  function moneyonSalesMetrics(summary){
++    var cur=summary.sales.current||{}, prev=summary.sales.previous||{}, label=summary.period&&summary.period.days===7?"지난주":"직전 "+(summary.period?summary.period.days:"")+"일";
++    function metric(name, key, unit){
++      return { label:name, value:moneyonNumber(cur[key]), unit:unit, compareValue:moneyonNumber(prev[key]), compareLabel:label };
++    }
++    var list=[metric("카드 매출","net","원"),metric("결제 건수","count","건"),metric("결제단가","avgTicket","원")];
++    if(cur.customers!==null&&cur.customers!==undefined) list.push(metric("고객 수","customers","명"));
++    return list;
++  }
++  function moneyonPutBlock(container, name, metrics){
++    var block=channelBlockTpl({ name:name, metrics:metrics }), existing=null;
++    container.querySelectorAll(".channel-block").forEach(function(item){ var el=item.querySelector(".channel-name"); if(!existing&&el&&el.value.trim()===name) existing=item; });
++    if(existing) existing.outerHTML=block; else container.insertAdjacentHTML("beforeend",block);
++  }
+   function bindMoneyonImport(base){
+     var button=document.getElementById("btn-moneyon-import");
+     if(!button||isDemoMode()) return;
+@@ -1039,14 +1053,15 @@
+           await linkClientToMoneyon(cl);
+         }
+         var summary=await moneyonCall({ op:"summary", clientId:clientId, since:document.getElementById("moneyon-since").value, until:document.getElementById("moneyon-until").value });
+-        if(!summary.ads){ status.textContent=summary.adsNote||"불러올 광고 성과가 없습니다."; return; }
++        if(!summary.ads&&!summary.sales){ status.textContent=[summary.adsNote||"불러올 광고 성과가 없습니다.",summary.salesNote].filter(Boolean).join(" · "); return; }
+         var container=document.getElementById("channels-container");
+         if(!container) return;
+-        var block=channelBlockTpl({ name:"네이버 검색광고", metrics:moneyonAdMetrics(summary) }), existing=null;
+-        container.querySelectorAll(".channel-block").forEach(function(item){ var name=item.querySelector(".channel-name"); if(!existing&&name&&name.value.trim()==="네이버 검색광고") existing=item; });
+-        if(existing) existing.outerHTML=block; else container.insertAdjacentHTML("beforeend",block);
+-        var period=summary.period||{};
+-        status.textContent="채웠습니다 · "+(period.since||"")+" ~ "+(period.until||"")+" (비교: "+(period.prevSince||"")+" ~ "+(period.prevUntil||"")+") · 광고비는 VAT 별도"+(summary.salesNote?" · "+summary.salesNote:"");
++        if(summary.ads) moneyonPutBlock(container,"네이버 검색광고",moneyonAdMetrics(summary));
++        if(summary.sales) moneyonPutBlock(container,"카드 매출 (머니온)",moneyonSalesMetrics(summary));
++        var period=summary.period||{}, notes=[];
++        if(summary.ads) notes.push("광고비는 VAT 별도"); else if(summary.adsNote) notes.push(summary.adsNote);
++        if(summary.salesNote) notes.push(summary.salesNote);
++        status.textContent="채웠습니다 · "+(period.since||"")+" ~ "+(period.until||"")+" (비교: "+(period.prevSince||"")+" ~ "+(period.prevUntil||"")+")"+(notes.length?" · "+notes.join(" · "):"");
+       }catch(e){
+         if(isSessionControlError(e)) return;
+         status.textContent=e.message||"머니온에서 불러오지 못했습니다";
+diff --git a/vercel.json b/vercel.json
+index a6952ed..02e290d 100644
+--- a/vercel.json
++++ b/vercel.json
+@@ -10,7 +10,7 @@
+         { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+         {
+           "key": "Content-Security-Policy",
+-          "value": "default-src 'self'; script-src 'self' 'sha256-wvlnst1nY+5FRo1dz6yP2vgE8CCnS7Il6gmp+Q1ehl4='; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'"
++          "value": "default-src 'self'; script-src 'self' 'sha256-yo4uPlDGoDILz4QKf/kUuL7pBR6cwGwpPqco1p/lSB8='; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'"
+         }
+       ]
+     }
+-- 
+2.43.0
+
