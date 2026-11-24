@@ -2078,7 +2078,7 @@
       var linkedClientId=params.get("client");
       if(linkedClientId && state.clients.some(function(c){ return c && c.id===linkedClientId; })) await openClient(linkedClientId);
     }
-    catch(e) { if(!e || e.code!=="unauthorized") renderLogin("작업 공간을 불러오지 못했습니다. 다시 로그인해 주세요."); }
+    catch(e) { if(!isSessionControlError(e)) renderLogin("작업 공간을 불러오지 못했습니다. 다시 로그인해 주세요."); }
   }
 
   async function loadWorkspace(){

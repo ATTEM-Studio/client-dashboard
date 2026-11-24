@@ -28,6 +28,8 @@ assert.match(html, /function createStaleSessionError\(/, 'stale requests must be
 assert.match(html, /function captureProtectedOverlays\(/, 'session expiry must capture protected body overlays');
 assert.match(html, /function restoreProtectedOverlays\(/, 'successful re-login must restore protected overlay drafts');
 assert.match(html, /function isSessionControlError\(/, 'all storage wrappers must share the session control-flow classifier');
+assert.match(html, /catch\(e\) \{ if\(!isSessionControlError\(e\)\) renderLogin\("작업 공간을 불러오지 못했습니다\. 다시 로그인해 주세요\."\); \}/,
+  'an expected unauthenticated or stale-session startup must not overwrite the login screen with a workspace failure');
 
 function sourceFor(name) {
   const match = html.match(new RegExp(`(async function ${name}\\([\\s\\S]*?\\n  \\})`));
