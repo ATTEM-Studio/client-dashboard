@@ -829,11 +829,12 @@
 
   function handleSessionExpired(){
     if(isDemoMode() || sessionExpiryInFlight) return;
+    var initialLoad=state.view==="loading";
     sessionExpiryInFlight=true;
     sessionGeneration++;
     preserveVisibleDrafts();
     state.view="login";
-    renderLogin("로그인 시간이 만료되었습니다. 작성 중인 내용은 다시 로그인한 뒤 복원됩니다.");
+    renderLogin(initialLoad?undefined:"로그인 시간이 만료되었습니다. 작성 중인 내용은 다시 로그인한 뒤 복원됩니다.");
   }
 
   async function loginWithPassword(password){

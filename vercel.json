@@ -10,7 +10,7 @@
         { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' 'sha256-Ad7Ooa96oC4MqVBsTJTbncBx18WEqpLQ4dQVAFAI0NM='; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'"
+          "value": "default-src 'self'; script-src 'self' 'sha256-RfQoUkDxKXZU3XWrtPLwTt79+N70sZCfD3ehqcSrMyM='; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'"
         }
       ]
     }

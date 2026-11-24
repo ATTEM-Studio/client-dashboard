@@ -104,8 +104,20 @@ vm.runInNewContext([
   expirySandbox.handleSessionExpired();
   assert.strictEqual(preserveCount, 1, 'concurrent 401s must snapshot the first visible draft only once');
   assert.strictEqual(expiryRenders.length, 1, 'concurrent 401s must not replace the login view again');
+  assert.match(expiryRenders[0], /만료/, 'an expired active workspace must explain why re-login is required');
   assert.strictEqual(expirySandbox.state.view, 'login');
   assert.strictEqual(expirySandbox.sessionGeneration, 5, 'the first 401 must invalidate stale staff continuations');
+
+  const initialRenders = [];
+  const initialSandbox = {
+    sessionExpiryInFlight: false, sessionGeneration: 0, workspaceMode: 'staff',
+    state: { view: 'loading' }, isDemoMode() { return false; },
+    preserveVisibleDrafts() {}, renderLogin(message) { initialRenders.push(message); }
+  };
+  vm.runInNewContext(sourceBetween('  function handleSessionExpired()', '  async function loginWithPassword'), initialSandbox);
+  initialSandbox.handleSessionExpired();
+  assert.strictEqual(initialRenders[0], undefined,
+    'a fresh unauthenticated visit must show a clean login form without an expired-session warning');
 
   let resolveOldResponse;
   let staleExpiryCalls = 0;
