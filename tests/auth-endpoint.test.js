@@ -190,8 +190,10 @@ async function main() {
   delete process.env.KV_REST_API_TOKEN;
   try {
     const missingRedis = await call('correct-team-password');
-    assert.equal(missingRedis.statusCode, 503);
-    assert.doesNotMatch(JSON.stringify(missingRedis.body), /REDIS|KV_REST|UPSTASH/i);
+    assert.equal(missingRedis.statusCode, 200,
+      'a correct password must still create a session when Redis rate-limit storage is unavailable');
+    assert.deepEqual(missingRedis.body, { ok: true });
+    assert.match(String(missingRedis.headers['set-cookie']), /__Host-client-dashboard-session=/);
   } finally {
     process.env.KV_REST_API_URL = configuredUrl;
     process.env.KV_REST_API_TOKEN = configuredToken;
@@ -201,8 +203,14 @@ async function main() {
   global.fetch = async () => { throw new Error('upstream Redis failure'); };
   try {
     const failedRedis = await call('correct-team-password');
-    assert.equal(failedRedis.statusCode, 503);
-    assert.doesNotMatch(JSON.stringify(failedRedis.body), /upstream|Redis/i);
+    assert.equal(failedRedis.statusCode, 200,
+      'a transient Redis failure must not lock out a user who supplied the correct password');
+    assert.deepEqual(failedRedis.body, { ok: true });
+    assert.match(String(failedRedis.headers['set-cookie']), /__Host-client-dashboard-session=/);
+
+    const failedRedisWrongPassword = await call('wrong-password');
+    assert.equal(failedRedisWrongPassword.statusCode, 503,
+      'invalid passwords must remain fail-closed when rate-limit storage is unavailable');
   } finally {
     global.fetch = previousFailureFetch;
   }

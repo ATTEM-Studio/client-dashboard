@@ -181,7 +181,8 @@ module.exports = async (req, res) => {
       return respond(res, 429, { ok: false, error: '잠시 후 다시 시도해 주세요' }, anonymous);
     }
   } catch {
-    return unavailable(res, anonymous);
+    // The password has already been verified. A temporary rate-limit storage
+    // outage must not lock legitimate users out of the dashboard.
   }
   issueSession(res);
   appendCookie(res, anonymous.cookie);
